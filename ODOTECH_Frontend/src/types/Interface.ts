@@ -53,3 +53,24 @@ export interface Customer {
   ngayTao: string; // ISO date
   ngayCapNhat?: string; // ISO date
 }
+
+export type ProjectStatus = 'not_started' | 'in_progress' | 'on_hold' | 'completed' | 'late';
+export type ProjectPriority = 'low' | 'medium' | 'high' | 'urgent';
+
+export interface ProjectItem {
+  id: number;
+  tenDuAn: string;
+  moTa: string;
+  khachHang: string;
+  ngayBatDau: string; // ISO date
+  ngayKetThuc: string; // ISO date
+  mucDoUuTien: ProjectPriority;
+  pm: string;
+  trangThai: ProjectStatus;
+  tienDo: number; // 0-100
+  soTask: number;
+  taskQuaHan: number;
+  thanhVien: string[];
+  taiLieu: string[]; // file names
+  ghiChu: string;
+}

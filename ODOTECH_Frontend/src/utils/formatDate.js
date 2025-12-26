@@ -12,3 +12,20 @@ export function formatDate(date = new Date(), locale = 'vi-VN') {
 	});
 }
 
+export const formatCurrency = (amount) => {
+  return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(amount);
+};
+
+export const calculateDaysDiff = (dateString) => {
+  if (!dateString) return 0;
+  const target = new Date(dateString);
+  const now = new Date();
+  const diffTime = Math.abs(now.getTime() - target.getTime());
+  return Math.ceil(diffTime / (1000 * 60 * 60 * 24)); 
+};
+
+export const getWeeksDiff = (startDate) => {
+  if (!startDate) return 0;
+  const days = calculateDaysDiff(startDate);
+  return (days / 7).toFixed(1);
+};

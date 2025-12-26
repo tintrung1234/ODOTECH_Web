@@ -1,15 +1,24 @@
-const express = require('express');
-const app = express();
-const PORT = 3000;
+const express = require("express");
+const cors = require("cors");
 
-// middleware
+const salesRoutes = require("./routes/salesRoutes");
+
+const app = express();
+app.use(cors());
 app.use(express.json());
 
-// route test
-app.get('/', (req, res) => {
-  res.send('Hello ExpressJS 🚀');
+// Routes
+
+app.use("/api/sales", salesRoutes);
+
+app.use((req, res) => {
+	res.status(404).json({ message: "Not found" });
 });
 
-app.listen(PORT, () => {
-  console.log(`Server running at http://localhost:${PORT}`);
+// eslint-disable-next-line no-unused-vars
+app.use((err, req, res, next) => {
+	console.error(err);
+	res.status(500).json({ message: "Internal server error" });
 });
+
+module.exports = app;
