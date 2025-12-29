@@ -1,15 +1,86 @@
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import type { ProjectData, Payment } from './interface/type';
 import { formatCurrency, calculateDaysDiff, getWeeksDiff } from '../../utils/formatDate';
+import type { Account } from '../../types/Interface';
+import { buildAuthHeaders, normalizeRole } from '../../utils/auth';
 
-const getMonthFromDate = (dateStr: string) => {
-  if (!dateStr) return '';
-  const s = String(dateStr);
-  return s.length >= 7 ? s.slice(0, 7) : s;
-};
+type QldaStatus = 'not_started' | 'in_progress' | 'on_hold' | 'completed' | 'late';
+
+function normalizeQldaStatus(value: string | undefined | null): QldaStatus | null {
+  const raw = String(value ?? '').trim().toLowerCase();
+  if (!raw) return null;
+
+  // Accept common variants: spaces/hyphens/underscores, and compact forms.
+  const compact = raw.replace(/[\s_-]+/g, '');
+
+  if (raw === 'not_started' || compact === 'notstarted') return 'not_started';
+  if (raw === 'in_progress' || compact === 'inprogress') return 'in_progress';
+  if (raw === 'on_hold' || compact === 'onhold') return 'on_hold';
+  if (raw === 'completed' || compact === 'completed') return 'completed';
+  if (raw === 'late' || compact === 'late') return 'late';
+  return null;
+}
+
+function qldaStatusLabel(status: QldaStatus): string {
+  if (status === 'not_started') return 'Chưa bắt đầu';
+  if (status === 'in_progress') return 'Đang thực hiện';
+  if (status === 'on_hold') return 'Tạm dừng';
+  if (status === 'completed') return 'Hoàn thành';
+  return 'Trễ tiến độ';
+}
+
+function qldaStatusClassName(status: QldaStatus): string {
+  if (status === 'completed') return 'bg-green-50 text-green-700 border-green-200';
+  if (status === 'late') return 'bg-red-50 text-red-700 border-red-200';
+  if (status === 'on_hold') return 'bg-yellow-50 text-yellow-800 border-yellow-200';
+  if (status === 'not_started') return 'bg-purple-50 text-purple-700 border-purple-200';
+  return 'bg-teal-50 text-teal-700 border-teal-200';
+}
 
 // -- Sub-Components cho từng Tab để code gọn hơn --
-const TabInfo = ({ data, handleChange }: { data: ProjectData, handleChange: React.ChangeEventHandler<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement> }) => (
+type StaffOptions = {
+  pmManagers: Account[];
+  sales: Account[];
+  devs: Account[];
+};
+
+function sortAccountsByName(list: Account[]): Account[] {
+  return [...list].sort((a, b) => String(a.name || '').localeCompare(String(b.name || ''), 'vi'));
+}
+
+function ensureCurrentValueOption(list: Account[], currentValue: string): Account[] {
+  const val = String(currentValue || '').trim();
+  if (!val) return list;
+  const exists = list.some((a) => String(a.name || '').trim() === val);
+  if (exists) return list;
+  return [{
+    id: -1,
+    name: val,
+    email: '',
+    phone: '',
+    role_system: 'unknown',
+    point: 0,
+    position: '',
+    salary: 0,
+    payable: 0,
+    join_date: '',
+    status: '',
+    password_hash: '',
+    last_login_at: '',
+    created_at: '',
+    updated_at: '',
+  } as Account, ...list];
+}
+
+const TabInfo = ({
+  data,
+  handleChange,
+  staffOptions,
+}: {
+  data: ProjectData;
+  handleChange: React.ChangeEventHandler<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>;
+  staffOptions: StaffOptions;
+}) => (
   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
     <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-100">
       <h3 className="text-lg font-semibold mb-4 text-gray-700 border-b pb-2">Thông tin Khách hàng</h3>
@@ -46,12 +117,9 @@ const TabInfo = ({ data, handleChange }: { data: ProjectData, handleChange: Reac
         </label>
       </div>
 
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1">
         <label className="block mb-3 text-sm font-medium text-gray-600">Ngày tạo
           <input className="w-full mt-1 p-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none" type="date" name="ngay_tao" value={data.ngay_tao} onChange={handleChange} />
-        </label>
-        <label className="block mb-3 text-sm font-medium text-gray-600">Tháng
-          <input className="w-full mt-1 p-2 border border-gray-300 rounded bg-gray-100" value={getMonthFromDate(data.ngay_tao)} disabled />
         </label>
       </div>
 
@@ -60,11 +128,51 @@ const TabInfo = ({ data, handleChange }: { data: ProjectData, handleChange: Reac
       <label className="block mb-3 text-sm font-medium text-gray-600">Website <input className="w-full mt-1 p-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none" name="website" value={data.website} onChange={handleChange} /></label>
       
       <div className="grid grid-cols-2 gap-4">
-        <label className="block mb-3 text-sm font-medium text-gray-600">Sale Chăm <input className="w-full mt-1 p-2 border border-gray-300 rounded bg-gray-100" name="sale_id" value={data.sale_id} disabled /></label>
-        <label className="block mb-3 text-sm font-medium text-gray-600">Kỹ thuật 
-          <select className="w-full mt-1 p-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none" name="ky_thuat_id" value={data.ky_thuat_id} onChange={handleChange}>
+        <label className="block mb-3 text-sm font-medium text-gray-600">Project Manager
+          <select
+            className="w-full mt-1 p-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+            name="pm_id"
+            value={data.pm_id}
+            onChange={handleChange}
+          >
+            <option value="">-- Chọn PM --</option>
+            {ensureCurrentValueOption(staffOptions.pmManagers, data.pm_id).map((acc) => (
+              <option key={`pm-${acc.id}-${acc.name}`} value={acc.name}>
+                {acc.name}
+              </option>
+            ))}
+          </select>
+        </label>
+
+        <label className="block mb-3 text-sm font-medium text-gray-600">Sale Chăm
+          <select
+            className="w-full mt-1 p-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+            name="sale_id"
+            value={data.sale_id}
+            onChange={handleChange}
+          >
+            <option value="">-- Chọn Sale --</option>
+            {ensureCurrentValueOption(staffOptions.sales, data.sale_id).map((acc) => (
+              <option key={`sale-${acc.id}-${acc.name}`} value={acc.name}>
+                {acc.name}
+              </option>
+            ))}
+          </select>
+        </label>
+
+        <label className="block mb-3 text-sm font-medium text-gray-600">Kỹ thuật
+          <select
+            className="w-full mt-1 p-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+            name="ky_thuat_id"
+            value={data.ky_thuat_id}
+            onChange={handleChange}
+          >
             <option value="">-- Chọn KT --</option>
-            <option value="KT1">Nguyễn Văn Code</option>
+            {ensureCurrentValueOption(staffOptions.devs, data.ky_thuat_id).map((acc) => (
+              <option key={`dev-${acc.id}-${acc.name}`} value={acc.name}>
+                {acc.name}
+              </option>
+            ))}
           </select>
         </label>
       </div>
@@ -137,12 +245,26 @@ const TabDeploy = ({ data, handleChange, handleCheckboxChange }: {
 }) => {
   // Tự động tính thời gian triển khai từ lần thanh toán đầu tiên
   const firstPayDate = data.danh_sach_thanh_toan.find((p: Payment) => p.lan_thanh_toan === 1)?.ngay_thanh_toan;
+
+  const normalizedStatus = normalizeQldaStatus(data.trang_thai_trien_khai);
+  const statusDisplay = normalizedStatus ? qldaStatusLabel(normalizedStatus) : (String(data.trang_thai_trien_khai || '').trim() || '-');
   
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
       <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-100">
         <h3 className="text-lg font-semibold mb-4 text-gray-700 border-b pb-2">Tiến độ & Bàn giao</h3>
-        <label className="block mb-3 text-sm font-medium text-gray-600">Trạng thái (QLDA): <input className="w-full mt-1 p-2 border border-gray-300 rounded bg-gray-100" disabled value={data.trang_thai_trien_khai} /></label>
+        <div className="block mb-3 text-sm font-medium text-gray-600">
+          Trạng thái (QLDA):
+          <div className="mt-1">
+            <span
+              className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium border ${
+                normalizedStatus ? qldaStatusClassName(normalizedStatus) : 'bg-gray-50 text-gray-700 border-gray-200'
+              }`}
+            >
+              {statusDisplay}
+            </span>
+          </div>
+        </div>
         <label className="block mb-3 text-sm font-medium text-gray-600">Ngày bàn giao (QLDA): <input className="w-full mt-1 p-2 border border-gray-300 rounded bg-gray-100" disabled value={data.ngay_ban_giao} /></label>
         
         <div className="grid grid-cols-1 gap-4">
@@ -238,23 +360,129 @@ interface Props {
   project: ProjectData;
   onBack: () => void;
   onSave: (data: ProjectData) => void | Promise<void>;
+  readOnly?: boolean;
 }
 
-export default function ProjectDetail({ project, onBack, onSave }: Props) {
+export default function ProjectDetail({ project, onBack, onSave, readOnly = false }: Props) {
   const [activeTab, setActiveTab] = useState(1);
   const [formData, setFormData] = useState<ProjectData>(project);
+  const [accounts, setAccounts] = useState<Account[]>([]);
+  const [accountsLoading, setAccountsLoading] = useState<boolean>(false);
+
+  const numericFieldNames = useMemo(() => {
+    return new Set<string>([
+      'phi_dich_vu',
+      'phat_sinh',
+      'so_lan_doi',
+      'chi_phi_outsource',
+      'phi_gh_domain',
+      'phi_gh_hosting',
+      'phi_gh_email',
+    ]);
+  }, []);
+
+  const apiBaseUrl = useMemo(() => {
+    const envUrl = import.meta.env.VITE_API_URL;
+    return (envUrl && String(envUrl).trim()) ? String(envUrl).trim().replace(/\/$/, '') : 'http://localhost:5000';
+  }, []);
+
+  const readErrorMessage = async (res: Response) => {
+    const contentType = res.headers.get('content-type') || '';
+    try {
+      if (contentType.includes('application/json')) {
+        const json = (await res.json()) as { message?: string };
+        return json?.message || `HTTP ${res.status}`;
+      }
+      const text = await res.text();
+      return text || `HTTP ${res.status}`;
+    } catch {
+      return `HTTP ${res.status}`;
+    }
+  };
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      setAccountsLoading(true);
+      try {
+        const res = await fetch(`${apiBaseUrl}/api/accounts?limit=500&offset=0`, { headers: buildAuthHeaders() });
+        if (!res.ok) throw new Error(await readErrorMessage(res));
+        const json = (await res.json()) as { items?: Account[] } | Account[];
+        const items = Array.isArray(json) ? json : (json.items ?? []);
+        if (!cancelled) setAccounts(items);
+      } catch {
+        if (!cancelled) setAccounts([]);
+      } finally {
+        if (!cancelled) setAccountsLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [apiBaseUrl]);
+
+  const staffOptions = useMemo<StaffOptions>(() => {
+    const pmManagers = sortAccountsByName(accounts.filter((a) => normalizeRole(a.role_system) === 'sales_manager'));
+    const sales = sortAccountsByName(accounts.filter((a) => normalizeRole(a.role_system) === 'sale'));
+    const devs = sortAccountsByName(accounts.filter((a) => normalizeRole(a.role_system) === 'dev'));
+    return { pmManagers, sales, devs };
+  }, [accounts]);
+
+  useEffect(() => {
+    if (readOnly) return;
+    if (formData.id && formData.id > 0) return;
+    // When creating a new project, default Sale (not PM).
+    const currentSale = String(formData.sale_id || '').trim();
+    const isPlaceholderSale = ['sale 1', 'sale1'].includes(currentSale.toLowerCase());
+    if (currentSale && !isPlaceholderSale) return;
+
+    // Business rule: default Sale to the first "quanlysale" (sales_manager).
+    // If no manager exists, fallback to the first sale.
+    const firstManager = staffOptions.pmManagers[0];
+    const managerName = firstManager ? String(firstManager.name || '').trim() : '';
+    const firstSale = staffOptions.sales[0];
+    const saleName = firstSale ? String(firstSale.name || '').trim() : '';
+
+    const nextSale = managerName || saleName;
+    if (!nextSale) return;
+
+    setFormData((prev) => {
+      if (prev.id && prev.id > 0) return prev;
+      const cur = String(prev.sale_id || '').trim();
+      const isPlaceholder = ['sale 1', 'sale1'].includes(cur.toLowerCase());
+      if (cur && !isPlaceholder) return prev;
+      return { ...prev, sale_id: nextSale };
+    });
+  }, [formData.id, formData.sale_id, readOnly, staffOptions.pmManagers, staffOptions.sales]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
+    setFormData((prev) => {
+      if (numericFieldNames.has(name)) {
+        const next = value === '' ? 0 : Number(value);
+        return { ...prev, [name]: Number.isFinite(next) ? next : 0 };
+      }
+      return { ...prev, [name]: value };
+    });
   };
 
   const handlePaymentChange = (index: number, field: keyof Payment, value: string | number) => {
     const newPayments = [...formData.danh_sach_thanh_toan];
     const base = newPayments[index] ?? { id: Date.now() + index, lan_thanh_toan: index + 1, so_tien: 0, ngay_thanh_toan: '', ghi_chu: '' };
-    newPayments[index] = { ...base, lan_thanh_toan: index + 1, [field]: value };
+    const normalizedValue =
+      field === 'so_tien'
+        ? (value === '' ? 0 : Number(value))
+        : value;
+    newPayments[index] = { ...base, lan_thanh_toan: index + 1, [field]: field === 'so_tien' && !Number.isFinite(Number(normalizedValue)) ? 0 : normalizedValue };
     setFormData(prev => ({ ...prev, danh_sach_thanh_toan: newPayments }));
   };
+
+  const tongPhi = useMemo(() => Number(formData.phi_dich_vu) + Number(formData.phat_sinh), [formData.phi_dich_vu, formData.phat_sinh]);
+  const daThu = useMemo(
+    () => formData.danh_sach_thanh_toan.reduce((sum, p) => sum + Number(p.so_tien || 0), 0),
+    [formData.danh_sach_thanh_toan]
+  );
+  const congNo = useMemo(() => tongPhi - daThu, [tongPhi, daThu]);
 
   const handleCheckboxChange = (name: keyof ProjectData, checked: boolean) => {
     setFormData(prev => ({ ...prev, [name]: checked } as ProjectData));
@@ -273,7 +501,7 @@ export default function ProjectDetail({ project, onBack, onSave }: Props) {
              formData.trang_thai_chot === 'Huy' ? 'bg-red-100 text-red-800' :
              'bg-yellow-100 text-yellow-800'
            }`}>{formData.trang_thai_chot}</span>
-           <span className="px-3 py-1 rounded-full text-sm font-medium bg-gray-100 text-gray-800">Công nợ: {formatCurrency((formData.phi_dich_vu + formData.phat_sinh) - formData.danh_sach_thanh_toan.reduce((a,b)=>a+Number(b.so_tien),0))}</span>
+           <span className="px-3 py-1 rounded-full text-sm font-medium bg-gray-100 text-gray-800">Công nợ: {formatCurrency(congNo)}</span>
         </div>
       </div>
 
@@ -284,37 +512,54 @@ export default function ProjectDetail({ project, onBack, onSave }: Props) {
       </div>
 
       <div className="space-y-6">
-        {activeTab === 1 && <TabInfo data={formData} handleChange={handleChange} />}
-        {activeTab === 2 && (
-          <TabFinance
-            data={formData}
-            handleChange={handleChange}
-            handlePaymentChange={handlePaymentChange}
-          />
-        )}
-        {activeTab === 3 && (
-          <TabDeploy
-            data={formData}
-            handleChange={handleChange}
-            handleCheckboxChange={handleCheckboxChange}
-          />
-        )}
+        <fieldset disabled={readOnly} className={readOnly ? 'opacity-95' : ''}>
+          {activeTab === 1 && (
+            <div className="space-y-3">
+              {accountsLoading && (
+                <div className="text-sm text-gray-600">Đang tải danh sách nhân sự...</div>
+              )}
+              <TabInfo data={formData} handleChange={handleChange} staffOptions={staffOptions} />
+            </div>
+          )}
+          {activeTab === 2 && (
+            <TabFinance
+              data={formData}
+              handleChange={handleChange}
+              handlePaymentChange={handlePaymentChange}
+            />
+          )}
+          {activeTab === 3 && (
+            <TabDeploy
+              data={formData}
+              handleChange={handleChange}
+              handleCheckboxChange={handleCheckboxChange}
+            />
+          )}
+        </fieldset>
       </div>
       
-      <div className="mt-8 flex justify-end">
-        <button
-          onClick={() => {
-            const normalizedPayments = Array.from({ length: 5 }).map((_, i) => {
-              const p = formData.danh_sach_thanh_toan[i] ?? { id: Date.now() + i, lan_thanh_toan: i + 1, so_tien: 0, ngay_thanh_toan: '', ghi_chu: '' };
-              return { ...p, lan_thanh_toan: i + 1 };
-            });
-            onSave({ ...formData, danh_sach_thanh_toan: normalizedPayments });
-          }}
-          className="button-color text-white px-6 py-2 rounded-lg hover:bg-blue-700 shadow-md transition-colors font-medium"
-        >
-          Lưu Dữ Liệu
-        </button>
-      </div>
+      {readOnly ? (
+        <div className="mt-8 flex justify-end">
+          <div className="text-sm text-gray-600">Chế độ xem (không được chỉnh sửa)</div>
+        </div>
+      ) : (
+        <div className="mt-8 flex justify-end">
+          <button
+            onClick={() => {
+              const normalizedPayments = Array.from({ length: 5 }).map((_, i) => {
+                const p =
+                  formData.danh_sach_thanh_toan[i] ??
+                  { id: Date.now() + i, lan_thanh_toan: i + 1, so_tien: 0, ngay_thanh_toan: '', ghi_chu: '' };
+                return { ...p, lan_thanh_toan: i + 1 };
+              });
+              onSave({ ...formData, danh_sach_thanh_toan: normalizedPayments });
+            }}
+            className="button-color text-white px-6 py-2 rounded-lg hover:bg-blue-700 shadow-md transition-colors font-medium"
+          >
+            Lưu Dữ Liệu
+          </button>
+        </div>
+      )}
     </div>
   );
 }

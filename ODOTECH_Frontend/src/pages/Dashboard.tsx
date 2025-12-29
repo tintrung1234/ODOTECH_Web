@@ -1,9 +1,9 @@
 import StatCard from '../components/accountsDasboard/StatCard';
 import AccountTable from '../components/accountsDasboard/AccountTable';
 import LeaveCalendarPanel from '../components/accountsDasboard/LeaveCalendarPanel';
-import LeaveApprovalPanel from '../components/accountsDasboard/LeaveApprovalPanel';
-import type { LeaveRequest } from '../types/Interface';
-import { useMemo, useState } from 'react';
+import type { Account, LeaveRequest } from '../types/Interface';
+import { useEffect, useMemo, useState } from 'react';
+import { buildAuthHeaders } from '../utils/auth';
 
 function toLocalIsoDate(date: Date): string {
   const year = date.getFullYear();
@@ -12,114 +12,124 @@ function toLocalIsoDate(date: Date): string {
   return `${year}-${month}-${day}`;
 }
 
-// Sample data - replace with API calls later
-const sampleAccounts = [
-  {
-    id: 1,
-    hoTen: 'Nguyễn Văn A',
-    chucVu: 'Nhân viên',
-    email: 'nguyenvana@odotech.vn',
-    bankName: 'Vietcombank',
-    bankAccountNumber: '0123456789',
-    soNgayPhep: 12,
-    nguoiQuanLy: 'Trần Văn B',
-  },
-  {
-    id: 2,
-    hoTen: 'Trần Văn B',
-    chucVu: 'Quản lý',
-    email: 'tranvanb@odotech.vn',
-    bankName: 'BIDV',
-    bankAccountNumber: '9876543210',
-    soNgayPhep: 15,
-    nguoiQuanLy: 'Lê Văn C',
-  },
-  {
-    id: 3,
-    hoTen: 'Lê Thị C',
-    chucVu: 'Nhân viên',
-    email: 'lethic@odotech.vn',
-    bankName: 'Techcombank',
-    bankAccountNumber: '1231231231',
-    soNgayPhep: 10,
-    nguoiQuanLy: 'Trần Văn B',
-  },
-];
-
-const sampleLeaveRequests: LeaveRequest[] = [
-  {
-    id: 1001,
-    accountId: 1,
-    tuNgay: '2025-12-20',
-    denNgay: '2025-12-22',
-    lyDo: 'Nghỉ phép cá nhân',
-    trangThai: 'pending',
-    ngayTao: '2025-12-18',
-  },
-  {
-    id: 1002,
-    accountId: 1,
-    tuNgay: '2025-11-10',
-    denNgay: '2025-11-10',
-    lyDo: 'Đi khám bệnh',
-    trangThai: 'approved',
-    ngayTao: '2025-11-08',
-    nguoiDuyet: 'Trần Văn B',
-    ngayXuLy: '2025-11-09',
-    ghiChu: 'Đã duyệt',
-  },
-  {
-    id: 1003,
-    accountId: 2,
-    tuNgay: '2025-12-05',
-    denNgay: '2025-12-06',
-    lyDo: 'Công việc gia đình',
-    trangThai: 'rejected',
-    ngayTao: '2025-12-01',
-    nguoiDuyet: 'Lê Văn C',
-    ngayXuLy: '2025-12-02',
-    ghiChu: 'Chưa đủ thông tin',
-  },
-  {
-    id: 1004,
-    accountId: 3,
-    tuNgay: '2025-12-28',
-    denNgay: '2025-12-28',
-    lyDo: 'Nghỉ phép năm',
-    trangThai: 'pending',
-    ngayTao: '2025-12-20',
-  },
-];
-
 export default function Dashboard() {
-  const stats = {
-    totalAccounts: 20,
-    totalManagers: 4,
-    totalEmployees: 17,
-  };
+  const apiBaseUrl = useMemo(() => {
+    const envUrl = import.meta.env.VITE_API_URL;
+    return (envUrl && envUrl.trim()) ? envUrl.trim().replace(/\/$/, '') : 'http://localhost:5000';
+  }, []);
+
+  const [loading, setLoading] = useState<boolean>(true);
+  const [stats, setStats] = useState<{ totalAccounts: number; totalManagers: number; totalEmployees: number }>({
+    totalAccounts: 0,
+    totalManagers: 0,
+    totalEmployees: 0,
+  });
+  const [accounts, setAccounts] = useState<Account[]>([]);
+  const [leaveRequests, setLeaveRequests] = useState<LeaveRequest[]>([]);
 
   const currentMonth = useMemo(() => new Date(), []);
   const [selectedIsoDate, setSelectedIsoDate] = useState<string | null>(() => toLocalIsoDate(new Date()));
   const [selectedLeaveId, setSelectedLeaveId] = useState<number | null>(null);
 
-  const [leaveRequests, setLeaveRequests] = useState<LeaveRequest[]>(sampleLeaveRequests);
-
-  const selectedLeaveRequest = useMemo(() => {
-    if (!selectedLeaveId) return null;
-    return leaveRequests.find((r) => r.id === selectedLeaveId) ?? null;
-  }, [leaveRequests, selectedLeaveId]);
-
-  const handleUpdateRequest = (updated: LeaveRequest) => {
-    setLeaveRequests((prev) => prev.map((r) => (r.id === updated.id ? updated : r)));
+  const readErrorMessage = async (res: Response) => {
+    const contentType = res.headers.get('content-type') || '';
+    try {
+      if (contentType.includes('application/json')) {
+        const json = (await res.json()) as { message?: string };
+        return json?.message || `HTTP ${res.status}`;
+      }
+      const text = await res.text();
+      return text || `HTTP ${res.status}`;
+    } catch {
+      return `HTTP ${res.status}`;
+    }
   };
 
-  const accountNameById = useMemo(() => {
-    const map: Record<number, string> = {};
-    for (const acc of sampleAccounts) {
-      map[acc.id] = acc.hoTen;
+  const loadAll = async () => {
+    setLoading(true);
+    try {
+      const [statsRes, accountsRes, leaveRes] = await Promise.all([
+        fetch(`${apiBaseUrl}/api/accounts/stats`, { headers: buildAuthHeaders() }),
+        fetch(`${apiBaseUrl}/api/accounts?limit=200&offset=0`, { headers: buildAuthHeaders() }),
+        fetch(`${apiBaseUrl}/api/leave-requests?limit=500&offset=0`, { headers: buildAuthHeaders() }),
+      ]);
+
+      if (!statsRes.ok) throw new Error(await readErrorMessage(statsRes));
+      if (!accountsRes.ok) throw new Error(await readErrorMessage(accountsRes));
+      if (!leaveRes.ok) throw new Error(await readErrorMessage(leaveRes));
+
+      const statsJson = (await statsRes.json()) as { totalAccounts: number; totalManagers: number; totalEmployees: number };
+      const accountsJson = (await accountsRes.json()) as { items?: Account[] } | Account[];
+      const leaveJson = (await leaveRes.json()) as { items?: LeaveRequest[] } | LeaveRequest[];
+
+      setStats({
+        totalAccounts: Number(statsJson?.totalAccounts ?? 0),
+        totalManagers: Number(statsJson?.totalManagers ?? 0),
+        totalEmployees: Number(statsJson?.totalEmployees ?? 0),
+      });
+
+      setAccounts(Array.isArray(accountsJson) ? accountsJson : (accountsJson.items ?? []));
+      setLeaveRequests(Array.isArray(leaveJson) ? leaveJson : (leaveJson.items ?? []));
+    } finally {
+      setLoading(false);
     }
-    return map;
-  }, []);
+  };
+
+  useEffect(() => {
+    void loadAll();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [apiBaseUrl]);
+
+  const handleUpdateRequest = async (updated: LeaveRequest) => {
+    const res = await fetch(`${apiBaseUrl}/api/leave-requests/${updated.id}`, {
+      method: 'PUT',
+      headers: buildAuthHeaders({ 'Content-Type': 'application/json' }),
+      body: JSON.stringify(updated),
+    });
+    if (!res.ok) {
+      throw new Error(await readErrorMessage(res));
+    }
+    const saved = (await res.json()) as LeaveRequest;
+    setLeaveRequests((prev) => prev.map((r) => (r.id === saved.id ? saved : r)));
+  };
+
+  const handleUpdateAccount = async (updated: Account) => {
+    const res = await fetch(`${apiBaseUrl}/api/accounts/${updated.id}`, {
+      method: 'PUT',
+      headers: buildAuthHeaders({ 'Content-Type': 'application/json' }),
+      body: JSON.stringify(updated),
+    });
+    if (!res.ok) {
+      throw new Error(await readErrorMessage(res));
+    }
+    const saved = (await res.json()) as Account;
+    setAccounts((prev) => prev.map((a) => (a.id === saved.id ? saved : a)));
+  };
+
+  const handleCreateAccount = async (
+    input: Omit<Account, 'id' | 'created_at' | 'updated_at'>
+  ): Promise<Account> => {
+    const res = await fetch(`${apiBaseUrl}/api/accounts`, {
+      method: 'POST',
+      headers: buildAuthHeaders({ 'Content-Type': 'application/json' }),
+      body: JSON.stringify(input),
+    });
+    if (!res.ok) {
+      throw new Error(await readErrorMessage(res));
+    }
+    const created = (await res.json()) as Account;
+    setAccounts((prev) => [created, ...prev]);
+    return created;
+  };
+
+  const handleDeleteAccount = async (id: number) => {
+    const res = await fetch(`${apiBaseUrl}/api/accounts/${id}`, { method: 'DELETE', headers: buildAuthHeaders() });
+    if (!res.ok) {
+      throw new Error(await readErrorMessage(res));
+    }
+    setAccounts((prev) => prev.filter((a) => a.id !== id));
+    setLeaveRequests((prev) => prev.filter((r) => r.accountId !== id));
+  };
 
   return (
     <main className="flex-1 p-6">
@@ -141,29 +151,25 @@ export default function Dashboard() {
               onSelectIsoDate={setSelectedIsoDate}
               selectedLeaveId={selectedLeaveId}
               onSelectLeaveId={setSelectedLeaveId}
-              onUpdateRequest={handleUpdateRequest}
+              onUpdateRequest={(updated) => {
+                void handleUpdateRequest(updated);
+              }}
             />
-
-            <div className="border border-gray-200 rounded-lg p-4">
-              {!selectedLeaveRequest ? (
-                <div className="text-gray-600">Chọn một đơn để xem chi tiết.</div>
-              ) : (
-                <>
-                  <div className="flex items-center justify-between gap-3">
-                  </div>
-                  <div className="mt-3 text-sm text-gray-600">
-                    Nhân viên: {accountNameById[selectedLeaveRequest.accountId] ?? '-'}
-                  </div>
-                  <div className="mt-4">
-                    <LeaveApprovalPanel request={selectedLeaveRequest} onUpdateRequest={handleUpdateRequest} />
-                  </div>
-                </>
-              )}
-            </div>
           </div>
         </div>
 
-        <AccountTable accounts={sampleAccounts} />
+        {loading ? (
+          <div className="mt-6 text-gray-600">Đang tải dữ liệu...</div>
+        ) : (
+          <AccountTable
+            accounts={accounts}
+            leaveRequests={leaveRequests}
+            onUpdateAccount={(acc) => handleUpdateAccount(acc)}
+            onCreateAccount={(input) => handleCreateAccount(input)}
+            onDeleteAccount={(id) => handleDeleteAccount(id)}
+            onUpdateLeaveRequest={(req) => handleUpdateRequest(req)}
+          />
+        )}
       </div>
     </main>
   );

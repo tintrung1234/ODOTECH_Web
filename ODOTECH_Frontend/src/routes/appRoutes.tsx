@@ -2,6 +2,8 @@ import type { ReactNode, ReactElement } from 'react';
 import { Navigate } from 'react-router-dom';
 
 import Dashboard from '../pages/Dashboard';
+import Login from '../pages/Login';
+import Register from '../pages/Register';
 import Projects from '../pages/Projects';
 import Renewals from '../pages/Renewals';
 import Sales from '../pages/Sales';
@@ -20,7 +22,7 @@ export interface AppRoute {
 export const sidebarItems: SidebarItem[] = [
   {
     to: '/accounts',
-    label: 'Tài khoản',
+    label: 'Quản lý nhân sự',
     icon: (
       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path
@@ -78,6 +80,8 @@ export const sidebarItems: SidebarItem[] = [
 
 export const appRoutes: AppRoute[] = [
   { path: '/', element: <Navigate to="/accounts" replace /> },
+  { path: '/login', element: <Login /> },
+  { path: '/register', element: <Register /> },
   { path: '/accounts', element: <Dashboard /> },
   { path: '/sales', element: <Sales /> },
   { path: '/projects', element: <Projects /> },

@@ -1,6 +1,6 @@
-import type { ProjectItem, ProjectPriority, ProjectStatus } from '../../types/Interface';
+import type { ProjectPriority, ProjectStatus, ProjectMgmtPriority, ProjectMgmtStatus } from '../../types/Interface';
 
-export function statusLabel(status: ProjectStatus) {
+export function statusLabel(status: ProjectStatus | ProjectMgmtStatus) {
   if (status === 'not_started') return 'Chưa bắt đầu';
   if (status === 'in_progress') return 'Đang thực hiện';
   if (status === 'on_hold') return 'Tạm dừng';
@@ -16,14 +16,14 @@ export function statusClassName(status: ProjectStatus) {
   return 'bg-teal-50 text-teal-700 border-teal-200';
 }
 
-export function priorityLabel(priority: ProjectPriority) {
+export function priorityLabel(priority: ProjectPriority | ProjectMgmtPriority) {
   if (priority === 'low') return 'Thấp';
   if (priority === 'medium') return 'Trung bình';
   if (priority === 'high') return 'Cao';
   return 'Khẩn';
 }
 
-export function priorityClassName(priority: ProjectPriority) {
+export function priorityClassName(priority: ProjectPriority | ProjectMgmtPriority) {
   if (priority === 'urgent') return 'bg-red-50 text-red-700 border-red-200';
   if (priority === 'high') return 'bg-amber-50 text-amber-700 border-amber-200';
   if (priority === 'medium') return 'bg-purple-50 text-purple-700 border-purple-200';
@@ -55,25 +55,6 @@ export function computeExpectedProgressPercent(startIso: string, endIso: string,
   if (total <= 0) return null;
   const elapsed = today.getTime() - start.getTime();
   return clampNumber((elapsed / total) * 100, 0, 100);
-}
-
-export function deriveDisplayStatus(project: ProjectItem, today: Date) {
-  if (project.trangThai === 'completed') return 'completed' as const;
-  if (project.trangThai === 'on_hold') return 'on_hold' as const;
-  if (project.trangThai === 'not_started') return 'not_started' as const;
-
-  const expected = computeExpectedProgressPercent(project.ngayBatDau, project.ngayKetThuc, today);
-  if (expected === null) return project.trangThai;
-
-  const end = parseIsoDate(project.ngayKetThuc);
-  const isPastEnd = end ? today.getTime() > end.getTime() : false;
-  const isLate = (isPastEnd && project.tienDo < 100) || project.tienDo + 10 < expected;
-  return isLate ? ('late' as const) : project.trangThai;
-}
-
-export function nextProjectId(projects: ProjectItem[]) {
-  const maxId = projects.reduce((max, p) => (p.id > max ? p.id : max), 0);
-  return maxId + 1;
 }
 
 export function normalizeMembers(input: string) {

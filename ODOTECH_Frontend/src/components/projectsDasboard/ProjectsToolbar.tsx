@@ -24,7 +24,7 @@ export default function ProjectsToolbar({
         </span>
         <input
           type="text"
-          placeholder="Tìm kiếm (ID / tên dự án / khách hàng / PM)"
+          placeholder="Tìm kiếm (ID / mã dự án / tên website / client / PM)"
           value={searchTerm}
           onChange={(e) => onChangeSearchTerm(e.target.value)}
           className="w-full h-10 pl-11 pr-4 border border-gray-400 rounded-lg bg-white outline-none focus:border-gray-600"

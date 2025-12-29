@@ -20,6 +20,10 @@ function requireEnv(name) {
 }
 
 const connectionString = optionalString(process.env.DATABASE_URL);
+const rawHost = optionalString(process.env.DATABASE_HOST);
+const isNeon =
+  (connectionString ? /neon\.tech/i.test(connectionString) : false) ||
+  (rawHost ? /neon\.tech/i.test(rawHost) : false);
 
 // If DATABASE_URL is not provided, fall back to discrete vars.
 // We validate only the essentials to avoid confusing pg auth errors.
@@ -38,7 +42,18 @@ const pool = new Pool({
   user,
   // pg SCRAM requires password to be a string when provided.
   password: password ? String(password) : undefined,
-  ssl: parseBool(process.env.DATABASE_SSL, false) ? { rejectUnauthorized: false } : false,
+  ssl: (() => {
+    const enabled = parseBool(
+      process.env.DATABASE_SSL,
+      Boolean(connectionString) || isNeon
+    );
+    if (!enabled) return false;
+    const rejectUnauthorized = parseBool(
+      process.env.DATABASE_SSL_REJECT_UNAUTHORIZED,
+      false
+    );
+    return { rejectUnauthorized };
+  })(),
 });
 
 async function connectPostgres() {

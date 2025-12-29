@@ -1,12 +1,19 @@
 export interface Account {
-  id: number;
-  hoTen: string;
-  chucVu: string;
-  email: string;
-  bankName: string;
-  bankAccountNumber: string;
-  soNgayPhep: number;
-  nguoiQuanLy: string;
+  id: number; // ID nhân sự
+  name: string; // Tên nhân sự
+  email: string; // Email đăng nhập (duy nhất)
+  phone: string; // SĐT
+  role_system: string; // Quyền toàn hệ thống
+  point: number; // Điểm đánh giá cá nhân
+  position: string; // Chức danh
+  salary: number; // Lương
+  payable: number; // công nợ
+  join_date: string; // ISO date
+  status: string; // Trạng thái làm việc
+  password_hash: string; // Mật khẩu mã hoá
+  last_login_at: string; // ISO timestamp
+  created_at: string; // ISO timestamp
+  updated_at: string; // ISO timestamp
 }
 
 export type LeaveStatus = 'pending' | 'approved' | 'rejected';
@@ -57,6 +64,17 @@ export interface Customer {
 export type ProjectStatus = 'not_started' | 'in_progress' | 'on_hold' | 'completed' | 'late';
 export type ProjectPriority = 'low' | 'medium' | 'high' | 'urgent';
 
+export type TaskStatus = 'todo' | 'doing' | 'done';
+
+export interface ProjectTask {
+  id: number;
+  tieuDe: string;
+  nguoiPhuTrach: string;
+  hanChot: string; // ISO date
+  trangThai: TaskStatus;
+  ghiChu?: string;
+}
+
 export interface ProjectItem {
   id: number;
   tenDuAn: string;
@@ -72,5 +90,36 @@ export interface ProjectItem {
   taskQuaHan: number;
   thanhVien: string[];
   taiLieu: string[]; // file names
+  tasks?: ProjectTask[];
   ghiChu: string;
+}
+
+export type ProjectMgmtStatus = 'not_started' | 'in_progress' | 'on_hold' | 'completed' | 'late';
+export type ProjectMgmtPriority = 'low' | 'medium' | 'high' | 'urgent';
+
+export interface ProjectManagementItem {
+  id: number;
+  project_code: string;
+  project_type: string;
+  name: string;
+  client_id: number | null;
+  sale_id: number | null;
+  pm_id: number | null;
+  status: ProjectMgmtStatus;
+  priority: ProjectMgmtPriority;
+  budget: number;
+  contract_value: number;
+  actual_cost: number;
+  deposit_received: number;
+  payment_status: string;
+  total_hours: number;
+  technology_stack: string;
+  domain_url: string;
+  production_url: string;
+  start_date: string; // ISO date
+  deadline: string; // ISO date
+  completed_at: string; // ISO timestamp
+  description: string;
+  created_at: string; // ISO timestamp
+  updated_at: string; // ISO timestamp
 }

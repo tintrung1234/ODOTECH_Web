@@ -22,6 +22,7 @@ export interface ProjectData {
   // Nhân sự
   sale_id: string; // Tên hoặc ID sale
   ky_thuat_id: string;
+  pm_id: string; // Project Manager
 
   // Trạng thái & Chăm sóc
   trang_thai_chot: 'DangCham' | 'DaKy' | 'Huy';

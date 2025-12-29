@@ -22,10 +22,12 @@ function mapProjectRow(row) {
 
     sale_id: row.sale_id ?? "",
     ky_thuat_id: row.ky_thuat_id ?? "",
+    pm_id: row.pm_id ?? "",
 
     trang_thai_chot: row.trang_thai_chot ?? "DangCham",
     trang_thai_thu_tien: row.trang_thai_thu_tien ?? "Chua",
-    trang_thai_trien_khai: row.trang_thai_trien_khai ?? "",
+    // Derive deployment status from projects.status when matching project_code = ma_du_an
+    trang_thai_trien_khai: row.project_status ?? row.trang_thai_trien_khai ?? "",
     ngay_tao: formatDate(row.ngay_tao),
     lich_hen: formatDate(row.lich_hen),
     ghi_chu: row.ghi_chu ?? "",
@@ -38,7 +40,8 @@ function mapProjectRow(row) {
     so_lan_doi: Number(row.so_lan_doi ?? 0),
     danh_sach_thanh_toan: [],
 
-    ngay_ban_giao: formatDate(row.ngay_ban_giao),
+    // Derive handover date from projects.completed_at when matching project_code = ma_du_an
+    ngay_ban_giao: formatDate(row.project_completed_at ?? row.ngay_ban_giao),
     ngay_tat_toan: formatDate(row.ngay_tat_toan),
     ly_do_lau: row.ly_do_lau ?? "",
     chi_phi_outsource: Number(row.chi_phi_outsource ?? 0),
@@ -76,23 +79,28 @@ function toDbDate(value) {
   return str === "" ? null : str;
 }
 
-async function listProjects({ limit, offset, q, trang_thai_chot, trang_thai_thu_tien }) {
+async function listProjects({ limit, offset, q, trang_thai_chot, trang_thai_thu_tien, sale_id }) {
   const where = [];
   const params = [];
 
   if (q) {
     params.push(`%${q.toLowerCase()}%`);
-    where.push(`(LOWER(ten_khach) LIKE $${params.length} OR LOWER(ma_du_an) LIKE $${params.length})`);
+    where.push(`(LOWER(sp.ten_khach) LIKE $${params.length} OR LOWER(sp.ma_du_an) LIKE $${params.length})`);
   }
 
   if (trang_thai_chot) {
     params.push(trang_thai_chot);
-    where.push(`trang_thai_chot = $${params.length}`);
+    where.push(`sp.trang_thai_chot = $${params.length}`);
   }
 
   if (trang_thai_thu_tien) {
     params.push(trang_thai_thu_tien);
-    where.push(`trang_thai_thu_tien = $${params.length}`);
+    where.push(`sp.trang_thai_thu_tien = $${params.length}`);
+  }
+
+  if (sale_id) {
+    params.push(sale_id);
+    where.push(`sp.sale_id = $${params.length}`);
   }
 
   const whereSql = where.length ? `WHERE ${where.join(" AND ")}` : "";
@@ -103,14 +111,18 @@ async function listProjects({ limit, offset, q, trang_thai_chot, trang_thai_thu_
   const offsetParam = params.length;
 
   const listSql = `
-    SELECT *
-    FROM sales_projects
+    SELECT
+      sp.*,
+      p.status AS project_status,
+      p.completed_at AS project_completed_at
+    FROM sales_projects sp
+    LEFT JOIN projects p ON p.project_code = sp.ma_du_an
     ${whereSql}
-    ORDER BY id DESC
+    ORDER BY sp.id DESC
     LIMIT $${limitParam} OFFSET $${offsetParam}
   `;
 
-  const countSql = `SELECT COUNT(*)::int AS total FROM sales_projects ${whereSql}`;
+  const countSql = `SELECT COUNT(*)::int AS total FROM sales_projects sp ${whereSql}`;
 
   const [listResult, countResult] = await Promise.all([
     pool.query(listSql, params),
@@ -125,15 +137,20 @@ async function listProjects({ limit, offset, q, trang_thai_chot, trang_thai_thu_
   };
 }
 
-async function getProjectById(projectId) {
+async function getProjectById(projectId, { sale_id } = {}) {
   const projectResult = await pool.query(
     `
-      SELECT *
-      FROM sales_projects
-      WHERE id = $1
+      SELECT
+        sp.*,
+        p.status AS project_status,
+        p.completed_at AS project_completed_at
+      FROM sales_projects sp
+      LEFT JOIN projects p ON p.project_code = sp.ma_du_an
+      WHERE sp.id = $1
+        AND ($2::text IS NULL OR sp.sale_id = $2::text)
       LIMIT 1
     `,
-    [projectId]
+    [projectId, sale_id ?? null]
   );
 
   const projectRow = projectResult.rows[0];
@@ -163,7 +180,7 @@ async function createProject(input) {
       `
         INSERT INTO sales_projects (
           ma_kh, ma_du_an, ten_khach, sdt, zalo_fb, nguon_khach, nhu_cau, san_pham_dv, website,
-          sale_id, ky_thuat_id,
+          sale_id, ky_thuat_id, pm_id,
           trang_thai_chot, trang_thai_thu_tien, trang_thai_trien_khai,
           ngay_tao, lich_hen, ghi_chu, ngay_cham_cuoi, hinh_thuc_cham,
           phi_dich_vu, phat_sinh, ngay_doi_cuoi, so_lan_doi,
@@ -174,15 +191,15 @@ async function createProject(input) {
           gia_han_content, gia_han_ads
         ) VALUES (
           $1,$2,$3,$4,$5,$6,$7,$8,$9,
-          $10,$11,
-          $12,$13,$14,
-          $15,$16,$17,$18,$19,
-          $20,$21,$22,$23,
-          $24,$25,$26,$27,
-          $28,$29,$30,
-          $31,$32,$33,
-          $34,$35,$36,
-          $37,$38
+          $10,$11,$12,
+          $13,$14,$15,
+          $16,$17,$18,$19,$20,
+          $21,$22,$23,$24,
+          $25,$26,$27,$28,
+          $29,$30,$31,$32,
+          $33,$34,$35,
+          $36,$37,$38,
+          $39
         )
         RETURNING *
       `,
@@ -199,6 +216,7 @@ async function createProject(input) {
 
         input.sale_id,
         input.ky_thuat_id,
+        input.pm_id,
 
         input.trang_thai_chot,
         input.trang_thai_thu_tien,
@@ -287,33 +305,34 @@ async function updateProject(projectId, input) {
           website = $10,
           sale_id = $11,
           ky_thuat_id = $12,
-          trang_thai_chot = $13,
-          trang_thai_thu_tien = $14,
-          trang_thai_trien_khai = $15,
-          ngay_tao = $16,
-          lich_hen = $17,
-          ghi_chu = $18,
-          ngay_cham_cuoi = $19,
-          hinh_thuc_cham = $20,
-          phi_dich_vu = $21,
-          phat_sinh = $22,
-          ngay_doi_cuoi = $23,
-          so_lan_doi = $24,
-          ngay_ban_giao = $25,
-          ngay_tat_toan = $26,
-          ly_do_lau = $27,
-          chi_phi_outsource = $28,
-          gia_han_domain = $29,
-          ngay_hh_domain = $30,
-          phi_gh_domain = $31,
-          gia_han_hosting = $32,
-          ngay_hh_hosting = $33,
-          phi_gh_hosting = $34,
-          gia_han_email = $35,
-          ngay_hh_email = $36,
-          phi_gh_email = $37,
-          gia_han_content = $38,
-          gia_han_ads = $39
+          pm_id = $13,
+          trang_thai_chot = $14,
+          trang_thai_thu_tien = $15,
+          trang_thai_trien_khai = $16,
+          ngay_tao = $17,
+          lich_hen = $18,
+          ghi_chu = $19,
+          ngay_cham_cuoi = $20,
+          hinh_thuc_cham = $21,
+          phi_dich_vu = $22,
+          phat_sinh = $23,
+          ngay_doi_cuoi = $24,
+          so_lan_doi = $25,
+          ngay_ban_giao = $26,
+          ngay_tat_toan = $27,
+          ly_do_lau = $28,
+          chi_phi_outsource = $29,
+          gia_han_domain = $30,
+          ngay_hh_domain = $31,
+          phi_gh_domain = $32,
+          gia_han_hosting = $33,
+          ngay_hh_hosting = $34,
+          phi_gh_hosting = $35,
+          gia_han_email = $36,
+          ngay_hh_email = $37,
+          phi_gh_email = $38,
+          gia_han_content = $39,
+          gia_han_ads = $40
         WHERE id = $1
         RETURNING *
       `,
@@ -330,6 +349,7 @@ async function updateProject(projectId, input) {
         input.website,
         input.sale_id,
         input.ky_thuat_id,
+        input.pm_id,
         input.trang_thai_chot,
         input.trang_thai_thu_tien,
         input.trang_thai_trien_khai,

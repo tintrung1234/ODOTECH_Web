@@ -2,6 +2,8 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import Dashboard from '../components/salesDasboard/Dashboard';
 import ProjectDetail from '../components/salesDasboard/ProjectDetail';
 import type { ProjectData } from '../components/salesDasboard/interface/type';
+import type { Account } from '../types/Interface';
+import { buildAuthHeaders, getTokenUser, normalizeRole } from '../utils/auth';
 
 type ToastType = 'success' | 'error';
 type ToastState = { open: boolean; type: ToastType; message: string };
@@ -25,8 +27,9 @@ const createEmptyProject = (): ProjectData => {
     san_pham_dv: '',
     website: '',
 
-    sale_id: 'Sale 1',
+    sale_id: '',
     ky_thuat_id: '',
+    pm_id: '',
 
     trang_thai_chot: 'DangCham',
     trang_thai_thu_tien: 'Chua',
@@ -72,11 +75,18 @@ const createEmptyProject = (): ProjectData => {
 };
 
 export default function Sales() {
+  const role = normalizeRole(getTokenUser()?.role);
+  const canView = !(role === 'dev' || role === 'dev_manager' || role === 'head_tech');
+  const readOnly = role === 'support';
+  const canCreateAndEdit = !readOnly;
+
   const [view, setView] = useState<'dashboard' | 'detail'>('dashboard');
   const [selectedProject, setSelectedProject] = useState<ProjectData | null>(null);
   const [projects, setProjects] = useState<ProjectData[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [toast, setToast] = useState<ToastState>({ open: false, type: 'success', message: '' });
+
+  const [accounts, setAccounts] = useState<Account[]>([]);
 
   const toastTimersRef = useRef<{ show?: number; hide?: number }>({});
 
@@ -84,6 +94,22 @@ export default function Sales() {
     q: '',
     trang_thai_chot: '',
   });
+
+  const [listTab, setListTab] = useState<'full' | 'doi_tien' | 'dang_trien_khai'>('full');
+  const [selectedSaleTab, setSelectedSaleTab] = useState<string>('');
+
+  const normalizeDeploymentStatus = (value: unknown): '' | 'not_started' | 'in_progress' | 'on_hold' | 'completed' | 'late' => {
+    const raw = String(value ?? '').trim().toLowerCase();
+    if (!raw) return '';
+    const compact = raw.replace(/[\s_-]+/g, '');
+    if (raw === 'not_started' || compact === 'notstarted') return 'not_started';
+    if (raw === 'in_progress' || compact === 'inprogress') return 'in_progress';
+    if (raw === 'on_hold' || compact === 'onhold') return 'on_hold';
+    if (raw === 'completed' || compact === 'completed') return 'completed';
+    if (raw === 'late' || compact === 'late') return 'late';
+    // Unknown statuses are treated as empty so we don't misclassify.
+    return '';
+  };
 
   const apiBaseUrl = useMemo(() => {
     const envUrl = import.meta.env.VITE_API_URL;
@@ -141,7 +167,7 @@ export default function Sales() {
       if (opts.trang_thai_chot) params.set('trang_thai_chot', opts.trang_thai_chot);
       const qs = params.toString();
 
-      const res = await fetch(`${apiBaseUrl}/api/sales/projects${qs ? `?${qs}` : ''}`);
+      const res = await fetch(`${apiBaseUrl}/api/sales/projects${qs ? `?${qs}` : ''}`, { headers: buildAuthHeaders() });
       if (!res.ok) {
         throw new Error(`HTTP ${res.status}`);
       }
@@ -156,16 +182,40 @@ export default function Sales() {
   };
 
   useEffect(() => {
+    if (!canView) return;
     void loadProjects(filters);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [apiBaseUrl]);
+
+  useEffect(() => {
+    if (!canView) return;
+    // Head sales/admin/support need full account list to build tabs.
+    if (!(role === 'head_sales' || role === 'admin' || role === 'support')) return;
+
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch(`${apiBaseUrl}/api/accounts?limit=1000&offset=0`, { headers: buildAuthHeaders() });
+        if (!res.ok) throw new Error(await readErrorMessage(res));
+        const json = (await res.json()) as { items?: Account[] } | Account[];
+        const items = Array.isArray(json) ? json : (json.items ?? []);
+        if (!cancelled) setAccounts(items);
+      } catch {
+        if (!cancelled) setAccounts([]);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [apiBaseUrl, canView, role]);
 
   const handleSelectProject = (project: ProjectData) => {
     (async () => {
       setLoading(true);
       clearAlerts();
       try {
-        const res = await fetch(`${apiBaseUrl}/api/sales/projects/${project.id}`);
+        const res = await fetch(`${apiBaseUrl}/api/sales/projects/${project.id}`, { headers: buildAuthHeaders() });
         if (!res.ok) {
           throw new Error(`HTTP ${res.status}`);
         }
@@ -186,6 +236,10 @@ export default function Sales() {
   };
 
   const handleSave = async (data: ProjectData) => {
+    if (!canCreateAndEdit) {
+      showToast('error', 'Tài khoản chỉ có quyền xem');
+      return;
+    }
     setLoading(true);
     clearAlerts();
     try {
@@ -197,7 +251,7 @@ export default function Sales() {
 
       const res = await fetch(url, {
         method,
-        headers: { 'Content-Type': 'application/json' },
+        headers: buildAuthHeaders({ 'Content-Type': 'application/json' }),
         body: JSON.stringify(data),
       });
       if (!res.ok) {
@@ -221,10 +275,88 @@ export default function Sales() {
   };
 
   const handleCreate = () => {
+    if (!canCreateAndEdit) {
+      showToast('error', 'Tài khoản chỉ có quyền xem');
+      return;
+    }
     clearAlerts();
     setSelectedProject(createEmptyProject());
     setView('detail');
   };
+
+  const visibleProjects = useMemo(() => {
+    let list = projects;
+
+    // Sale manager / head sales / admin / support: filter by sale tab if selected.
+    if (selectedSaleTab) {
+      list = list.filter((p) => (p.sale_id || '') === selectedSaleTab);
+    }
+
+    // Money/deploy tabs.
+    if (listTab === 'doi_tien') {
+      list = list.filter((p) => p.trang_thai_thu_tien !== 'Du');
+    } else if (listTab === 'dang_trien_khai') {
+      list = list.filter((p) => {
+        const st = normalizeDeploymentStatus(p.trang_thai_trien_khai);
+        if (!st) return false;
+        return st !== 'completed';
+      });
+    }
+
+    return list;
+  }, [listTab, projects, selectedSaleTab]);
+
+  const saleTabs = useMemo(() => {
+    if (!(role === 'sales_manager' || role === 'head_sales' || role === 'admin' || role === 'support')) return [];
+
+    // Default: tabs from actual project sale_id values.
+    const fromProjects = new Set<string>();
+    for (const p of projects) {
+      const s = String(p.sale_id || '').trim();
+      if (s) fromProjects.add(s);
+    }
+
+    // Head sales/admin/support: show ALL sales managers + ALL sales (by name)
+    // so each manager has a tab, and each sale has a tab.
+    if (role === 'head_sales' || role === 'admin' || role === 'support') {
+      const managerNames = accounts
+        .filter((a) => normalizeRole(a.role_system) === 'sales_manager')
+        .map((a) => String(a.name || '').trim())
+        .filter(Boolean);
+      const saleNames = accounts
+        .filter((a) => normalizeRole(a.role_system) === 'sale')
+        .map((a) => String(a.name || '').trim())
+        .filter(Boolean);
+
+      const managersSet = new Set(managerNames);
+      const salesSet = new Set(saleNames);
+
+      // Also keep legacy values from projects, in case sale_id is not equal to account.name.
+      for (const v of fromProjects) {
+        if (!managersSet.has(v) && !salesSet.has(v)) salesSet.add(v);
+      }
+
+      const managers = Array.from(managersSet).sort((a, b) => a.localeCompare(b, 'vi'));
+      const sales = Array.from(salesSet).sort((a, b) => a.localeCompare(b, 'vi'));
+      return [...managers, ...sales];
+    }
+
+    return Array.from(fromProjects).sort((a, b) => a.localeCompare(b, 'vi'));
+  }, [accounts, projects, role]);
+
+  useEffect(() => {
+    if (!selectedSaleTab) return;
+    if (saleTabs.length === 0) return;
+    if (!saleTabs.includes(selectedSaleTab)) setSelectedSaleTab('');
+  }, [saleTabs, selectedSaleTab]);
+
+  const totalAmount = useMemo(() => {
+    return visibleProjects.reduce((sum, p) => sum + Number(p.phi_dich_vu || 0) + Number(p.phat_sinh || 0), 0);
+  }, [visibleProjects]);
+
+  if (!canView) {
+    return <div className="p-6 text-gray-700">Bạn không có quyền truy cập trang Quản lý Sale.</div>;
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -251,10 +383,17 @@ export default function Sales() {
           <div className="p-6 text-gray-600">Đang tải dữ liệu...</div>
         ) : (
           <Dashboard
-            projects={projects}
+            projects={visibleProjects}
             onSelect={handleSelectProject}
             onFilter={handleFilter}
             onCreate={handleCreate}
+            canCreate={canCreateAndEdit}
+            listTab={listTab}
+            onChangeListTab={setListTab}
+            saleTabs={saleTabs}
+            selectedSaleTab={selectedSaleTab}
+            onSelectSaleTab={setSelectedSaleTab}
+            totalAmount={totalAmount}
           />
         )
       ) : (
@@ -263,6 +402,7 @@ export default function Sales() {
             project={selectedProject}
             onBack={() => setView('dashboard')}
             onSave={handleSave}
+            readOnly={readOnly}
           />
         )
       )}

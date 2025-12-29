@@ -2,10 +2,17 @@ import { NavLink } from 'react-router-dom';
 
 import logo from '../../assets/img/logo.png';
 import { sidebarItems } from '../../routes/appRoutes';
+import { getTokenUser, normalizeRole } from '../../utils/auth';
 
 export default function Sidebar() {
+  const role = normalizeRole(getTokenUser()?.role);
+  const visibleItems = sidebarItems.filter((item) => {
+    if (item.to !== '/sales') return true;
+    return !(role === 'dev' || role === 'dev_manager' || role === 'head_tech');
+  });
+
   return (
-    <aside className="w-64 bg-white min-h-screen shadow-sm flex flex-col">
+    <aside className="w-64 bg-white h-screen sticky top-0 shadow-sm flex flex-col overflow-y-auto">
       {/* Logo */}
       <div className="p-6 border-b border-gray-100">
         <div className="flex items-center gap-3">
@@ -20,7 +27,7 @@ export default function Sidebar() {
 
       {/* Menu Items */}
       <nav className="flex-1 px-4">
-        {sidebarItems.map((item) => (
+        {visibleItems.map((item) => (
           <NavLink
             key={item.to}
             to={item.to}

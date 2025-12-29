@@ -18,6 +18,7 @@ CREATE TABLE IF NOT EXISTS sales_projects (
 
   sale_id TEXT,
   ky_thuat_id TEXT,
+  pm_id TEXT,
 
   trang_thai_chot TEXT NOT NULL DEFAULT 'DangCham' CHECK (trang_thai_chot IN ('DangCham', 'DaKy', 'Huy')),
   trang_thai_thu_tien TEXT NOT NULL DEFAULT 'Chua' CHECK (trang_thai_thu_tien IN ('Chua', 'MotPhan', 'Du')),

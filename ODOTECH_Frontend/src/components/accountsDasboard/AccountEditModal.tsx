@@ -55,21 +55,21 @@ export default function AccountEditModal({
                     <div className="px-6 py-5 max-h-[85vh] overflow-auto">
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Họ tên</label>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Tên nhân sự</label>
                                 <input
                                     type="text"
-                                    value={draft.hoTen}
-                                    onChange={(e) => onChangeDraft({ ...draft, hoTen: e.target.value })}
+                                    value={draft.name}
+                                    onChange={(e) => onChangeDraft({ ...draft, name: e.target.value })}
                                     className="w-full h-10 px-3 border border-gray-300 rounded-lg bg-white outline-none focus:border-gray-600"
                                 />
                             </div>
 
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Chức vụ</label>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Chức danh</label>
                                 <input
                                     type="text"
-                                    value={draft.chucVu}
-                                    onChange={(e) => onChangeDraft({ ...draft, chucVu: e.target.value })}
+                                    value={draft.position}
+                                    onChange={(e) => onChangeDraft({ ...draft, position: e.target.value })}
                                     className="w-full h-10 px-3 border border-gray-300 rounded-lg bg-white outline-none focus:border-gray-600"
                                 />
                             </div>
@@ -85,46 +85,81 @@ export default function AccountEditModal({
                             </div>
 
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Số ngày phép</label>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">SĐT</label>
+                                <input
+                                    type="text"
+                                    value={draft.phone}
+                                    onChange={(e) => onChangeDraft({ ...draft, phone: e.target.value })}
+                                    className="w-full h-10 px-3 border border-gray-300 rounded-lg bg-white outline-none focus:border-gray-600"
+                                />
+                            </div>
+
+
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Quyền hệ thống</label>
+                                <input
+                                    type="text"
+                                    value={draft.role_system}
+                                    onChange={(e) => onChangeDraft({ ...draft, role_system: e.target.value })}
+                                    className="w-full h-10 px-3 border border-gray-300 rounded-lg bg-white outline-none focus:border-gray-600"
+                                />
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Điểm đánh giá</label>
                                 <input
                                     type="number"
-                                    min={0}
-                                    value={draft.soNgayPhep}
+                                    value={draft.point}
                                     onChange={(e) => {
                                         const nextValue = Number(e.target.value);
-                                        onChangeDraft({ ...draft, soNgayPhep: Number.isFinite(nextValue) ? nextValue : 0 });
+                                        onChangeDraft({ ...draft, point: Number.isFinite(nextValue) ? nextValue : 0 });
                                     }}
                                     className="w-full h-10 px-3 border border-gray-300 rounded-lg bg-white outline-none focus:border-gray-600"
                                 />
                             </div>
 
-
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Số tài khoản</label>
+                            <div className="md:col-span-2">
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Trạng thái làm việc</label>
                                 <input
                                     type="text"
-                                    value={draft.bankAccountNumber}
-                                    onChange={(e) => onChangeDraft({ ...draft, bankAccountNumber: e.target.value })}
+                                    value={draft.status}
+                                    onChange={(e) => onChangeDraft({ ...draft, status: e.target.value })}
                                     className="w-full h-10 px-3 border border-gray-300 rounded-lg bg-white outline-none focus:border-gray-600"
                                 />
                             </div>
 
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Tên ngân hàng</label>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Lương</label>
                                 <input
-                                    type="text"
-                                    value={draft.bankName}
-                                    onChange={(e) => onChangeDraft({ ...draft, bankName: e.target.value })}
+                                    type="number"
+                                    value={draft.salary}
+                                    onChange={(e) => {
+                                        const nextValue = Number(e.target.value);
+                                        onChangeDraft({ ...draft, salary: Number.isFinite(nextValue) ? nextValue : 0 });
+                                    }}
+                                    className="w-full h-10 px-3 border border-gray-300 rounded-lg bg-white outline-none focus:border-gray-600"
+                                />
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Công nợ</label>
+                                <input
+                                    type="number"
+                                    value={draft.payable}
+                                    onChange={(e) => {
+                                        const nextValue = Number(e.target.value);
+                                        onChangeDraft({ ...draft, payable: Number.isFinite(nextValue) ? nextValue : 0 });
+                                    }}
                                     className="w-full h-10 px-3 border border-gray-300 rounded-lg bg-white outline-none focus:border-gray-600"
                                 />
                             </div>
 
                             <div className="md:col-span-2">
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Người quản lý</label>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Ngày vào công ty</label>
                                 <input
-                                    type="text"
-                                    value={draft.nguoiQuanLy}
-                                    onChange={(e) => onChangeDraft({ ...draft, nguoiQuanLy: e.target.value })}
+                                    type="date"
+                                    value={draft.join_date}
+                                    onChange={(e) => onChangeDraft({ ...draft, join_date: e.target.value })}
                                     className="w-full h-10 px-3 border border-gray-300 rounded-lg bg-white outline-none focus:border-gray-600"
                                 />
                             </div>

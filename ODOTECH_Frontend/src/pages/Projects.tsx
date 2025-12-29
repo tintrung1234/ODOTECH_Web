@@ -1,98 +1,130 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 
 import ConfirmDeleteModal from '../components/accountsDasboard/ConfirmDeleteModal';
 
-import ProjectDetailsPanel from '../components/projectsDasboard/ProjectDetailsPanel';
-import ProjectEditModal from '../components/projectsDasboard/ProjectEditModal';
 import ProjectsDashboard from '../components/projectsDasboard/ProjectsDashboard';
 import ProjectsTable from '../components/projectsDasboard/ProjectsTable';
 import ProjectsToolbar from '../components/projectsDasboard/ProjectsToolbar';
-import { nextProjectId } from '../components/projectsDasboard/projectUtils';
-import type { ProjectItem } from '../types/Interface';
+import type { ProjectManagementItem } from '../types/Interface';
+import { buildAuthHeaders } from '../utils/auth';
 
-const sampleProjects: ProjectItem[] = [
-  {
-    id: 3001,
-    tenDuAn: 'Triển khai ERP',
-    moTa: 'Triển khai các phân hệ kế toán, kho và mua hàng.',
-    khachHang: 'Công ty ABC',
-    ngayBatDau: '2025-11-20',
-    ngayKetThuc: '2026-02-15',
-    mucDoUuTien: 'high',
-    pm: 'Trần Văn B',
-    trangThai: 'in_progress',
-    tienDo: 35,
-    soTask: 42,
-    taskQuaHan: 5,
-    thanhVien: ['Lê Thị C', 'Nguyễn Văn A', 'Trần Văn B'],
-    taiLieu: ['Scope_ERP_v1.docx', 'Plan_ERP.xlsx'],
-    ghiChu: 'Ưu tiên hoàn thiện phân hệ kế toán trước.',
-  },
-  {
-    id: 3002,
-    tenDuAn: 'Nâng cấp CRM',
-    moTa: 'Chuẩn hóa quy trình sales, cấu hình pipeline và báo cáo.',
-    khachHang: 'Công ty XYZ',
-    ngayBatDau: '2025-12-10',
-    ngayKetThuc: '2026-01-20',
-    mucDoUuTien: 'medium',
-    pm: 'Nguyễn Văn A',
-    trangThai: 'not_started',
-    tienDo: 0,
-    soTask: 18,
-    taskQuaHan: 0,
-    thanhVien: ['Nguyễn Văn A'],
-    taiLieu: [],
-    ghiChu: 'Chờ xác nhận yêu cầu báo cáo từ khách hàng.',
-  },
-  {
-    id: 3003,
-    tenDuAn: 'Tích hợp HRM',
-    moTa: 'Tạm dừng chờ khách hàng bổ sung dữ liệu nhân sự.',
-    khachHang: 'Công ty MNO',
-    ngayBatDau: '2025-10-05',
-    ngayKetThuc: '2025-12-30',
-    mucDoUuTien: 'high',
-    pm: 'Lê Thị C',
-    trangThai: 'on_hold',
-    tienDo: 20,
-    soTask: 25,
-    taskQuaHan: 2,
-    thanhVien: ['Lê Thị C', 'Trần Văn B'],
-    taiLieu: ['HR_Data_Checklist.pdf'],
-    ghiChu: 'Đang chờ dữ liệu nhân sự (file master).',
-  },
-  {
-    id: 3004,
-    tenDuAn: 'Cổng báo cáo BI',
-    moTa: 'Hoàn thành dashboard tổng hợp KPI theo phòng ban.',
-    khachHang: 'Công ty QRS',
-    ngayBatDau: '2025-08-01',
-    ngayKetThuc: '2025-10-15',
-    mucDoUuTien: 'low',
-    pm: 'Trần Văn B',
-    trangThai: 'completed',
-    tienDo: 100,
-    soTask: 12,
-    taskQuaHan: 0,
-    thanhVien: ['Trần Văn B', 'Nguyễn Văn A'],
-    taiLieu: ['BI_Final_Export.zip'],
-    ghiChu: 'Đã bàn giao và nghiệm thu.',
-  },
-];
+type ToastType = 'success' | 'error';
+type ToastState = { open: boolean; type: ToastType; message: string };
+
+const todayIso = () => {
+  const now = new Date();
+  const yyyy = now.getFullYear();
+  const mm = String(now.getMonth() + 1).padStart(2, '0');
+  const dd = String(now.getDate()).padStart(2, '0');
+  return `${yyyy}-${mm}-${dd}`;
+};
+
+const createDraftProject = (): Omit<ProjectManagementItem, 'id' | 'created_at' | 'updated_at'> => {
+  const code = `PRJ-${Date.now()}`;
+  const today = todayIso();
+  return {
+    project_code: code,
+    project_type: '',
+    name: 'New website',
+    client_id: null,
+    sale_id: null,
+    pm_id: null,
+    status: 'not_started',
+    priority: 'medium',
+    budget: 0,
+    contract_value: 0,
+    actual_cost: 0,
+    deposit_received: 0,
+    payment_status: '',
+    total_hours: 0,
+    technology_stack: '',
+    domain_url: '',
+    production_url: '',
+    start_date: today,
+    deadline: '',
+    completed_at: '',
+    description: '',
+  };
+};
 
 export default function Projects() {
-  const [projects, setProjects] = useState<ProjectItem[]>(sampleProjects);
+  const [projects, setProjects] = useState<ProjectManagementItem[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedId, setSelectedId] = useState<number | null>(null);
 
-  const [editOpen, setEditOpen] = useState(false);
-  const [editDraft, setEditDraft] = useState<ProjectItem | null>(null);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [toast, setToast] = useState<ToastState>({ open: false, type: 'success', message: '' });
+  const toastTimersRef = useRef<{ show?: number; hide?: number }>({});
+  const pendingSaveTimersRef = useRef<Map<number, number>>(new Map());
 
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [deleteTargetId, setDeleteTargetId] = useState<number | null>(null);
 
   const today = useMemo(() => new Date(), []);
+
+  const apiBaseUrl = useMemo(() => {
+    const envUrl = import.meta.env.VITE_API_URL as string | undefined;
+    return (envUrl && envUrl.trim()) ? envUrl.trim().replace(/\/$/, '') : 'http://localhost:5000';
+  }, []);
+
+  const clearToastTimers = () => {
+    if (toastTimersRef.current.show) window.clearTimeout(toastTimersRef.current.show);
+    if (toastTimersRef.current.hide) window.clearTimeout(toastTimersRef.current.hide);
+    toastTimersRef.current = {};
+  };
+
+  const showToast = (type: ToastType, message: string) => {
+    clearToastTimers();
+    setToast({ open: false, type, message });
+    toastTimersRef.current.show = window.setTimeout(() => {
+      setToast({ open: true, type, message });
+      toastTimersRef.current.hide = window.setTimeout(() => {
+        setToast((prev) => ({ ...prev, open: false }));
+      }, 3000);
+    }, 100);
+  };
+
+  const readErrorMessage = async (res: Response) => {
+    const contentType = res.headers.get('content-type') || '';
+    try {
+      if (contentType.includes('application/json')) {
+        const json = (await res.json()) as { message?: string };
+        return json?.message || `HTTP ${res.status}`;
+      }
+      const text = await res.text();
+      return text || `HTTP ${res.status}`;
+    } catch {
+      return `HTTP ${res.status}`;
+    }
+  };
+
+  const loadProjects = async () => {
+    setLoading(true);
+    try {
+      const res = await fetch(`${apiBaseUrl}/api/projects?limit=200`, { headers: buildAuthHeaders() });
+      if (!res.ok) throw new Error(await readErrorMessage(res));
+      const json = await res.json();
+      const items = Array.isArray(json) ? json : (json.items ?? []);
+      setProjects(items);
+    } catch (e: unknown) {
+      showToast('error', e instanceof Error ? e.message : 'Không tải được dữ liệu');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    void loadProjects();
+    const pendingSaves = pendingSaveTimersRef.current;
+    return () => {
+      clearToastTimers();
+      for (const timer of pendingSaves.values()) {
+        window.clearTimeout(timer);
+      }
+      pendingSaves.clear();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [apiBaseUrl]);
 
   const filteredProjects = useMemo(() => {
     const term = searchTerm.trim().toLowerCase();
@@ -100,93 +132,140 @@ export default function Projects() {
     return projects.filter((item) => {
       return (
         String(item.id).includes(term) ||
-        item.tenDuAn.toLowerCase().includes(term) ||
-        item.khachHang.toLowerCase().includes(term) ||
-        item.pm.toLowerCase().includes(term)
+        item.project_code.toLowerCase().includes(term) ||
+        item.name.toLowerCase().includes(term) ||
+        String(item.client_id ?? '').includes(term) ||
+        String(item.pm_id ?? '').includes(term)
       );
     });
   }, [projects, searchTerm]);
 
-  const selectedProject = useMemo(() => {
-    if (!selectedId) return null;
-    return projects.find((p) => p.id === selectedId) ?? null;
-  }, [projects, selectedId]);
+  const toApiPayload = (p: ProjectManagementItem): Omit<ProjectManagementItem, 'id' | 'created_at' | 'updated_at'> => ({
+    project_code: p.project_code,
+    project_type: p.project_type,
+    name: p.name,
+    client_id: p.client_id,
+    sale_id: p.sale_id,
+    pm_id: p.pm_id,
+    status: p.status,
+    priority: p.priority,
+    budget: p.budget,
+    contract_value: p.contract_value,
+    actual_cost: p.actual_cost,
+    deposit_received: p.deposit_received,
+    payment_status: p.payment_status,
+    total_hours: p.total_hours,
+    technology_stack: p.technology_stack,
+    domain_url: p.domain_url,
+    production_url: p.production_url,
+    start_date: p.start_date,
+    deadline: p.deadline,
+    completed_at: p.completed_at,
+    description: p.description,
+  });
+
+  const scheduleSave = (id: number, nextProject: ProjectManagementItem) => {
+    const existing = pendingSaveTimersRef.current.get(id);
+    if (existing) window.clearTimeout(existing);
+
+    const timer = window.setTimeout(() => {
+      (async () => {
+        try {
+          const res = await fetch(`${apiBaseUrl}/api/projects/${id}`, {
+            method: 'PUT',
+            headers: buildAuthHeaders({ 'Content-Type': 'application/json' }),
+            body: JSON.stringify(toApiPayload(nextProject)),
+          });
+          if (!res.ok) throw new Error(await readErrorMessage(res));
+          const updated = (await res.json()) as ProjectManagementItem;
+          setProjects((prev) => prev.map((p) => (p.id === updated.id ? updated : p)));
+        } catch (e: unknown) {
+          showToast('error', e instanceof Error ? e.message : 'Không lưu được dữ liệu');
+        }
+      })();
+    }, 600);
+
+    pendingSaveTimersRef.current.set(id, timer);
+  };
+
+  const patchProject = (id: number, patch: Partial<ProjectManagementItem>) => {
+    setProjects((prev) => {
+      const next = prev.map((p) => (p.id === id ? { ...p, ...patch } : p));
+      const changed = next.find((p) => p.id === id);
+      if (changed) scheduleSave(id, changed);
+      return next;
+    });
+  };
 
   return (
-    <main className="flex-1 p-6">
+    <main className="flex-1 min-w-0 p-6">
       <div className="bg-white rounded-2xl p-6 shadow-sm">
         <h1 className="text-3xl font-extrabold text-gray-900 mb-5">Quản lý dự án</h1>
 
-        <ProjectsDashboard projects={projects} today={today} />
+        {toast.message && (
+          <div
+            className={`fixed top-4 right-4 z-50 transition-opacity duration-200 ${toast.open ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
+            role="status"
+            aria-live="polite"
+          >
+            <div
+              className={`rounded border px-4 py-3 shadow-md ${
+                toast.type === 'success'
+                  ? 'bg-green-50 text-green-700 border-green-200'
+                  : 'bg-red-50 text-red-700 border-red-200'
+              }`}
+            >
+              {toast.message}
+            </div>
+          </div>
+        )}
 
-        <ProjectsToolbar
-          searchTerm={searchTerm}
-          onChangeSearchTerm={setSearchTerm}
-          filteredCount={filteredProjects.length}
-          onCreate={() => {
-            const id = nextProjectId(projects);
-            const draft: ProjectItem = {
-              id,
-              tenDuAn: '',
-              moTa: '',
-              khachHang: '',
-              ngayBatDau: '',
-              ngayKetThuc: '',
-              mucDoUuTien: 'medium',
-              pm: '',
-              trangThai: 'not_started',
-              tienDo: 0,
-              soTask: 0,
-              taskQuaHan: 0,
-              thanhVien: [],
-              taiLieu: [],
-              ghiChu: '',
-            };
-            setEditDraft(draft);
-            setEditOpen(true);
-          }}
-        />
+        {loading ? (
+          <div className="text-gray-600">Đang tải dữ liệu...</div>
+        ) : (
+          <>
+            <ProjectsDashboard projects={projects} today={today} />
 
-        <div className="mt-4 grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <ProjectsTable
-            projects={filteredProjects}
-            selectedId={selectedId}
-            today={today}
-            onSelect={(id) => setSelectedId(id)}
-            onEdit={(project) => {
-              setEditDraft(project);
-              setEditOpen(true);
-            }}
-            onDelete={(id) => {
-              setDeleteTargetId(id);
-              setDeleteOpen(true);
-            }}
-          />
+            <ProjectsToolbar
+              searchTerm={searchTerm}
+              onChangeSearchTerm={setSearchTerm}
+              filteredCount={filteredProjects.length}
+              onCreate={() => {
+                (async () => {
+                  try {
+                    const res = await fetch(`${apiBaseUrl}/api/projects`, {
+                      method: 'POST',
+                      headers: buildAuthHeaders({ 'Content-Type': 'application/json' }),
+                      body: JSON.stringify(createDraftProject()),
+                    });
+                    if (!res.ok) throw new Error(await readErrorMessage(res));
+                    const created = (await res.json()) as ProjectManagementItem;
+                    setProjects((prev) => [created, ...prev]);
+                    setSelectedId(created.id);
+                    showToast('success', 'Tạo dự án thành công');
+                  } catch (e: unknown) {
+                    showToast('error', e instanceof Error ? e.message : 'Không tạo được dự án');
+                  }
+                })();
+              }}
+            />
 
-          <ProjectDetailsPanel project={selectedProject} today={today} />
-        </div>
+            <div className="mt-4">
+              <ProjectsTable
+                projects={filteredProjects}
+                selectedId={selectedId}
+                today={today}
+                onSelect={(id) => setSelectedId(id)}
+                onUpdate={patchProject}
+                onDelete={(id) => {
+                  setDeleteTargetId(id);
+                  setDeleteOpen(true);
+                }}
+              />
+            </div>
+          </>
+        )}
       </div>
-
-      <ProjectEditModal
-        open={editOpen}
-        draft={editDraft}
-        onChangeDraft={(next) => setEditDraft(next)}
-        onClose={() => {
-          setEditOpen(false);
-          setEditDraft(null);
-        }}
-        onSave={() => {
-          if (!editDraft) return;
-          setProjects((prev) => {
-            const exists = prev.some((p) => p.id === editDraft.id);
-            if (exists) return prev.map((p) => (p.id === editDraft.id ? editDraft : p));
-            return [editDraft, ...prev];
-          });
-          setSelectedId(editDraft.id);
-          setEditOpen(false);
-          setEditDraft(null);
-        }}
-      />
 
       <ConfirmDeleteModal
         open={deleteOpen}
@@ -198,10 +277,20 @@ export default function Projects() {
         }}
         onConfirm={() => {
           if (!deleteTargetId) return;
-          setProjects((prev) => prev.filter((p) => p.id !== deleteTargetId));
-          setSelectedId((prev) => (prev === deleteTargetId ? null : prev));
-          setDeleteOpen(false);
-          setDeleteTargetId(null);
+          (async () => {
+            try {
+              const res = await fetch(`${apiBaseUrl}/api/projects/${deleteTargetId}`, { method: 'DELETE', headers: buildAuthHeaders() });
+              if (!res.ok) throw new Error(await readErrorMessage(res));
+              setProjects((prev) => prev.filter((p) => p.id !== deleteTargetId));
+              setSelectedId((prev) => (prev === deleteTargetId ? null : prev));
+              showToast('success', 'Xóa dự án thành công');
+            } catch (e: unknown) {
+              showToast('error', e instanceof Error ? e.message : 'Không xóa được dự án');
+            } finally {
+              setDeleteOpen(false);
+              setDeleteTargetId(null);
+            }
+          })();
         }}
       />
     </main>

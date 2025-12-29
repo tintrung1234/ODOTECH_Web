@@ -1,10 +1,13 @@
 import { formatDate } from '../../utils/formatDate';
+import { useNavigate } from 'react-router-dom';
+import { clearToken } from '../../utils/auth';
 
 interface HeaderProps {
   userName: string;
 }
 
 export default function Header({ userName }: HeaderProps) {
+  const navigate = useNavigate();
   const formattedDate = formatDate(new Date());
 
   return (
@@ -12,7 +15,19 @@ export default function Header({ userName }: HeaderProps) {
       <div className="flex items-center gap-4">
         <div className="flex-1 bg-teal-700 text-white rounded-2xl px-6 py-4 flex items-center justify-between">
           <div className="text-3xl font-extrabold tracking-tight">Xin chào {userName}!</div>
-          <div className="text-white/90 font-medium">{formattedDate}</div>
+          <div className="flex items-center gap-3">
+            <div className="text-white/90 font-medium">{formattedDate}</div>
+            <button
+              type="button"
+              className="h-10 px-4 rounded-lg bg-white/10 hover:bg-white/20 border border-white/20 text-white font-medium cursor-pointer"
+              onClick={() => {
+                clearToken();
+                navigate('/login', { replace: true });
+              }}
+            >
+              Đăng xuất
+            </button>
+          </div>
         </div>
 
         {/* Tạm thời ẩn nút thông báo */}

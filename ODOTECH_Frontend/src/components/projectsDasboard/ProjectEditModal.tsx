@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 
-import type { ProjectItem, ProjectPriority, ProjectStatus } from '../../types/types';
+import type { ProjectItem, ProjectPriority, ProjectStatus } from '../../types/Interface';
 import { clampNumber, normalizeMembers, priorityLabel, statusLabel } from './projectUtils';
 
 export default function ProjectEditModal({
@@ -210,39 +210,8 @@ export default function ProjectEditModal({
               </div>
 
               <div className="md:col-span-2">
-                <label className="block text-sm font-medium text-gray-700 mb-1">Upload tài liệu dự án</label>
-                <input
-                  type="file"
-                  multiple
-                  onChange={(e) => {
-                    const files = Array.from(e.target.files ?? []);
-                    if (files.length === 0) return;
-                    const names = files.map((f) => f.name);
-                    const next = Array.from(new Set([...draft.taiLieu, ...names]));
-                    onChangeDraft({ ...draft, taiLieu: next });
-                    e.currentTarget.value = '';
-                  }}
-                  className="w-full h-10 px-3 py-1 border border-gray-300 rounded-lg bg-white outline-none focus:border-gray-600"
-                />
-
-                {draft.taiLieu.length === 0 ? (
-                  <div className="text-sm text-gray-500 mt-2">Chưa có tài liệu.</div>
-                ) : (
-                  <div className="mt-2 flex flex-wrap gap-2">
-                    {draft.taiLieu.map((name) => (
-                      <div key={name} className="flex items-center gap-2 px-3 py-1 border border-gray-200 rounded-full bg-gray-50">
-                        <div className="text-sm text-gray-700">{name}</div>
-                        <button
-                          type="button"
-                          className="text-sm text-gray-500 hover:text-gray-700"
-                          onClick={() => onChangeDraft({ ...draft, taiLieu: draft.taiLieu.filter((x) => x !== name) })}
-                        >
-                          ×
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                )}
+                <div className="text-sm text-gray-500">Tài liệu dự án</div>
+                <div className="text-gray-900">(Đã bỏ)</div>
               </div>
 
               <div className="md:col-span-2">
