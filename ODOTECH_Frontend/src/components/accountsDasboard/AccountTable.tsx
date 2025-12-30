@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 
 import ConfirmDeleteModal from './ConfirmDeleteModal';
 import LeaveRequestsModal from './LeaveRequestsModal';
-import type { Account, LeaveRequest } from '../../types/Interface';
+import type { Account, LeaveRequest } from '../projectsDasboard/interface/type';
 
 interface AccountTableProps {
   accounts: Account[];

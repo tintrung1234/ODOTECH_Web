@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 
-import type { ProjectItem, ProjectPriority, ProjectStatus } from '../../types/Interface';
-import { clampNumber, normalizeMembers, priorityLabel, statusLabel } from './projectUtils';
+import type { ProjectItem, ProjectPriority, ProjectStatus } from './interface/type';
+import { clampNumber, normalizeMembers, priorityLabel, statusLabel } from '../../utils/projectUtils';
 
 export default function ProjectEditModal({
   open,

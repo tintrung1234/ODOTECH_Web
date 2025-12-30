@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import type { ProjectData, Payment } from './interface/type';
 import { formatCurrency, calculateDaysDiff, getWeeksDiff } from '../../utils/formatDate';
-import type { Account } from '../../types/Interface';
+import type { Account } from '../projectsDasboard/interface/type';
 import { buildAuthHeaders, normalizeRole } from '../../utils/auth';
 
 type QldaStatus = 'not_started' | 'in_progress' | 'on_hold' | 'completed' | 'late';

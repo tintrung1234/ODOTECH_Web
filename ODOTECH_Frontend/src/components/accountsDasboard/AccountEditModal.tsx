@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 
-import type { Account } from '../../types/Interface';
+import type { Account } from '../projectsDasboard/interface/type';
 
 interface AccountEditModalProps {
     open: boolean;

@@ -1,8 +1,8 @@
 import { useMemo } from 'react';
 
 import LeaveMonthCalendar from './LeaveMonthCalendar';
-import type { LeaveRequest } from '../../types/Interface';
-import { isIsoWithinRange, isPending, isRejected, formatIsoDate, statusClassName, statusLabel } from './leaveHelpers';
+import type { LeaveRequest } from '../projectsDasboard/interface/type';
+import { isIsoWithinRange, isPending, isRejected, formatIsoDate, statusClassName, statusLabel } from '../../utils/leaveHelpers';
 
 interface LeaveCalendarPanelProps {
   month: Date;

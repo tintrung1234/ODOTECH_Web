@@ -5,7 +5,7 @@ import ConfirmDeleteModal from '../components/accountsDasboard/ConfirmDeleteModa
 import ProjectsDashboard from '../components/projectsDasboard/ProjectsDashboard';
 import ProjectsTable from '../components/projectsDasboard/ProjectsTable';
 import ProjectsToolbar from '../components/projectsDasboard/ProjectsToolbar';
-import type { ProjectManagementItem } from '../types/Interface';
+import type { ProjectManagementItem } from '../components/projectsDasboard/interface/type';
 import { buildAuthHeaders } from '../utils/auth';
 
 type ToastType = 'success' | 'error';
@@ -255,6 +255,7 @@ export default function Projects() {
                 projects={filteredProjects}
                 selectedId={selectedId}
                 today={today}
+                apiBaseUrl={apiBaseUrl}
                 onSelect={(id) => setSelectedId(id)}
                 onUpdate={patchProject}
                 onDelete={(id) => {

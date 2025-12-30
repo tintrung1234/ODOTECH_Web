@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import Dashboard from '../components/salesDasboard/Dashboard';
 import ProjectDetail from '../components/salesDasboard/ProjectDetail';
 import type { ProjectData } from '../components/salesDasboard/interface/type';
-import type { Account } from '../types/Interface';
+import type { Account } from '../components/projectsDasboard/interface/type';
 import { buildAuthHeaders, getTokenUser, normalizeRole } from '../utils/auth';
 
 type ToastType = 'success' | 'error';

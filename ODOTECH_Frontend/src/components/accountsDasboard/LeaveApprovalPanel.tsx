@@ -1,5 +1,5 @@
-import type { LeaveRequest } from '../../types/Interface';
-import { formatIsoDate, statusClassName, statusLabel, isPending, todayIsoDate } from './leaveHelpers';
+import type { LeaveRequest } from '../projectsDasboard/interface/type';
+import { formatIsoDate, statusClassName, statusLabel, isPending, todayIsoDate } from '../../utils/leaveHelpers';
 
 interface LeaveApprovalPanelProps {
   request: LeaveRequest | null;

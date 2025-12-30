@@ -8,6 +8,7 @@ export default function Login() {
     const [username, setUsername] = useState('');
     const [password, setPassword] = useState('');
     const [errorMessage, setErrorMessage] = useState('');
+    const [isLoading, setIsLoading] = useState(false);
 
     const navigate = useNavigate();
     const location = useLocation();
@@ -44,6 +45,8 @@ export default function Login() {
                             e.preventDefault();
                             setErrorMessage('');
 
+                            if (isLoading) return;
+
                             if (!username.trim()) {
                                 setErrorMessage('Vui lòng nhập username');
                                 return;
@@ -53,38 +56,43 @@ export default function Login() {
                                 return;
                             }
 
-                            const res = await fetch(`${apiBaseUrl}/api/auth/login`, {
-                                method: 'POST',
-                                headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify({ username: username.trim(), password }),
-                            });
+                            setIsLoading(true);
+                            try {
+                                const res = await fetch(`${apiBaseUrl}/api/auth/login`, {
+                                    method: 'POST',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({ username: username.trim(), password }),
+                                });
 
-                            if (!res.ok) {
-                                const contentType = res.headers.get('content-type') || '';
-                                let message = `HTTP ${res.status}`;
-                                try {
-                                    if (contentType.includes('application/json')) {
-                                        const json = (await res.json()) as { message?: string };
-                                        message = json?.message || message;
-                                    } else {
-                                        const text = await res.text();
-                                        message = text || message;
+                                if (!res.ok) {
+                                    const contentType = res.headers.get('content-type') || '';
+                                    let message = `HTTP ${res.status}`;
+                                    try {
+                                        if (contentType.includes('application/json')) {
+                                            const json = (await res.json()) as { message?: string };
+                                            message = json?.message || message;
+                                        } else {
+                                            const text = await res.text();
+                                            message = text || message;
+                                        }
+                                    } catch {
+                                        // ignore
                                     }
-                                } catch {
-                                    // ignore
+                                    setErrorMessage(message);
+                                    return;
                                 }
-                                setErrorMessage(message);
-                                return;
-                            }
 
-                            const json = (await res.json()) as { token?: string };
-                            if (!json?.token) {
-                                setErrorMessage('Đăng nhập thất bại (không có token)');
-                                return;
-                            }
+                                const json = (await res.json()) as { token?: string };
+                                if (!json?.token) {
+                                    setErrorMessage('Đăng nhập thất bại (không có token)');
+                                    return;
+                                }
 
-                            setToken(json.token);
-                            navigate(redirectTo, { replace: true });
+                                setToken(json.token);
+                                navigate(redirectTo, { replace: true });
+                            } finally {
+                                setIsLoading(false);
+                            }
                         })();
                     }}
                 >
@@ -99,6 +107,7 @@ export default function Login() {
                         <input
                             value={username}
                             onChange={(e) => setUsername(e.target.value)}
+                            disabled={isLoading}
                             className="w-full h-10 px-3 border border-gray-300 rounded-lg bg-white outline-none focus:border-gray-600"
                             placeholder="admin"
                         />
@@ -110,6 +119,7 @@ export default function Login() {
                             type="password"
                             value={password}
                             onChange={(e) => setPassword(e.target.value)}
+                            disabled={isLoading}
                             className="w-full h-10 px-3 border border-gray-300 rounded-lg bg-white outline-none focus:border-gray-600"
                             placeholder="••••••••"
                         />
@@ -117,9 +127,20 @@ export default function Login() {
 
                     <button
                         type="submit"
-                        className="w-full h-11 rounded-lg bg-teal-600 text-white font-semibold cursor-pointer"
+                        disabled={isLoading}
+                        className="w-full h-11 rounded-lg bg-teal-600 text-white font-semibold cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
                     >
-                        Đăng nhập
+                        {isLoading ? (
+                            <span className="inline-flex items-center justify-center gap-2">
+                                <span
+                                    className="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white"
+                                    aria-hidden="true"
+                                />
+                                Đang đăng nhập...
+                            </span>
+                        ) : (
+                            'Đăng nhập'
+                        )}
                     </button>
 
                     <div className="text-xs text-gray-500 mt-4">

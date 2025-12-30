@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
-import type { LeaveRequest } from '../../types/Interface';
+import type { LeaveRequest } from '../projectsDasboard/interface/type';
 import LeaveApprovalPanel from './LeaveApprovalPanel';
 import LeaveCalendarPanel from './LeaveCalendarPanel';
-import { formatIsoDate, isProcessed, isPending, isRejected, statusClassName, statusLabel, todayIsoDate } from './leaveHelpers';
+import { formatIsoDate, isProcessed, isPending, isRejected, statusClassName, statusLabel, todayIsoDate } from '../../utils/leaveHelpers';
 
 interface LeaveRequestsModalProps {
   open: boolean;

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 
-import type { LeaveRequest } from '../../types/Interface';
-import { isRejected, todayIsoDate } from './leaveHelpers';
+import type { LeaveRequest } from '../projectsDasboard/interface/type';
+import { isRejected, todayIsoDate } from '../../utils/leaveHelpers';
 
 function pad2(value: number) {
   return String(value).padStart(2, '0');

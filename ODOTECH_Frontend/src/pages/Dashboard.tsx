@@ -1,7 +1,7 @@
 import StatCard from '../components/accountsDasboard/StatCard';
 import AccountTable from '../components/accountsDasboard/AccountTable';
 import LeaveCalendarPanel from '../components/accountsDasboard/LeaveCalendarPanel';
-import type { Account, LeaveRequest } from '../types/Interface';
+import type { Account, LeaveRequest } from '../components/projectsDasboard/interface/type';
 import { useEffect, useMemo, useState } from 'react';
 import { buildAuthHeaders } from '../utils/auth';
 

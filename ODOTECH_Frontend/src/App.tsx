@@ -24,7 +24,7 @@ function App() {
   }
 
   return (
-    <AppLayout>
+    <AppLayout> 
       <Routes>
         {appRoutes.map((route) => (
           <Route key={route.path} path={route.path} element={route.element} />

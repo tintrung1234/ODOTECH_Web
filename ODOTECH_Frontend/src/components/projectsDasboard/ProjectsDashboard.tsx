@@ -1,6 +1,6 @@
 import StatCard from '../accountsDasboard/StatCard';
 
-import type { ProjectManagementItem } from '../../types/Interface';
+import type { ProjectManagementItem } from './interface/type';
 
 export default function ProjectsDashboard({
   projects,

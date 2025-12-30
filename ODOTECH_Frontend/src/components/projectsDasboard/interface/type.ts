@@ -64,7 +64,7 @@ export interface Customer {
 export type ProjectStatus = 'not_started' | 'in_progress' | 'on_hold' | 'completed' | 'late';
 export type ProjectPriority = 'low' | 'medium' | 'high' | 'urgent';
 
-export type TaskStatus = 'todo' | 'doing' | 'done';
+export type TaskStatus = 'Chưa làm' | 'Đang làm' | 'Đã xong';
 
 export interface ProjectTask {
   id: number;
