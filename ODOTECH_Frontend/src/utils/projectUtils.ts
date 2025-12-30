@@ -1,4 +1,4 @@
-import type { ProjectPriority, ProjectStatus, ProjectMgmtPriority, ProjectMgmtStatus } from './interface/type';
+import type { ProjectPriority, ProjectStatus, ProjectMgmtPriority, ProjectMgmtStatus } from '../components/projectsDasboard/interface/type';
 
 export function statusLabel(status: ProjectStatus | ProjectMgmtStatus) {
   if (status === 'not_started') return 'Chưa bắt đầu';
