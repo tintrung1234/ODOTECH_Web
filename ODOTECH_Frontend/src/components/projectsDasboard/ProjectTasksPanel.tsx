@@ -226,10 +226,6 @@ export default function ProjectTasksPanel({
               </tbody>
             </table>
           </div>
-
-          <div className="mt-2 text-[11px] text-gray-500">
-            Lưu ý: tasks đã lưu qua API (PostgreSQL).
-          </div>
         </div>
       </div>
     </div>

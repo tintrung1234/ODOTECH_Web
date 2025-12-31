@@ -143,7 +143,12 @@ function normalizeProjectInput(body, { requireBasics }) {
       phi_gh_email: toNumber(body?.phi_gh_email, 0),
 
       gia_han_content: toBool(body?.gia_han_content, false),
+      ngay_hh_content: normalizeDate(body?.ngay_hh_content),
+      phi_gh_content: toNumber(body?.phi_gh_content, 0),
+
       gia_han_ads: toBool(body?.gia_han_ads, false),
+      ngay_hh_ads: normalizeDate(body?.ngay_hh_ads),
+      phi_gh_ads: toNumber(body?.phi_gh_ads, 0),
 
       danh_sach_thanh_toan: payments.map((p, index) => ({
         lan_thanh_toan: toInt(p?.lan_thanh_toan, index + 1),

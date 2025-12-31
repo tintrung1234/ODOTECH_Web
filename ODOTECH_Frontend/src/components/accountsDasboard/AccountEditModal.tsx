@@ -55,7 +55,17 @@ export default function AccountEditModal({
                     <div className="px-6 py-5 max-h-[85vh] overflow-auto">
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Tên nhân sự</label>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Tên đăng nhập</label>
+                                <input
+                                    type="text"
+                                    value={draft.username}
+                                    onChange={(e) => onChangeDraft({ ...draft, username: e.target.value })}
+                                    className="w-full h-10 px-3 border border-gray-300 rounded-lg bg-white outline-none focus:border-gray-600"
+                                />
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Họ tên</label>
                                 <input
                                     type="text"
                                     value={draft.name}

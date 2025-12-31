@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import Dashboard from '../components/salesDasboard/Dashboard';
 import ProjectDetail from '../components/salesDasboard/ProjectDetail';
 import type { ProjectData } from '../components/salesDasboard/interface/type';
+import type { StaffId } from '../components/salesDasboard/interface/type';
 import type { Account } from '../components/projectsDasboard/interface/type';
 import { buildAuthHeaders, getTokenUser, normalizeRole } from '../utils/auth';
 
@@ -27,9 +28,9 @@ const createEmptyProject = (): ProjectData => {
     san_pham_dv: '',
     website: '',
 
-    sale_id: '',
-    ky_thuat_id: '',
-    pm_id: '',
+    sale_id: null,
+    ky_thuat_id: null,
+    pm_id: null,
 
     trang_thai_chot: 'DangCham',
     trang_thai_thu_tien: 'Chua',
@@ -70,7 +71,12 @@ const createEmptyProject = (): ProjectData => {
     phi_gh_email: 0,
 
     gia_han_content: false,
+    ngay_hh_content: '',
+    phi_gh_content: 0,
+
     gia_han_ads: false,
+    ngay_hh_ads: '',
+    phi_gh_ads: 0,
   };
 };
 
@@ -90,10 +96,12 @@ export default function Sales() {
 
   const toastTimersRef = useRef<{ show?: number; hide?: number }>({});
 
-  const [filters, setFilters] = useState<{ q: string; trang_thai_chot: '' | 'DangCham' | 'DaKy' | 'Huy' }>({
-    q: '',
-    trang_thai_chot: '',
-  });
+  const [filters, setFilters] = useState<{
+    q: string;
+    trang_thai_chot: '' | 'DangCham' | 'DaKy' | 'Huy';
+    min_total?: number | null;
+    max_total?: number | null;
+  }>({ q: '', trang_thai_chot: '', min_total: null, max_total: null });
 
   const [listTab, setListTab] = useState<'full' | 'doi_tien' | 'dang_trien_khai'>('full');
   const [selectedSaleTab, setSelectedSaleTab] = useState<string>('');
@@ -189,8 +197,8 @@ export default function Sales() {
 
   useEffect(() => {
     if (!canView) return;
-    // Head sales/admin/support need full account list to build tabs.
-    if (!(role === 'head_sales' || role === 'admin' || role === 'support')) return;
+    // Roles that show sale tabs need account list to render labels.
+    if (!(role === 'sales_manager' || role === 'head_sales' || role === 'admin' || role === 'support')) return;
 
     let cancelled = false;
     (async () => {
@@ -209,6 +217,56 @@ export default function Sales() {
       cancelled = true;
     };
   }, [apiBaseUrl, canView, role]);
+
+  // Backward compatibility: older data may store staff fields by name instead of id.
+  // Once accounts are loaded, map name -> id so filtering/tabs use ids consistently.
+  useEffect(() => {
+    if (accounts.length === 0) return;
+
+    const byName = new Map<string, number>();
+    for (const a of accounts) {
+      const name = String(a.name || '').trim().toLowerCase();
+      const id = Number(a.id);
+      if (!name) continue;
+      if (!Number.isFinite(id)) continue;
+      byName.set(name, id);
+    }
+
+    const maybeNameToId = (value: StaffId): StaffId => {
+      if (value === undefined || value === null) return null;
+      if (typeof value === 'number') return Number.isFinite(value) ? value : null;
+      const raw = String(value).trim();
+      if (!raw) return null;
+
+      const n = Number.parseInt(raw, 10);
+      if (Number.isFinite(n) && String(n) === raw) return n;
+
+      const mapped = byName.get(raw.toLowerCase());
+      return mapped ?? value;
+    };
+
+    setProjects((prev) => {
+      let changed = false;
+      const next = prev.map((p) => {
+        const nextSale = maybeNameToId(p.sale_id);
+        const nextPm = maybeNameToId(p.pm_id);
+        const nextDev = maybeNameToId(p.ky_thuat_id);
+        if (nextSale === p.sale_id && nextPm === p.pm_id && nextDev === p.ky_thuat_id) return p;
+        changed = true;
+        return { ...p, sale_id: nextSale, pm_id: nextPm, ky_thuat_id: nextDev };
+      });
+      return changed ? next : prev;
+    });
+
+    setSelectedProject((prev) => {
+      if (!prev) return prev;
+      const nextSale = maybeNameToId(prev.sale_id);
+      const nextPm = maybeNameToId(prev.pm_id);
+      const nextDev = maybeNameToId(prev.ky_thuat_id);
+      if (nextSale === prev.sale_id && nextPm === prev.pm_id && nextDev === prev.ky_thuat_id) return prev;
+      return { ...prev, sale_id: nextSale, pm_id: nextPm, ky_thuat_id: nextDev };
+    });
+  }, [accounts]);
 
   const handleSelectProject = (project: ProjectData) => {
     (async () => {
@@ -230,9 +288,14 @@ export default function Sales() {
     })();
   };
 
-  const handleFilter = async (next: { q: string; trang_thai_chot: '' | 'DangCham' | 'DaKy' | 'Huy' }) => {
+  const handleFilter = async (next: {
+    q: string;
+    trang_thai_chot: '' | 'DangCham' | 'DaKy' | 'Huy';
+    min_total?: number | null;
+    max_total?: number | null;
+  }) => {
     setFilters(next);
-    await loadProjects(next);
+    await loadProjects({ q: next.q, trang_thai_chot: next.trang_thai_chot });
   };
 
   const handleSave = async (data: ProjectData) => {
@@ -289,7 +352,16 @@ export default function Sales() {
 
     // Sale manager / head sales / admin / support: filter by sale tab if selected.
     if (selectedSaleTab) {
-      list = list.filter((p) => (p.sale_id || '') === selectedSaleTab);
+      const selectedAccount = accounts.find((a) => String(a.id) === selectedSaleTab);
+      const selectedRole = selectedAccount ? normalizeRole(selectedAccount.role_system) : 'unknown';
+
+      // When selecting a sales manager (quanlysale), show projects they manage (pm_id).
+      // Otherwise (sale/unknown), keep filtering by sale_id.
+      if (selectedRole === 'sales_manager') {
+        list = list.filter((p) => String(p.pm_id ?? '').trim() === selectedSaleTab);
+      } else {
+        list = list.filter((p) => String(p.sale_id ?? '').trim() === selectedSaleTab);
+      }
     }
 
     // Money/deploy tabs.
@@ -303,8 +375,20 @@ export default function Sales() {
       });
     }
 
+    // Price range filter: based on total fee (phi_dich_vu + phat_sinh)
+    const minTotal = typeof filters.min_total === 'number' ? filters.min_total : null;
+    const maxTotal = typeof filters.max_total === 'number' ? filters.max_total : null;
+    if (minTotal !== null || maxTotal !== null) {
+      list = list.filter((p) => {
+        const total = Number(p.phi_dich_vu || 0) + Number(p.phat_sinh || 0);
+        if (minTotal !== null && total < minTotal) return false;
+        if (maxTotal !== null && total > maxTotal) return false;
+        return true;
+      });
+    }
+
     return list;
-  }, [listTab, projects, selectedSaleTab]);
+  }, [accounts, filters.max_total, filters.min_total, listTab, projects, selectedSaleTab]);
 
   const saleTabs = useMemo(() => {
     if (!(role === 'sales_manager' || role === 'head_sales' || role === 'admin' || role === 'support')) return [];
@@ -316,29 +400,25 @@ export default function Sales() {
       if (s) fromProjects.add(s);
     }
 
-    // Head sales/admin/support: show ALL sales managers + ALL sales (by name)
+    // Head sales/admin/support: show ALL sales managers + ALL sales (by id)
     // so each manager has a tab, and each sale has a tab.
     if (role === 'head_sales' || role === 'admin' || role === 'support') {
-      const managerNames = accounts
+      const managers = accounts
         .filter((a) => normalizeRole(a.role_system) === 'sales_manager')
-        .map((a) => String(a.name || '').trim())
-        .filter(Boolean);
-      const saleNames = accounts
+        .sort((a, b) => String(a.name || '').localeCompare(String(b.name || ''), 'vi'));
+      const sales = accounts
         .filter((a) => normalizeRole(a.role_system) === 'sale')
-        .map((a) => String(a.name || '').trim())
-        .filter(Boolean);
+        .sort((a, b) => String(a.name || '').localeCompare(String(b.name || ''), 'vi'));
 
-      const managersSet = new Set(managerNames);
-      const salesSet = new Set(saleNames);
+      const managerIds = new Set(managers.map((a) => String(a.id)));
+      const saleIds = new Set(sales.map((a) => String(a.id)));
 
-      // Also keep legacy values from projects, in case sale_id is not equal to account.name.
+      // Keep any project values (e.g. removed accounts) so user can still filter.
       for (const v of fromProjects) {
-        if (!managersSet.has(v) && !salesSet.has(v)) salesSet.add(v);
+        if (!managerIds.has(v) && !saleIds.has(v)) saleIds.add(v);
       }
 
-      const managers = Array.from(managersSet).sort((a, b) => a.localeCompare(b, 'vi'));
-      const sales = Array.from(salesSet).sort((a, b) => a.localeCompare(b, 'vi'));
-      return [...managers, ...sales];
+      return [...Array.from(managerIds), ...Array.from(saleIds)];
     }
 
     return Array.from(fromProjects).sort((a, b) => a.localeCompare(b, 'vi'));
@@ -393,6 +473,7 @@ export default function Sales() {
             saleTabs={saleTabs}
             selectedSaleTab={selectedSaleTab}
             onSelectSaleTab={setSelectedSaleTab}
+            accounts={accounts}
             totalAmount={totalAmount}
           />
         )

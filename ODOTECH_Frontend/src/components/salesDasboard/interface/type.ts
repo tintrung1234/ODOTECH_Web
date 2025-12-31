@@ -6,6 +6,10 @@ export interface Payment {
   ghi_chu: string;
 }
 
+// Staff fields historically stored names (TEXT in DB) but we now prefer storing account IDs.
+// The API may return numeric strings depending on backend storage.
+export type StaffId = number | string | null;
+
 export interface ProjectData {
   id: number;
   // Thông tin chung
@@ -20,9 +24,9 @@ export interface ProjectData {
   website: string;
   
   // Nhân sự
-  sale_id: string; // Tên hoặc ID sale
-  ky_thuat_id: string;
-  pm_id: string; // Project Manager
+  sale_id: StaffId; // Prefer account id
+  ky_thuat_id: StaffId; // Prefer account id
+  pm_id: StaffId; // Prefer account id
 
   // Trạng thái & Chăm sóc
   trang_thai_chot: 'DangCham' | 'DaKy' | 'Huy';
@@ -47,7 +51,7 @@ export interface ProjectData {
   ly_do_lau: string;
   chi_phi_outsource: number;
 
-  // Gia hạn (Demo 2 trường đại diện)
+  // Gia hạn 
   gia_han_domain: boolean;
   ngay_hh_domain: string;
   phi_gh_domain: number;
@@ -61,5 +65,10 @@ export interface ProjectData {
   phi_gh_email: number;
 
   gia_han_content: boolean;
+  ngay_hh_content: string;
+  phi_gh_content: number;
+
   gia_han_ads: boolean;
+  ngay_hh_ads: string;
+  phi_gh_ads: number;
 }

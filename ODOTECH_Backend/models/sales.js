@@ -65,7 +65,12 @@ function mapSalesProjectRow(row) {
     phi_gh_email: Number(row.phi_gh_email ?? 0),
 
     gia_han_content: Boolean(row.gia_han_content),
+    ngay_hh_content: formatDate(row.ngay_hh_content),
+    phi_gh_content: Number(row.phi_gh_content ?? 0),
+
     gia_han_ads: Boolean(row.gia_han_ads),
+    ngay_hh_ads: formatDate(row.ngay_hh_ads),
+    phi_gh_ads: Number(row.phi_gh_ads ?? 0),
   };
 }
 

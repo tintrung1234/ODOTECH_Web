@@ -23,6 +23,7 @@ function normalizeDate(value) {
 }
 
 function normalizeAccountInput(body, { requireBasics }) {
+  const rawUsername = toString(body?.username).trim();
   const name = toString(body?.name).trim();
   const email = toString(body?.email).trim();
 
@@ -33,6 +34,8 @@ function normalizeAccountInput(body, { requireBasics }) {
 
   return {
     value: {
+      username:
+        rawUsername || (email.includes("@") ? email.split("@")[0].trim() : ""),
       name,
       email,
       phone: toString(body?.phone).trim(),

@@ -53,6 +53,7 @@ export default function AccountTable({
     if (!selectedAccount) return false;
 
     return (
+      draft.username !== selectedAccount.username ||
       draft.name !== selectedAccount.name ||
       draft.email !== selectedAccount.email ||
       draft.phone !== selectedAccount.phone ||
@@ -67,12 +68,15 @@ export default function AccountTable({
   }, [draft, isCreating, selectedAccount, selectedId]);
 
   const filteredAccounts = displayAccounts.filter((account) => {
-    const term = searchTerm.toLowerCase();
+    const term = searchTerm.trim().toLowerCase();
+
+    const normalize = (value: unknown) => String(value ?? '').toLowerCase();
     return (
-      account.name.toLowerCase().includes(term) ||
-      account.email.toLowerCase().includes(term) ||
-      account.position.toLowerCase().includes(term) ||
-      account.phone.toLowerCase().includes(term)
+      normalize((account as unknown as { username?: unknown }).username).includes(term) ||
+      normalize(account.name).includes(term) ||
+      normalize(account.email).includes(term) ||
+      normalize(account.position).includes(term) ||
+      normalize(account.phone).includes(term)
     );
   });
 
@@ -88,7 +92,7 @@ export default function AccountTable({
     return Number.isNaN(date.getTime()) ? '-' : date.toLocaleString('vi-VN');
   };
 
-  const columnsCount = 16;
+  const columnsCount = 17;
 
   const cellBase = 'px-4 py-3 align-top border-b border-gray-100 group-hover:bg-gray-50/30 transition-colors whitespace-nowrap';
   const stickyCellBase = 'px-4 py-3 align-top border-b border-gray-100 transition-colors whitespace-nowrap';
@@ -268,6 +272,7 @@ export default function AccountTable({
               <tr>
                 <th className={`${headerBase} w-16 sticky left-0 z-30 bg-gray-50`}>ID</th>
                 <th className={`${headerBase} ${stickyRightDivider} w-56 sticky left-16 z-30 bg-gray-50`}>Tên nhân sự</th>
+                <th className={`${headerBase} w-44`}>Tên đăng nhập</th>
                 <th className={`${headerBase} w-28`}>Nghỉ phép</th>
                 <th className={`${headerBase} w-64`}>Email</th>
                 <th className={`${headerBase} w-40`}>SĐT</th>
@@ -300,7 +305,7 @@ export default function AccountTable({
                       setErrorMessage('');
                       setIsCreating(false);
                       setSelectedId(account.id);
-                      setDraft({ ...account });
+                      setDraft({ ...account, username: (account as unknown as { username?: string }).username ?? '' });
                     }}
                     className={`group transition-colors ${selectedId === account.id ? 'bg-teal-50/60' : 'hover:bg-gray-50/50'} cursor-pointer`}
                   >
@@ -332,6 +337,19 @@ export default function AccountTable({
                               />
                             ) : (
                               account.name
+                            )}
+                          </td>
+
+                          <td className={`${cellBase} text-gray-800`}>
+                            {isActiveRow && draft ? (
+                              <input
+                                value={draft.username}
+                                onChange={(e) => setDraft({ ...draft, username: e.target.value })}
+                                className={inputBase}
+                                onClick={(e) => e.stopPropagation()}
+                              />
+                            ) : (
+                              row.username || '-'
                             )}
                           </td>
 
@@ -491,7 +509,7 @@ export default function AccountTable({
                                 setErrorMessage('');
                                 setIsCreating(false);
                                 setSelectedId(account.id);
-                                setDraft({ ...account });
+                                setDraft({ ...account, username: (account as unknown as { username?: string }).username ?? '' });
                                 setIsDeleteConfirmOpen(true);
                               }}
                             >

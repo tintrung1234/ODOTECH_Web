@@ -1,4 +1,10 @@
 import StatCard from '../accountsDasboard/StatCard';
+import {
+  FolderKanban,
+  Wallet,
+  TrendingDown,
+  Landmark
+} from 'lucide-react';
 
 import type { ProjectManagementItem } from './interface/type';
 
@@ -6,7 +12,6 @@ export default function ProjectsDashboard({
   projects,
 }: {
   projects: ProjectManagementItem[];
-  today: Date;
 }) {
   const totalProjects = projects.length;
 
@@ -21,13 +26,50 @@ export default function ProjectsDashboard({
   );
 
   return (
-    <>
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        <StatCard title="Tổng dự án" value={totalProjects} color="green" />
-        <StatCard title="Giá trị HĐ" value={Math.round(totals.contract)} color="purple" />
-        <StatCard title="Chi phí thực" value={Math.round(totals.cost)} color="orange" />
-        <StatCard title="Đã thu cọc" value={Math.round(totals.deposit)} color="purple" />
+    <section className="mb-8">
+      {/* Section title */}
+      <div className="mb-4">
+        <h2 className="text-lg font-semibold text-gray-800">
+          Tổng quan dự án
+        </h2>
+        <p className="text-sm text-gray-500">
+          Số liệu tài chính & tiến độ hiện tại
+        </p>
       </div>
-    </>
+
+      {/* Stats */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-5">
+        <StatCard
+          title="Tổng dự án"
+          value={totalProjects}
+          icon={<FolderKanban />}
+          color="blue"
+        />
+
+        <StatCard
+          title="Giá trị hợp đồng"
+          value={Math.round(totals.contract)}
+          suffix="VND"
+          icon={<Landmark />}
+          color="purple"
+        />
+
+        <StatCard
+          title="Chi phí thực"
+          value={Math.round(totals.cost)}
+          suffix="VND"
+          icon={<TrendingDown />}
+          color="red"
+        />
+
+        <StatCard
+          title="Đã thu cọc"
+          value={Math.round(totals.deposit)}
+          suffix="VND"
+          icon={<Wallet />}
+          color="green"
+        />
+      </div>
+    </section>
   );
 }

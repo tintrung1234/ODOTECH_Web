@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import type { ProjectData, Payment } from './interface/type';
+import type { ProjectData, Payment, StaffId } from './interface/type';
 import { formatCurrency, calculateDaysDiff, getWeeksDiff } from '../../utils/formatDate';
 import type { Account } from '../projectsDasboard/interface/type';
 import { buildAuthHeaders, normalizeRole } from '../../utils/auth';
@@ -48,14 +48,24 @@ function sortAccountsByName(list: Account[]): Account[] {
   return [...list].sort((a, b) => String(a.name || '').localeCompare(String(b.name || ''), 'vi'));
 }
 
-function ensureCurrentValueOption(list: Account[], currentValue: string): Account[] {
-  const val = String(currentValue || '').trim();
-  if (!val) return list;
-  const exists = list.some((a) => String(a.name || '').trim() === val);
+function toNullableId(value: StaffId): number | null {
+  if (value === undefined || value === null) return null;
+  if (typeof value === 'number') return Number.isFinite(value) ? value : null;
+  const raw = String(value).trim();
+  if (!raw) return null;
+  const parsed = Number.parseInt(raw, 10);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function ensureCurrentIdOption(list: Account[], currentValue: StaffId): Account[] {
+  const id = toNullableId(currentValue);
+  if (!id) return list;
+  const exists = list.some((a) => Number(a.id) === id);
   if (exists) return list;
   return [{
-    id: -1,
-    name: val,
+    id,
+    username: '',
+    name: `#${id}`,
     email: '',
     phone: '',
     role_system: 'unknown',
@@ -132,13 +142,13 @@ const TabInfo = ({
           <select
             className="w-full mt-1 p-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
             name="pm_id"
-            value={data.pm_id}
+            value={String(data.pm_id ?? '')}
             onChange={handleChange}
           >
             <option value="">-- Chọn PM --</option>
-            {ensureCurrentValueOption(staffOptions.pmManagers, data.pm_id).map((acc) => (
-              <option key={`pm-${acc.id}-${acc.name}`} value={acc.name}>
-                {acc.name}
+            {ensureCurrentIdOption(staffOptions.pmManagers, data.pm_id).map((acc) => (
+              <option key={`pm-${acc.id}-${acc.name}`} value={String(acc.id)}>
+                {String(acc.name || '').trim() || `#${acc.id}`}{acc.position ? ` - ${acc.position}` : ''}
               </option>
             ))}
           </select>
@@ -148,13 +158,13 @@ const TabInfo = ({
           <select
             className="w-full mt-1 p-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
             name="sale_id"
-            value={data.sale_id}
+            value={String(data.sale_id ?? '')}
             onChange={handleChange}
           >
             <option value="">-- Chọn Sale --</option>
-            {ensureCurrentValueOption(staffOptions.sales, data.sale_id).map((acc) => (
-              <option key={`sale-${acc.id}-${acc.name}`} value={acc.name}>
-                {acc.name}
+            {ensureCurrentIdOption(staffOptions.sales, data.sale_id).map((acc) => (
+              <option key={`sale-${acc.id}-${acc.name}`} value={String(acc.id)}>
+                {String(acc.name || '').trim() || `#${acc.id}`}{acc.position ? ` - ${acc.position}` : ''}
               </option>
             ))}
           </select>
@@ -164,13 +174,13 @@ const TabInfo = ({
           <select
             className="w-full mt-1 p-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
             name="ky_thuat_id"
-            value={data.ky_thuat_id}
+            value={String(data.ky_thuat_id ?? '')}
             onChange={handleChange}
           >
             <option value="">-- Chọn KT --</option>
-            {ensureCurrentValueOption(staffOptions.devs, data.ky_thuat_id).map((acc) => (
-              <option key={`dev-${acc.id}-${acc.name}`} value={acc.name}>
-                {acc.name}
+            {ensureCurrentIdOption(staffOptions.devs, data.ky_thuat_id).map((acc) => (
+              <option key={`dev-${acc.id}-${acc.name}`} value={String(acc.id)}>
+                {String(acc.name || '').trim() || `#${acc.id}`}{acc.position ? ` - ${acc.position}` : ''}
               </option>
             ))}
           </select>
@@ -340,6 +350,25 @@ const TabDeploy = ({ data, handleChange, handleCheckboxChange }: {
             className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
           />
           Content
+          {data.gia_han_content && (
+            <div className="ml-6 flex gap-2 flex-1">
+              <input
+                className="flex-1 p-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                type="date"
+                name="ngay_hh_content"
+                value={data.ngay_hh_content}
+                onChange={handleChange}
+              />
+              <input
+                className="flex-1 p-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                type="number"
+                name="phi_gh_content"
+                value={data.phi_gh_content}
+                onChange={handleChange}
+                placeholder="Phí gia hạn"
+              />
+            </div>
+          )}
         </div>
         <div className="flex items-center gap-2 mb-3">
           <input
@@ -349,6 +378,25 @@ const TabDeploy = ({ data, handleChange, handleCheckboxChange }: {
             className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
           />
           Quảng cáo
+          {data.gia_han_ads && (
+            <div className="ml-6 flex gap-2 flex-1">
+              <input
+                className="flex-1 p-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                type="date"
+                name="ngay_hh_ads"
+                value={data.ngay_hh_ads}
+                onChange={handleChange}
+              />
+              <input
+                className="flex-1 p-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                type="number"
+                name="phi_gh_ads"
+                value={data.phi_gh_ads}
+                onChange={handleChange}
+                placeholder="Phí gia hạn"
+              />
+            </div>
+          )}
         </div>
       </div>
     </div>
@@ -378,7 +426,13 @@ export default function ProjectDetail({ project, onBack, onSave, readOnly = fals
       'phi_gh_domain',
       'phi_gh_hosting',
       'phi_gh_email',
+      'phi_gh_content',
+      'phi_gh_ads',
     ]);
+  }, []);
+
+  const idFieldNames = useMemo(() => {
+    return new Set<string>(['pm_id', 'sale_id', 'ky_thuat_id']);
   }, []);
 
   const apiBaseUrl = useMemo(() => {
@@ -428,27 +482,63 @@ export default function ProjectDetail({ project, onBack, onSave, readOnly = fals
     return { pmManagers, sales, devs };
   }, [accounts]);
 
+  // Backward compatibility: older data may store staff fields by name.
+  // Once we have accounts, map name -> id so the selects can show the right label.
+  useEffect(() => {
+    if (accounts.length === 0) return;
+
+    const byName = new Map<string, number>();
+    for (const a of accounts) {
+      const name = String(a.name || '').trim();
+      if (name) byName.set(name, Number(a.id));
+    }
+
+    const maybeNameToId = (value: StaffId): StaffId => {
+      if (value === null || value === undefined) return null;
+      if (typeof value === 'number') return value;
+      const raw = String(value).trim();
+      if (!raw) return null;
+      const parsed = Number.parseInt(raw, 10);
+      if (Number.isFinite(parsed)) return parsed;
+      const mapped = byName.get(raw);
+      return mapped !== undefined ? mapped : value;
+    };
+
+    setFormData((prev) => {
+      const nextPm = maybeNameToId(prev.pm_id);
+      const nextSale = maybeNameToId(prev.sale_id);
+      const nextDev = maybeNameToId(prev.ky_thuat_id);
+      if (nextPm === prev.pm_id && nextSale === prev.sale_id && nextDev === prev.ky_thuat_id) return prev;
+      return {
+        ...prev,
+        pm_id: nextPm,
+        sale_id: nextSale,
+        ky_thuat_id: nextDev,
+      };
+    });
+  }, [accounts]);
+
   useEffect(() => {
     if (readOnly) return;
     if (formData.id && formData.id > 0) return;
     // When creating a new project, default Sale (not PM).
-    const currentSale = String(formData.sale_id || '').trim();
+    const currentSale = String(formData.sale_id ?? '').trim();
     const isPlaceholderSale = ['sale 1', 'sale1'].includes(currentSale.toLowerCase());
     if (currentSale && !isPlaceholderSale) return;
 
     // Business rule: default Sale to the first "quanlysale" (sales_manager).
     // If no manager exists, fallback to the first sale.
     const firstManager = staffOptions.pmManagers[0];
-    const managerName = firstManager ? String(firstManager.name || '').trim() : '';
+    const managerId = firstManager ? Number(firstManager.id) : null;
     const firstSale = staffOptions.sales[0];
-    const saleName = firstSale ? String(firstSale.name || '').trim() : '';
+    const saleId = firstSale ? Number(firstSale.id) : null;
 
-    const nextSale = managerName || saleName;
+    const nextSale = managerId ?? saleId;
     if (!nextSale) return;
 
     setFormData((prev) => {
       if (prev.id && prev.id > 0) return prev;
-      const cur = String(prev.sale_id || '').trim();
+      const cur = String(prev.sale_id ?? '').trim();
       const isPlaceholder = ['sale 1', 'sale1'].includes(cur.toLowerCase());
       if (cur && !isPlaceholder) return prev;
       return { ...prev, sale_id: nextSale };
@@ -458,6 +548,12 @@ export default function ProjectDetail({ project, onBack, onSave, readOnly = fals
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
     setFormData((prev) => {
+      if (idFieldNames.has(name)) {
+        const raw = String(value ?? '').trim();
+        if (!raw) return { ...prev, [name]: null };
+        const parsed = Number.parseInt(raw, 10);
+        return { ...prev, [name]: Number.isFinite(parsed) ? parsed : null };
+      }
       if (numericFieldNames.has(name)) {
         const next = value === '' ? 0 : Number(value);
         return { ...prev, [name]: Number.isFinite(next) ? next : 0 };

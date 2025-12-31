@@ -110,7 +110,8 @@ async function createProject(input) {
           gia_han_domain, ngay_hh_domain, phi_gh_domain,
           gia_han_hosting, ngay_hh_hosting, phi_gh_hosting,
           gia_han_email, ngay_hh_email, phi_gh_email,
-          gia_han_content, gia_han_ads
+          gia_han_content, ngay_hh_content, phi_gh_content,
+          gia_han_ads, ngay_hh_ads, phi_gh_ads
         ) VALUES (
           $1,$2,$3,$4,$5,$6,$7,$8,$9,
           $10,$11,$12,
@@ -121,7 +122,8 @@ async function createProject(input) {
           $29,$30,$31,$32,
           $33,$34,$35,
           $36,$37,$38,
-          $39
+          $39,$40,$41,
+          $42,$43,$44
         )
         RETURNING *
       `,
@@ -173,7 +175,12 @@ async function createProject(input) {
         input.phi_gh_email,
 
         input.gia_han_content,
+        salesModel.toDbDate(input.ngay_hh_content),
+        input.phi_gh_content,
+
         input.gia_han_ads,
+        salesModel.toDbDate(input.ngay_hh_ads),
+        input.phi_gh_ads,
       ]
     );
 
@@ -252,7 +259,11 @@ async function updateProject(projectId, input) {
           ngay_hh_email = $37,
           phi_gh_email = $38,
           gia_han_content = $39,
-          gia_han_ads = $40
+          ngay_hh_content = $40,
+          phi_gh_content = $41,
+          gia_han_ads = $42,
+          ngay_hh_ads = $43,
+          phi_gh_ads = $44
         WHERE id = $1
         RETURNING *
       `,
@@ -296,7 +307,12 @@ async function updateProject(projectId, input) {
         salesModel.toDbDate(input.ngay_hh_email),
         input.phi_gh_email,
         input.gia_han_content,
+        salesModel.toDbDate(input.ngay_hh_content),
+        input.phi_gh_content,
+
         input.gia_han_ads,
+        salesModel.toDbDate(input.ngay_hh_ads),
+        input.phi_gh_ads,
       ]
     );
 

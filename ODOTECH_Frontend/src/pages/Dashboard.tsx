@@ -54,14 +54,15 @@ export default function Dashboard() {
         fetch(`${apiBaseUrl}/api/leave-requests?limit=500&offset=0`, { headers: buildAuthHeaders() }),
       ]);
 
+      console.log(accountsRes);
       if (!statsRes.ok) throw new Error(await readErrorMessage(statsRes));
       if (!accountsRes.ok) throw new Error(await readErrorMessage(accountsRes));
       if (!leaveRes.ok) throw new Error(await readErrorMessage(leaveRes));
-
+      
       const statsJson = (await statsRes.json()) as { totalAccounts: number; totalManagers: number; totalEmployees: number };
       const accountsJson = (await accountsRes.json()) as { items?: Account[] } | Account[];
       const leaveJson = (await leaveRes.json()) as { items?: LeaveRequest[] } | LeaveRequest[];
-
+      
       setStats({
         totalAccounts: Number(statsJson?.totalAccounts ?? 0),
         totalManagers: Number(statsJson?.totalManagers ?? 0),
@@ -131,6 +132,8 @@ export default function Dashboard() {
     setLeaveRequests((prev) => prev.filter((r) => r.accountId !== id));
   };
 
+  console.log(accounts);
+  
   return (
     <main className="flex-1 p-6">
       <div className="bg-white rounded-2xl p-6 shadow-sm">

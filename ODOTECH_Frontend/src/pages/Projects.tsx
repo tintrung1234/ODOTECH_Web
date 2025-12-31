@@ -224,7 +224,7 @@ export default function Projects() {
           <div className="text-gray-600">Đang tải dữ liệu...</div>
         ) : (
           <>
-            <ProjectsDashboard projects={projects} today={today} />
+            <ProjectsDashboard projects={projects}/>
 
             <ProjectsToolbar
               searchTerm={searchTerm}

@@ -8,7 +8,7 @@ async function listAccounts({ limit, offset, q, status, role_system }) {
   if (q) {
     params.push(`%${q.toLowerCase()}%`);
     where.push(
-      `(LOWER(name) LIKE $${params.length} OR LOWER(email) LIKE $${params.length} OR LOWER(COALESCE(phone,'')) LIKE $${params.length})`
+      `(LOWER(COALESCE(username,'')) LIKE $${params.length} OR LOWER(name) LIKE $${params.length} OR LOWER(email) LIKE $${params.length} OR LOWER(COALESCE(phone,'')) LIKE $${params.length})`
     );
   }
 
@@ -71,6 +71,7 @@ async function createAccount(input) {
   const result = await pool.query(
     `
       INSERT INTO accounts (
+        username,
         name,
         email,
         phone,
@@ -84,11 +85,12 @@ async function createAccount(input) {
         password_hash,
         last_login_at
       ) VALUES (
-        $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12
+        $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13
       )
       RETURNING *
     `,
     [
+      input.username,
       input.name,
       input.email,
       input.phone,
@@ -112,24 +114,26 @@ async function updateAccount(accountId, input) {
     `
       UPDATE accounts
       SET
-        name = $2,
-        email = $3,
-        phone = $4,
-        role_system = $5,
-        point = $6,
-        position = $7,
-        salary = $8,
-        payable = $9,
-        join_date = $10,
-        status = $11,
-        password_hash = $12,
-        last_login_at = $13,
+        username = $2,
+        name = $3,
+        email = $4,
+        phone = $5,
+        role_system = $6,
+        point = $7,
+        position = $8,
+        salary = $9,
+        payable = $10,
+        join_date = $11,
+        status = $12,
+        password_hash = $13,
+        last_login_at = $14,
         updated_at = NOW()
       WHERE id = $1
       RETURNING *
     `,
     [
       accountId,
+      input.username,
       input.name,
       input.email,
       input.phone,

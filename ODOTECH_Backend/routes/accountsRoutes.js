@@ -14,7 +14,7 @@ const {
 const router = express.Router();
 
 router.get("/health", (req, res) => {
-  res.json({ ok: true, service: "accounts" });
+  res.json({ ok: true, service: "accounts", features: ["accounts.username"], ts: new Date().toISOString() });
 });
 
 router.use(authMiddleware);

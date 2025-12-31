@@ -53,7 +53,12 @@ CREATE TABLE IF NOT EXISTS sales_projects (
   phi_gh_email BIGINT NOT NULL DEFAULT 0,
 
   gia_han_content BOOLEAN NOT NULL DEFAULT FALSE,
-  gia_han_ads BOOLEAN NOT NULL DEFAULT FALSE
+  ngay_hh_content DATE,
+  phi_gh_content BIGINT NOT NULL DEFAULT 0,
+
+  gia_han_ads BOOLEAN NOT NULL DEFAULT FALSE,
+  ngay_hh_ads DATE,
+  phi_gh_ads BIGINT NOT NULL DEFAULT 0
 );
 
 CREATE TABLE IF NOT EXISTS sales_payments (

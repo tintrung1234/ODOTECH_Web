@@ -1,6 +1,7 @@
 export interface Account {
   id: number; // ID nhân sự
-  name: string; // Tên nhân sự
+  username: string; // Tên đăng nhập
+  name: string; // Họ tên
   email: string; // Email đăng nhập (duy nhất)
   phone: string; // SĐT
   role_system: string; // Quyền toàn hệ thống

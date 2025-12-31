@@ -27,6 +27,7 @@ function toDbTimestamp(value) {
 function mapAccountRow(row) {
   return {
     id: Number(row.id),
+    username: row.username ?? "",
     name: row.name ?? "",
     email: row.email ?? "",
     phone: row.phone ?? "",
