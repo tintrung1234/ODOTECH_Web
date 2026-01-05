@@ -119,7 +119,7 @@ export type ProjectMgmtStatus =
   | 'on_hold'
   | 'completed'
   | 'late';
-export type ProjectMgmtPriority = 'low' | 'medium' | 'high' | 'urgent';
+export type ProjectMgmtPriority = '' | 'low' | 'medium' | 'high' | 'urgent';
 
 export type ProjectType = '' | 'Khách' | 'Nội bộ' | 'Đào tạo';
 

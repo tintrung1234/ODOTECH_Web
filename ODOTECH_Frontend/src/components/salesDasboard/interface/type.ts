@@ -39,6 +39,7 @@ export interface ProjectData {
   hinh_thuc_cham: string;
 
   // Tài chính
+  contract_value?: number;
   phi_dich_vu: number;
   phat_sinh: number;
   ngay_doi_cuoi: string;

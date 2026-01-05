@@ -104,6 +104,56 @@ async function getProjectById(projectId) {
   return row ? projectModel.mapProjectRow(row) : null;
 }
 
+async function getProjectByCode(projectCode) {
+  const code = String(projectCode || '').trim();
+  if (!code) return null;
+  const result = await pool.query(
+    `
+      SELECT p.*
+      FROM projects p
+      WHERE p.project_code = $1
+      LIMIT 1
+    `,
+    [code]
+  );
+  const row = result.rows[0];
+  return row ? projectModel.mapProjectRow(row) : null;
+}
+
+async function updateActualCostByCode(projectCode, actualCost) {
+  const code = String(projectCode || '').trim();
+  if (!code) return null;
+  const result = await pool.query(
+    `
+      UPDATE projects
+      SET actual_cost = $2,
+          updated_at = NOW()
+      WHERE project_code = $1
+      RETURNING *
+    `,
+    [code, actualCost]
+  );
+  const row = result.rows[0];
+  return row ? projectModel.mapProjectRow(row) : null;
+}
+
+async function updateDepositReceivedByCode(projectCode, depositReceived) {
+  const code = String(projectCode || '').trim();
+  if (!code) return null;
+  const result = await pool.query(
+    `
+      UPDATE projects
+      SET deposit_received = $2,
+          updated_at = NOW()
+      WHERE project_code = $1
+      RETURNING *
+    `,
+    [code, depositReceived]
+  );
+  const row = result.rows[0];
+  return row ? projectModel.mapProjectRow(row) : null;
+}
+
 async function createProject(input) {
   const result = await pool.query(
     `
@@ -254,10 +304,77 @@ async function deleteProject(projectId) {
   return Boolean(result.rows[0]);
 }
 
+async function getContractValuesByCodes({ codes, scope }) {
+  const where = [];
+  const params = [];
+
+  const normalizedCodes = Array.isArray(codes) ? codes : [];
+  const cleaned = normalizedCodes
+    .map((c) => String(c || '').trim())
+    .filter(Boolean)
+    .slice(0, 200);
+
+  if (cleaned.length === 0) {
+    return [];
+  }
+
+  params.push(cleaned);
+  where.push(`p.project_code = ANY($${params.length}::text[])`);
+
+  if (scope && scope.saleId !== undefined && scope.saleId !== null) {
+    params.push(scope.saleId);
+    where.push(`p.sale_id = $${params.length}`);
+  }
+
+  if (scope && scope.pmId !== undefined && scope.pmId !== null) {
+    params.push(scope.pmId);
+    where.push(`p.pm_id = $${params.length}`);
+  }
+
+  if (scope && Array.isArray(scope.memberTokens) && scope.memberTokens.length > 0) {
+    const tokens = scope.memberTokens
+      .map((x) => String(x || '').trim())
+      .filter(Boolean)
+      .slice(0, 10);
+
+    if (tokens.length > 0) {
+      const sub = [];
+      for (const t of tokens) {
+        params.push(`%${t.toLowerCase()}%`);
+        const idx = params.length;
+        sub.push(
+          `(LOWER(COALESCE(p.tech_user,'')) LIKE $${idx} OR LOWER(COALESCE(p.assignee,'')) LIKE $${idx})`
+        );
+      }
+      where.push(`(${sub.join(' OR ')})`);
+    }
+  }
+
+  const whereSql = where.length ? `WHERE ${where.join(' AND ')}` : '';
+
+  const result = await pool.query(
+    `
+      SELECT p.project_code, p.contract_value
+      FROM projects p
+      ${whereSql}
+    `,
+    params
+  );
+
+  return result.rows.map((r) => ({
+    project_code: r.project_code ?? '',
+    contract_value: Number(r.contract_value ?? 0),
+  }));
+}
+
 module.exports = {
   listProjects,
   getProjectById,
+  getProjectByCode,
   createProject,
   updateProject,
   deleteProject,
+  getContractValuesByCodes,
+  updateActualCostByCode,
+  updateDepositReceivedByCode,
 };

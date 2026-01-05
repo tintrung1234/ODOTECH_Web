@@ -256,7 +256,7 @@ export default function Dashboard({
                     {p.trang_thai_chot}
                   </span>
                 </td>
-                <td className="p-3 font-medium">{formatCurrency(p.phi_dich_vu + p.phat_sinh)}</td>
+                <td className="p-3 font-medium">{formatCurrency(Number(p.contract_value ?? 0) + Number(p.phat_sinh ?? 0))}</td>
                 <td className="p-3">
                   {p.ngay_cham_cuoi}
                   {calculateDaysDiff(p.ngay_cham_cuoi) > 7 && <span className="text-red-500 font-bold ml-2" title="Quá hạn chăm sóc"> ( ! )</span>}
