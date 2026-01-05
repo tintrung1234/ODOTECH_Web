@@ -3,12 +3,14 @@ import { Fragment, useEffect, useMemo, useRef, useState } from 'react';
 import type {
   Account,
   ProjectManagementItem,
+  ProjectMgmtPriority,
   ProjectMgmtStatus,
   ProjectType,
 } from './interface/type';
 import {
   statusLabel,
   statusClassName,
+  priorityLabel,
 } from '../../utils/projectUtils';
 
 import ProjectTasksPanel from './ProjectTasksPanel';
@@ -60,9 +62,9 @@ export default function ProjectsTable({
   const selectBase = 
     'w-full h-8 bg-transparent border border-transparent rounded px-1 text-sm text-gray-700 transition-all duration-200 hover:bg-gray-50 hover:border-gray-200 focus:bg-white focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20 outline-none cursor-pointer';
 
-  const cellBase = 'px-3 py-2 h-14 align-middle border-b border-gray-100 group-hover:bg-gray-50/50 transition-colors text-sm';
-  const stickyCellBase = 'px-3 py-2 h-14 align-middle border-b border-gray-100 transition-colors text-sm';
-  const headerBase = 'px-3 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider bg-gray-50/95 backdrop-blur sticky top-0 z-10 border-b border-gray-200 whitespace-nowrap shadow-sm';
+  const cellBase = 'px-3 py-2 h-14 align-middle border-b border-r border-gray-100 last:border-r-0 group-hover:bg-gray-50/50 transition-colors text-sm';
+  const stickyCellBase = 'px-3 py-2 h-14 align-middle border-b border-r border-gray-100 last:border-r-0 transition-colors text-sm';
+  const headerBase = 'px-3 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider bg-gray-50/95 backdrop-blur sticky top-0 z-10 border-b border-r border-gray-200 last:border-r-0 whitespace-nowrap shadow-sm';
 
   const stickyRightDivider =
     "relative after:content-[''] after:absolute after:top-0 after:right-0 after:h-full after:w-px after:bg-gray-200 after:pointer-events-none";
@@ -237,10 +239,30 @@ export default function ProjectsTable({
     return Math.round(sum * 100) / 100;
   };
 
+  const vndFormatter = useMemo(
+    () =>
+      new Intl.NumberFormat('vi-VN', {
+        style: 'currency',
+        currency: 'VND',
+        maximumFractionDigits: 0,
+      }),
+    []
+  );
+
+  const formatVnd = (value: unknown) => {
+    const n = Number(value);
+    if (!Number.isFinite(n)) return vndFormatter.format(0);
+    return vndFormatter.format(Math.round(n));
+  };
+
+  const PRIORITIES: ProjectMgmtPriority[] = ['', 'low', 'medium', 'high', 'urgent'];
+
+  const PAYMENT_STATUSES = ['Chưa thanh toán', 'Một phần', 'Hoàn toàn'] as const;
+
   return (
     <div className="w-full h-full flex flex-col bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
       <div ref={scrollContainerRef} className="overflow-auto flex-1 relative min-h-[400px]">
-        <table className="min-w-max w-full border-collapse min-h-[400px] relative">
+        <table className="min-w-max w-full border-collapse min-h-[400px] relative border border-gray-200">
           <thead>
             <tr>
               <th
@@ -259,23 +281,56 @@ export default function ProjectsTable({
               <th className={`${headerBase} w-20`}>Mã khách hàng</th>
               <th className={`${headerBase} w-30`}>PM</th>
               <th className={`${headerBase} w-48`}>Trạng thái</th>
+              <th className={`${headerBase} w-28`}>Ưu tiên</th>
+              <th className={`${headerBase} w-60 text-center`}>Budget</th>
+              <th className={`${headerBase} w-60 text-center`}>Hợp đồng</th>
+              <th className={`${headerBase} w-60 text-center`}>
+                <span className="inline-flex items-center justify-center gap-2">
+                  <span>Chi phí thực</span>
+                  <span
+                    className="text-gray-500 font-bold cursor-default text-red-500"
+                    title="Tự động cập nhật từ Quản lý Sale"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    ( ! )
+                  </span>
+                </span>
+              </th>
+              <th className={`${headerBase} w-60 text-center`}>
+                <span className="inline-flex items-center justify-center gap-2">
+                  <span>Đã thanh toán</span>
+                  <span
+                    className="text-gray-500 font-bold cursor-default text-red-500"
+                    title="Tự động cập nhật từ Quản lý Sale"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    ( ! )
+                  </span>
+                </span>
+              </th>
+              <th className={`${headerBase} w-40 text-center`}>TT thanh toán</th>
               <th className={`${headerBase} w-50`}>Yêu cầu</th>
               <th className={`${headerBase} w-50`}>Source</th>
+              <th className={`${headerBase} w-50`}>Tech stack</th>
+              <th className={`${headerBase} w-50`}>Domain URL</th>
+              <th className={`${headerBase} w-50`}>Production URL</th>
               <th className={`${headerBase} w-32`}>Bắt đầu</th>
               <th className={`${headerBase} w-32`}>Deadline</th>
+              <th className={`${headerBase} w-44`}>Hoàn thành</th>
               <th className={`${headerBase} w-32`}>Tiến độ (%)</th>
               <th className={`${headerBase} w-40`}>Sale</th>
               <th className={`${headerBase} w-40`}>Người làm</th>
               <th className={`${headerBase} w-28`}>Giờ công</th>
               <th className={`${headerBase} w-40`}>User kỹ thuật</th>
               <th className={`${headerBase} w-40`}>User gửi khách</th>
+              <th className={`${headerBase} w-64`}>Mô tả</th>
               <th className={`${headerBase} w-20 text-center`}>Xóa</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
             {projects.length === 0 ? (
               <tr>
-                <td className="py-8 px-4 text-center text-gray-500 italic" colSpan={18}>
+                <td className="py-8 px-4 text-center text-gray-500 italic" colSpan={27}>
                   Không có dữ liệu phù hợp.
                 </td>
               </tr>
@@ -397,6 +452,115 @@ export default function ProjectsTable({
                   </td>
 
                   <td className={cellBase}>
+                    <select
+                      value={item.priority ?? ''}
+                      onFocus={() => onSelect(item.id)}
+                      onClick={(e) => e.stopPropagation()}
+                      onChange={(e) => canEditRow && onUpdate(item.id, { priority: e.target.value as ProjectMgmtPriority })}
+                      disabled={!canEditRow}
+                      className={`${selectBase} ${disabledClass}`}
+                    >
+                      {PRIORITIES.map((p) => (
+                        <option key={p || 'empty'} value={p}>
+                          {p ? priorityLabel(p) : 'Chọn ưu tiên'}
+                        </option>
+                      ))}
+                    </select>
+                  </td>
+
+                  <td className={`${cellBase} text-center`}>
+                    <div className="flex items-center justify-center gap-2">
+                      <input
+                        type="number"
+                        step="1"
+                        value={Number.isFinite(Number(item.budget)) ? Number(item.budget) : 0}
+                        onFocus={() => onSelect(item.id)}
+                        onClick={(e) => e.stopPropagation()}
+                        onChange={(e) => canEditRow && onUpdate(item.id, { budget: Number(e.target.value) })}
+                        disabled={!canEditRow}
+                        className={`${inputBase} text-right tabular-nums ${disabledClass}`}
+                        placeholder="0"
+                        title={formatVnd(item.budget)}
+                      />
+                      <span className="text-xs text-gray-400 whitespace-nowrap">{formatVnd(item.budget)}</span>
+                    </div>
+                  </td>
+
+                  <td className={`${cellBase} text-center`}>
+                    <div className="flex items-center justify-center gap-2">
+                      <input
+                        type="number"
+                        step="1"
+                        value={Number.isFinite(Number(item.contract_value)) ? Number(item.contract_value) : 0}
+                        onFocus={() => onSelect(item.id)}
+                        onClick={(e) => e.stopPropagation()}
+                        onChange={(e) => canEditRow && onUpdate(item.id, { contract_value: Number(e.target.value) })}
+                        disabled={!canEditRow}
+                        className={`${inputBase} text-right tabular-nums ${disabledClass}`}
+                        placeholder="0"
+                        title={formatVnd(item.contract_value)}
+                      />
+                      <span className="text-xs text-gray-400 whitespace-nowrap">{formatVnd(item.contract_value)}</span>
+                    </div>
+                  </td>
+
+                  <td className={`${cellBase} text-center`}>
+                    <div className="flex items-center justify-center gap-2">
+                      <input
+                        type="number"
+                        step="1"
+                        value={Number.isFinite(Number(item.actual_cost)) ? Number(item.actual_cost) : 0}
+                        onFocus={() => onSelect(item.id)}
+                        onClick={(e) => e.stopPropagation()}
+                        disabled
+                        readOnly
+                        className={`${inputBase} text-right tabular-nums ${disabledClass}`}
+                        placeholder="0"
+                        title={formatVnd(item.actual_cost)}
+                      />
+                      <span className="text-xs text-gray-400 whitespace-nowrap">{formatVnd(item.actual_cost)}</span>
+                    </div>
+                  </td>
+
+                  <td className={`${cellBase} text-center`}>
+                    <div className="flex items-center justify-center gap-2">
+                      <input
+                        type="number"
+                        step="1"
+                        value={Number.isFinite(Number(item.deposit_received)) ? Number(item.deposit_received) : 0}
+                        onClick={(e) => e.stopPropagation()}
+                        disabled
+                        readOnly
+                        className={`${inputBase} text-right tabular-nums bg-gray-50/70 text-gray-500 cursor-default`}
+                        placeholder="0"
+                        title={formatVnd(item.deposit_received)}
+                      />
+                      <span className="text-xs text-gray-400 whitespace-nowrap">{formatVnd(item.deposit_received)}</span>
+                    </div>
+                  </td>
+
+                  <td className={`${cellBase} text-center`}>
+                    <select
+                      value={item.payment_status ?? ''}
+                      onFocus={() => onSelect(item.id)}
+                      onClick={(e) => e.stopPropagation()}
+                      onChange={(e) => canEditRow && onUpdate(item.id, { payment_status: e.target.value })}
+                      disabled={!canEditRow}
+                      className={`${selectBase} text-center ${disabledClass}`}
+                    >
+                      <option value="">...</option>
+                      {PAYMENT_STATUSES.map((s) => (
+                        <option key={s} value={s}>
+                          {s}
+                        </option>
+                      ))}
+                      {item.payment_status && !PAYMENT_STATUSES.includes(item.payment_status as (typeof PAYMENT_STATUSES)[number]) && (
+                        <option value={item.payment_status}>{item.payment_status}</option>
+                      )}
+                    </select>
+                  </td>
+
+                  <td className={cellBase}>
                     <textarea
                       rows={2}
                       value={item.requirements ?? ''}
@@ -424,6 +588,45 @@ export default function ProjectsTable({
 
                   <td className={cellBase}>
                     <input
+                      type="text"
+                      value={item.technology_stack ?? ''}
+                      onFocus={() => onSelect(item.id)}
+                      onClick={(e) => e.stopPropagation()}
+                      onChange={(e) => canEditRow && onUpdate(item.id, { technology_stack: e.target.value })}
+                      disabled={!canEditRow}
+                      className={`${inputBase} ${disabledClass}`}
+                      placeholder="React, Node, ..."
+                    />
+                  </td>
+
+                  <td className={cellBase}>
+                    <input
+                      type="text"
+                      value={item.domain_url ?? ''}
+                      onFocus={() => onSelect(item.id)}
+                      onClick={(e) => e.stopPropagation()}
+                      onChange={(e) => canEditRow && onUpdate(item.id, { domain_url: e.target.value })}
+                      disabled={!canEditRow}
+                      className={`${inputBase} ${disabledClass}`}
+                      placeholder="https://..."
+                    />
+                  </td>
+
+                  <td className={cellBase}>
+                    <input
+                      type="text"
+                      value={item.production_url ?? ''}
+                      onFocus={() => onSelect(item.id)}
+                      onClick={(e) => e.stopPropagation()}
+                      onChange={(e) => canEditRow && onUpdate(item.id, { production_url: e.target.value })}
+                      disabled={!canEditRow}
+                      className={`${inputBase} ${disabledClass}`}
+                      placeholder="https://..."
+                    />
+                  </td>
+
+                  <td className={cellBase}>
+                    <input
                       type="date"
                       value={item.start_date}
                       onFocus={() => onSelect(item.id)}
@@ -441,6 +644,18 @@ export default function ProjectsTable({
                       onFocus={() => onSelect(item.id)}
                       onClick={(e) => e.stopPropagation()}
                       onChange={(e) => canEditRow && onUpdate(item.id, { deadline: e.target.value })}
+                      disabled={!canEditRow}
+                      className={`${inputBase} ${disabledClass}`}
+                    />
+                  </td>
+
+                  <td className={cellBase}>
+                    <input
+                      type="date"
+                      value={(item.completed_at ?? '').slice(0, 10)}
+                      onFocus={() => onSelect(item.id)}
+                      onClick={(e) => e.stopPropagation()}
+                      onChange={(e) => canEditRow && onUpdate(item.id, { completed_at: e.target.value })}
                       disabled={!canEditRow}
                       className={`${inputBase} ${disabledClass}`}
                     />
@@ -541,6 +756,19 @@ export default function ProjectsTable({
                       datalistId={`sender-${item.id}`}
                       onChange={(next) => canEditRow && onUpdate(item.id, { customer_sender: next })}
                       className={`${inputBase} ${disabledClass}`}
+                    />
+                  </td>
+
+                  <td className={cellBase}>
+                    <textarea
+                      rows={2}
+                      value={item.description ?? ''}
+                      onFocus={() => onSelect(item.id)}
+                      onClick={(e) => e.stopPropagation()}
+                      onChange={(e) => canEditRow && onUpdate(item.id, { description: e.target.value })}
+                      disabled={!canEditRow}
+                      className={`${input2} min-h-10 resize-y overflow-auto ${disabledClass}`}
+                      placeholder="Mô tả..."
                     />
                   </td>
 

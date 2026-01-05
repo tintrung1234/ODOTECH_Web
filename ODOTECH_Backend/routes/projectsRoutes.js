@@ -21,6 +21,9 @@ const {
 
 const {
   listProjects,
+  getContractValuesByCodes,
+  updateActualCostByCode,
+  updateDepositReceivedByCode,
   getProjectById,
   createProject,
   updateProject,
@@ -49,6 +52,17 @@ function parseProjectsListQuery(req, res, next) {
     q: typeof req.query.q === "string" ? req.query.q.trim() : "",
     status: typeof req.query.status === "string" ? req.query.status.trim() : "",
   };
+  next();
+}
+
+function parseProjectCodesQuery(req, res, next) {
+  const raw = typeof req.query.codes === 'string' ? req.query.codes : '';
+  const items = raw
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean)
+    .slice(0, 200);
+  req.codesQuery = items;
   next();
 }
 
@@ -97,6 +111,33 @@ router.get(
   ]),
   parseProjectsListQuery,
   listProjects
+);
+
+router.get(
+  "/contract-values",
+  validate([
+    queryStringOptional("codes", { maxLen: 5000, message: "Invalid codes" }),
+  ]),
+  parseProjectCodesQuery,
+  getContractValuesByCodes
+);
+
+router.patch(
+  "/actual-cost",
+  validate([
+    bodyRequiredString("project_code"),
+    bodyNumberOptional("actual_cost", { min: 0, message: "Invalid actual_cost" }),
+  ]),
+  updateActualCostByCode
+);
+
+router.patch(
+  "/deposit-received",
+  validate([
+    bodyRequiredString("project_code"),
+    bodyNumberOptional("deposit_received", { min: 0, message: "Invalid deposit_received" }),
+  ]),
+  updateDepositReceivedByCode
 );
 
 router.post(

@@ -40,6 +40,7 @@ function mapSalesProjectRow(row) {
     ngay_cham_cuoi: formatDate(row.ngay_cham_cuoi),
     hinh_thuc_cham: row.hinh_thuc_cham ?? "",
 
+    contract_value: row.contract_value == null ? undefined : Number(row.contract_value),
     phi_dich_vu: Number(row.phi_dich_vu ?? 0),
     phat_sinh: Number(row.phat_sinh ?? 0),
     ngay_doi_cuoi: formatDate(row.ngay_doi_cuoi),

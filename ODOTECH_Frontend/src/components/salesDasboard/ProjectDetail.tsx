@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { ProjectData, Payment, StaffId } from './interface/type';
 import { formatCurrency, calculateDaysDiff, getWeeksDiff } from '../../utils/formatDate';
 import type { Account } from '../projectsDasboard/interface/type';
@@ -225,7 +225,18 @@ const TabFinance = ({ data, handleChange, handlePaymentChange }: {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-100">
            <h3 className="text-lg font-semibold mb-4 text-gray-700 border-b pb-2">Cấu thành phí</h3>
-           <label className="block mb-3 text-sm font-medium text-gray-600">Phí DV <input className="w-full mt-1 p-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none" type="number" name="phi_dich_vu" value={data.phi_dich_vu} onChange={handleChange}/></label>
+           <label className="block mb-3 text-sm font-medium text-gray-600">
+             Phí DV (lấy từ hợp đồng dự án)
+             <input
+               className="w-full mt-1 p-2 border border-gray-300 rounded bg-gray-100"
+               type="number"
+               name="phi_dich_vu"
+               value={data.phi_dich_vu}
+               onChange={handleChange}
+               disabled
+               readOnly
+             />
+           </label>
            <label className="block mb-3 text-sm font-medium text-gray-600">Phát sinh <input className="w-full mt-1 p-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none" type="number" name="phat_sinh" value={data.phat_sinh} onChange={handleChange}/></label>
            <label className="block mb-3 text-sm font-medium text-gray-600">Ngày đòi cuối <input className="w-full mt-1 p-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none" type="date" name="ngay_doi_cuoi" value={data.ngay_doi_cuoi} onChange={handleChange}/></label>
            <label className="block mb-3 text-sm font-medium text-gray-600">Số lần đòi <input className="w-full mt-1 p-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none" type="number" name="so_lan_doi" value={data.so_lan_doi} onChange={handleChange}/></label>
@@ -416,6 +427,8 @@ export default function ProjectDetail({ project, onBack, onSave, readOnly = fals
   const [formData, setFormData] = useState<ProjectData>(project);
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [accountsLoading, setAccountsLoading] = useState<boolean>(false);
+  const prevPhatSinhRef = useRef<number | null>(null);
+  const prevDepositReceivedRef = useRef<number | null>(null);
 
   const numericFieldNames = useMemo(() => {
     return new Set<string>([
@@ -440,7 +453,7 @@ export default function ProjectDetail({ project, onBack, onSave, readOnly = fals
     return (envUrl && String(envUrl).trim()) ? String(envUrl).trim().replace(/\/$/, '') : 'http://localhost:5000';
   }, []);
 
-  const readErrorMessage = async (res: Response) => {
+  const readErrorMessage = useCallback(async (res: Response) => {
     const contentType = res.headers.get('content-type') || '';
     try {
       if (contentType.includes('application/json')) {
@@ -452,7 +465,100 @@ export default function ProjectDetail({ project, onBack, onSave, readOnly = fals
     } catch {
       return `HTTP ${res.status}`;
     }
-  };
+  }, []);
+
+  // When contract fee (phi_dich_vu) or extra cost (phat_sinh) changes, update Projects.actual_cost automatically.
+  // Business rule: actual_cost = phi_dich_vu + phat_sinh.
+  useEffect(() => {
+    if (readOnly) return;
+
+    const projectCode = String(formData.ma_du_an || '').trim();
+    if (!projectCode) return;
+
+    const current = Number(formData.phi_dich_vu ?? 0) + Number(formData.phat_sinh ?? 0);
+    if (!Number.isFinite(current) || current < 0) return;
+
+    // Skip initial mount.
+    if (prevPhatSinhRef.current === null) {
+      prevPhatSinhRef.current = current;
+      return;
+    }
+    if (prevPhatSinhRef.current === current) return;
+    prevPhatSinhRef.current = current;
+
+    const timer = window.setTimeout(() => {
+      void (async () => {
+        try {
+          const res = await fetch(`${apiBaseUrl}/api/projects/actual-cost`, {
+            method: 'PATCH',
+            headers: {
+              ...buildAuthHeaders(),
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ project_code: projectCode, actual_cost: current }),
+          });
+          if (!res.ok) {
+            // Keep UI smooth; do not block sales editing if projects update fails.
+            await readErrorMessage(res);
+          }
+        } catch {
+          // Silent fail.
+        }
+      })();
+    }, 500);
+
+    return () => {
+      window.clearTimeout(timer);
+    };
+  }, [apiBaseUrl, formData.ma_du_an, formData.phi_dich_vu, formData.phat_sinh, readOnly, readErrorMessage]);
+
+  // Auto-load contract_value from Projects module and keep phi_dich_vu in sync.
+  useEffect(() => {
+    let cancelled = false;
+
+    const projectCode = String(formData.ma_du_an || '').trim();
+    if (!projectCode) return;
+
+    (async () => {
+      try {
+        const isRecord = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null;
+        type ProjectLookupItem = { project_code?: unknown; contract_value?: unknown };
+
+        const q = encodeURIComponent(projectCode);
+        const res = await fetch(`${apiBaseUrl}/api/projects?limit=20&offset=0&q=${q}`, {
+          headers: buildAuthHeaders(),
+        });
+        if (!res.ok) throw new Error(await readErrorMessage(res));
+
+        const json = (await res.json()) as unknown;
+
+        let items: ProjectLookupItem[] = [];
+        if (Array.isArray(json)) {
+          items = json as ProjectLookupItem[];
+        } else if (isRecord(json) && Array.isArray(json.items)) {
+          items = json.items as ProjectLookupItem[];
+        }
+
+        const match = items.find(
+          (p) => String(p.project_code ?? '').trim().toLowerCase() === projectCode.toLowerCase()
+        );
+        const nextFee = Number(match?.contract_value ?? 0);
+        if (!Number.isFinite(nextFee)) return;
+        if (cancelled) return;
+
+        setFormData((prev) => {
+          if (Number(prev.phi_dich_vu) === nextFee) return prev;
+          return { ...prev, phi_dich_vu: nextFee };
+        });
+      } catch {
+        // Silent fail: keep existing phi_dich_vu if project lookup fails.
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [apiBaseUrl, formData.ma_du_an, readErrorMessage]);
 
   useEffect(() => {
     let cancelled = false;
@@ -473,7 +579,7 @@ export default function ProjectDetail({ project, onBack, onSave, readOnly = fals
     return () => {
       cancelled = true;
     };
-  }, [apiBaseUrl]);
+  }, [apiBaseUrl, readErrorMessage]);
 
   const staffOptions = useMemo<StaffOptions>(() => {
     const pmManagers = sortAccountsByName(accounts.filter((a) => normalizeRole(a.role_system) === 'sales_manager'));
@@ -579,6 +685,50 @@ export default function ProjectDetail({ project, onBack, onSave, readOnly = fals
     [formData.danh_sach_thanh_toan]
   );
   const congNo = useMemo(() => tongPhi - daThu, [tongPhi, daThu]);
+
+  // When payments change, update Projects.deposit_received automatically.
+  // We treat deposit_received = total money received so far (sum of payments).
+  useEffect(() => {
+    if (readOnly) return;
+
+    const projectCode = String(formData.ma_du_an || '').trim();
+    if (!projectCode) return;
+
+    const current = Number(daThu ?? 0);
+    if (!Number.isFinite(current) || current < 0) return;
+
+    // Skip initial mount.
+    if (prevDepositReceivedRef.current === null) {
+      prevDepositReceivedRef.current = current;
+      return;
+    }
+    if (prevDepositReceivedRef.current === current) return;
+    prevDepositReceivedRef.current = current;
+
+    const timer = window.setTimeout(() => {
+      void (async () => {
+        try {
+          const res = await fetch(`${apiBaseUrl}/api/projects/deposit-received`, {
+            method: 'PATCH',
+            headers: {
+              ...buildAuthHeaders(),
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ project_code: projectCode, deposit_received: current }),
+          });
+          if (!res.ok) {
+            await readErrorMessage(res);
+          }
+        } catch {
+          // Silent fail.
+        }
+      })();
+    }, 500);
+
+    return () => {
+      window.clearTimeout(timer);
+    };
+  }, [apiBaseUrl, daThu, formData.ma_du_an, readOnly, readErrorMessage]);
 
   const handleCheckboxChange = (name: keyof ProjectData, checked: boolean) => {
     setFormData(prev => ({ ...prev, [name]: checked } as ProjectData));

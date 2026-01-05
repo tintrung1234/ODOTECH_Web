@@ -32,12 +32,12 @@ export default function SalesChart({ projects }: { projects: ProjectData[] }) {
     const s = byStatus.get(p.trang_thai_chot);
     if (!s) continue;
     s.count += 1;
-    s.totalValue += safeNumber(p.phi_dich_vu) + safeNumber(p.phat_sinh);
+    s.totalValue += safeNumber(p.contract_value) + safeNumber(p.phat_sinh);
   }
 
   const items = STATUS_ORDER.map((s) => byStatus.get(s.key)!).filter(Boolean);
   const totalProjects = projects.length;
-  const totalValue = projects.reduce((acc, p) => acc + safeNumber(p.phi_dich_vu) + safeNumber(p.phat_sinh), 0);
+  const totalValue = projects.reduce((acc, p) => acc + safeNumber(p.contract_value) + safeNumber(p.phat_sinh), 0);
 
   // Donut chart geometry (SVG)
   const size = 160;

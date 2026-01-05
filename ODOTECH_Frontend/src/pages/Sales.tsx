@@ -181,7 +181,52 @@ export default function Sales() {
       }
       const json = await res.json();
       const items = Array.isArray(json) ? json : (json.items ?? []);
-      setProjects(items);
+
+      // Fetch contract_value from Projects API, then merge into sales items.
+      const codes = Array.from(
+        new Set(
+          (items as ProjectData[])
+            .map((p) => String(p.ma_du_an || '').trim())
+            .filter(Boolean)
+        )
+      );
+
+      if (codes.length === 0) {
+        setProjects(items);
+        return;
+      }
+
+      try {
+        const codesParam = encodeURIComponent(codes.join(','));
+        const projRes = await fetch(`${apiBaseUrl}/api/projects/contract-values?codes=${codesParam}`, {
+          headers: buildAuthHeaders(),
+        });
+        if (!projRes.ok) throw new Error(await readErrorMessage(projRes));
+
+        const projJson = (await projRes.json()) as unknown;
+        const projItems: Array<{ project_code?: unknown; contract_value?: unknown }> =
+          (projJson && typeof projJson === 'object' && Array.isArray((projJson as any).items))
+            ? (projJson as any).items
+            : [];
+
+        const map = new Map<string, number>();
+        for (const it of projItems) {
+          const code = String(it.project_code ?? '').trim();
+          const val = Number(it.contract_value ?? 0);
+          if (!code) continue;
+          map.set(code.toLowerCase(), Number.isFinite(val) ? val : 0);
+        }
+
+        const merged = (items as ProjectData[]).map((p) => {
+          const code = String(p.ma_du_an || '').trim().toLowerCase();
+          const cv = map.get(code) ?? 0;
+          return { ...p, contract_value: cv };
+        });
+        setProjects(merged);
+      } catch {
+        // If lookup fails, keep the list but contract_value may be 0.
+        setProjects(items);
+      }
     } catch (e: unknown) {
       showToast('error', e instanceof Error ? e.message : 'Không tải được dữ liệu');
     } finally {
@@ -375,12 +420,12 @@ export default function Sales() {
       });
     }
 
-    // Price range filter: based on total fee (phi_dich_vu + phat_sinh)
+    // Price range filter: based on total fee (contract_value from Projects API + phat_sinh from Sales API)
     const minTotal = typeof filters.min_total === 'number' ? filters.min_total : null;
     const maxTotal = typeof filters.max_total === 'number' ? filters.max_total : null;
     if (minTotal !== null || maxTotal !== null) {
       list = list.filter((p) => {
-        const total = Number(p.phi_dich_vu || 0) + Number(p.phat_sinh || 0);
+        const total = Number(p.contract_value ?? 0) + Number(p.phat_sinh ?? 0);
         if (minTotal !== null && total < minTotal) return false;
         if (maxTotal !== null && total > maxTotal) return false;
         return true;
@@ -431,7 +476,7 @@ export default function Sales() {
   }, [saleTabs, selectedSaleTab]);
 
   const totalAmount = useMemo(() => {
-    return visibleProjects.reduce((sum, p) => sum + Number(p.phi_dich_vu || 0) + Number(p.phat_sinh || 0), 0);
+    return visibleProjects.reduce((sum, p) => sum + Number(p.contract_value ?? 0) + Number(p.phat_sinh ?? 0), 0);
   }, [visibleProjects]);
 
   if (!canView) {

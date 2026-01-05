@@ -36,7 +36,8 @@ async function listProjects({ limit, offset, q, trang_thai_chot, trang_thai_thu_
     SELECT
       sp.*,
       p.status AS project_status,
-      p.completed_at AS project_completed_at
+      p.completed_at AS project_completed_at,
+      p.contract_value AS contract_value
     FROM sales_projects sp
     LEFT JOIN projects p ON p.project_code = sp.ma_du_an
     ${whereSql}
@@ -65,7 +66,8 @@ async function getProjectById(projectId, { sale_id } = {}) {
       SELECT
         sp.*,
         p.status AS project_status,
-        p.completed_at AS project_completed_at
+        p.completed_at AS project_completed_at,
+        p.contract_value AS contract_value
       FROM sales_projects sp
       LEFT JOIN projects p ON p.project_code = sp.ma_du_an
       WHERE sp.id = $1
