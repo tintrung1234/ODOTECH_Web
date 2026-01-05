@@ -1,7 +1,12 @@
 function formatDate(value) {
   if (!value) return "";
   if (typeof value === "string") return value.slice(0, 10);
-  if (value instanceof Date) return value.toISOString().slice(0, 10);
+  if (value instanceof Date) {
+    const y = value.getFullYear();
+    const m = String(value.getMonth() + 1).padStart(2, "0");
+    const d = String(value.getDate()).padStart(2, "0");
+    return `${y}-${m}-${d}`;
+  }
   return String(value);
 }
 
@@ -55,6 +60,13 @@ function mapProjectRow(row) {
     completed_at: formatTimestamp(row.completed_at),
 
     description: row.description ?? "",
+
+    requirements: row.requirements ?? "",
+    source: row.source ?? "",
+    progress_percent: Number(row.progress_percent ?? 0),
+    assignee: row.assignee ?? "",
+    tech_user: row.tech_user ?? "",
+    customer_sender: row.customer_sender ?? "",
 
     created_at: formatTimestamp(row.created_at),
     updated_at: formatTimestamp(row.updated_at),

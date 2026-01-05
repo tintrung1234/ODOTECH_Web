@@ -67,12 +67,20 @@ export type ProjectPriority = 'low' | 'medium' | 'high' | 'urgent';
 
 export type TaskStatus = 'Chưa làm' | 'Đang làm' | 'Đã xong';
 
+export type TaskPriority = 'low' | 'medium' | 'high' | 'urgent';
+
 export interface ProjectTask {
   id: number;
   tieuDe: string;
   nguoiPhuTrach: string;
+  nguoiChinh?: string;
+  nguoiHoTro?: string;
+  batDau?: string; // ISO date
   hanChot: string; // ISO date
   trangThai: TaskStatus;
+  tienDo?: number; // 0-100
+  gioCong?: number;
+  mucUuTien?: TaskPriority | '';
   ghiChu?: string;
 }
 
@@ -95,13 +103,30 @@ export interface ProjectItem {
   ghiChu: string;
 }
 
-export type ProjectMgmtStatus = 'not_started' | 'in_progress' | 'on_hold' | 'completed' | 'late';
+export type ProjectMgmtStatus =
+  | 'Đợi sắp xếp'
+  | 'Đang làm'
+  | 'Chờ thêm thông tin'
+  | 'Đợi khách duyệt - feedback'
+  | 'Hoàn thành đợi tất toán'
+  | 'Đã thông báo thanh toán'
+  | 'Kết thúc hài lòng'
+  | 'Kết thúc thất vọng'
+  | 'Nhờ sale réo khách'
+  // Backward compatibility with existing data
+  | 'not_started'
+  | 'in_progress'
+  | 'on_hold'
+  | 'completed'
+  | 'late';
 export type ProjectMgmtPriority = 'low' | 'medium' | 'high' | 'urgent';
+
+export type ProjectType = '' | 'Khách' | 'Nội bộ' | 'Đào tạo';
 
 export interface ProjectManagementItem {
   id: number;
   project_code: string;
-  project_type: string;
+  project_type: ProjectType;
   name: string;
   client_id: number | null;
   sale_id: number | null;
@@ -121,6 +146,14 @@ export interface ProjectManagementItem {
   deadline: string; // ISO date
   completed_at: string; // ISO timestamp
   description: string;
+
+  requirements?: string;
+  source?: string;
+  progress_percent?: number;
+  assignee?: string;
+  tech_user?: string;
+  customer_sender?: string;
+
   created_at: string; // ISO timestamp
   updated_at: string; // ISO timestamp
 }

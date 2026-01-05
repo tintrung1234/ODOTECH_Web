@@ -1,49 +1,68 @@
 import { Fragment, useEffect, useMemo, useRef, useState } from 'react';
 
 import type {
+  Account,
   ProjectManagementItem,
-  ProjectMgmtPriority,
   ProjectMgmtStatus,
-  ProjectTask,
+  ProjectType,
 } from './interface/type';
 import {
-  priorityClassName,
-  priorityLabel,
   statusLabel,
+  statusClassName,
 } from '../../utils/projectUtils';
 
 import ProjectTasksPanel from './ProjectTasksPanel';
-import { buildAuthHeaders } from '../../utils/auth';
+import { normalizeRole } from '../../utils/auth';
+
+import { AccountIdPicker, AccountTextPicker } from './AccountPickers';
+import { useProjectTasks } from './helper/useProjectTasks';
+import {
+  PROJECT_STATUSES,
+  PROJECT_TYPES,
+  accountValueToken,
+  filterAccountsByRoles,
+  normalizeMultiUsers,
+} from './helper/projectsTableHelpers';
 
 export default function ProjectsTable({
   projects,
+  accounts,
   selectedId,
   apiBaseUrl,
   onSelect,
   onUpdate,
   onDelete,
+  readOnly = false,
+  canEditProject,
+  canDeleteProject,
+  canEditTasksInProject,
 }: {
   projects: ProjectManagementItem[];
+  accounts: Account[];
   selectedId: number | null;
   today: Date;
   apiBaseUrl: string;
   onSelect: (id: number) => void;
   onUpdate: (id: number, patch: Partial<ProjectManagementItem>) => void;
   onDelete: (id: number) => void;
+  readOnly?: boolean;
+  canEditProject: (project: ProjectManagementItem) => boolean;
+  canDeleteProject: (project: ProjectManagementItem) => boolean;
+  canEditTasksInProject: (project: ProjectManagementItem) => boolean;
 }) {
-  // Common styles
+  // Common styles - Optimized for cleaner look
   const inputBase =
-    'w-full h-8 bg-transparent border border-transparent rounded-md px-1.5 py-1 text-l text-gray-700 placeholder-gray-400 transition-all duration-150 hover:bg-gray-50 hover:border-gray-200 focus:bg-white focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20 outline-none';
+    'w-full h-8 bg-transparent border border-transparent rounded px-2 text-sm text-gray-700 placeholder-gray-400 transition-all duration-200 hover:bg-gray-50 hover:border-gray-200 focus:bg-white focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20 outline-none truncate';
   
-  const textareaBase =
-    'w-full bg-transparent border border-transparent rounded-md px-1.5 py-1 text-l text-gray-700 placeholder-gray-400 transition-all duration-150 hover:bg-gray-50 hover:border-gray-200 focus:bg-white focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20 outline-none resize-none';
+  const input2 =
+    'w-full bg-transparent border border-transparent rounded px-2 py-1 text-sm text-gray-700 placeholder-gray-400 transition-all duration-200 hover:bg-gray-50 hover:border-gray-200 focus:bg-white focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20 outline-none resize-none leading-tight';
 
   const selectBase = 
-    'w-full h-8 bg-transparent border border-transparent rounded-md px-1.5 py-1 text-l text-gray-700 transition-all duration-150 hover:bg-gray-50 hover:border-gray-200 focus:bg-white focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20 outline-none cursor-pointer';
+    'w-full h-8 bg-transparent border border-transparent rounded px-1 text-sm text-gray-700 transition-all duration-200 hover:bg-gray-50 hover:border-gray-200 focus:bg-white focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20 outline-none cursor-pointer';
 
-  const cellBase = 'px-2.5 py-2 h-14 align-middle border-b border-gray-100 group-hover:bg-gray-50/30 transition-colors';
-  const stickyCellBase = 'px-2.5 py-2 h-14 align-middle border-b border-gray-100 transition-colors';
-  const headerBase = 'px-2.5 py-2 text-left text-[11px] font-semibold text-gray-500 uppercase tracking-wider bg-gray-50/95 backdrop-blur sticky top-0 z-10 border-b border-gray-200 whitespace-nowrap shadow-sm';
+  const cellBase = 'px-3 py-2 h-14 align-middle border-b border-gray-100 group-hover:bg-gray-50/50 transition-colors text-sm';
+  const stickyCellBase = 'px-3 py-2 h-14 align-middle border-b border-gray-100 transition-colors text-sm';
+  const headerBase = 'px-3 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider bg-gray-50/95 backdrop-blur sticky top-0 z-10 border-b border-gray-200 whitespace-nowrap shadow-sm';
 
   const stickyRightDivider =
     "relative after:content-[''] after:absolute after:top-0 after:right-0 after:h-full after:w-px after:bg-gray-200 after:pointer-events-none";
@@ -59,155 +78,68 @@ export default function ProjectsTable({
     width: number;
   } | null>(null);
 
-  const [tasksByProjectId, setTasksByProjectId] = useState<Record<number, ProjectTask[]>>({});
-  const [taskLoadingByProjectId, setTaskLoadingByProjectId] = useState<Record<number, boolean>>({});
-  const pendingTaskSaveTimersRef = useRef<Map<string, number>>(new Map());
+  const {
+    tasksByProjectId,
+    taskLoadingByProjectId,
+    loadTasks,
+    addTask,
+    updateTask,
+    deleteTask,
+    getDraftTask,
+    setDraftTask,
+  } = useProjectTasks({ apiBaseUrl });
 
-  const readErrorMessage = async (res: Response) => {
-    const contentType = res.headers.get('content-type') || '';
-    try {
-      if (contentType.includes('application/json')) {
-        const json = (await res.json()) as { message?: string };
-        return json?.message || `HTTP ${res.status}`;
+  // Prefetch tasks so the "Giờ công" column (derived from tasks) updates without requiring a click/expand.
+  // Concurrency-limited to avoid hammering the API.
+  useEffect(() => {
+    let cancelled = false;
+
+    const missingIds = projects
+      .map((p) => p.id)
+      .filter((id) => tasksByProjectId[id] == null && taskLoadingByProjectId[id] !== true);
+
+    if (missingIds.length === 0) return;
+
+    const queue = [...missingIds];
+    const concurrency = 4;
+
+    const runWorker = async () => {
+      while (!cancelled) {
+        const id = queue.shift();
+        if (id == null) return;
+        await loadTasks(id);
       }
-      const text = await res.text();
-      return text || `HTTP ${res.status}`;
-    } catch {
-      return `HTTP ${res.status}`;
-    }
-  };
+    };
 
-  const loadTasks = async (projectId: number) => {
-    setTaskLoadingByProjectId((prev) => ({ ...prev, [projectId]: true }));
-    try {
-      const res = await fetch(`${apiBaseUrl}/api/projects/${projectId}/tasks`, {
-        headers: buildAuthHeaders(),
-      });
-      if (!res.ok) throw new Error(await readErrorMessage(res));
-      const json = (await res.json()) as { items?: ProjectTask[] } | ProjectTask[];
-      const items = Array.isArray(json) ? json : (json.items ?? []);
-      setTasksByProjectId((prev) => ({ ...prev, [projectId]: items }));
-    } catch (err) {
-      console.error('Failed to load tasks', err);
-    } finally {
-      setTaskLoadingByProjectId((prev) => ({ ...prev, [projectId]: false }));
-    }
-  };
+    void Promise.all(Array.from({ length: Math.min(concurrency, queue.length) }, runWorker));
 
-  const emptyDraftTask = useMemo<ProjectTask>(
-    () => ({
-      id: 0,
-      tieuDe: '',
-      nguoiPhuTrach: '',
-      hanChot: '',
-      trangThai: 'Chưa làm',
-      ghiChu: '',
-    }),
-    []
+    return () => {
+      cancelled = true;
+    };
+  }, [loadTasks, projects, taskLoadingByProjectId, tasksByProjectId]);
+
+  const accountsById = useMemo(() => {
+    const map = new Map<number, Account>();
+    for (const a of accounts) map.set(a.id, a);
+    return map;
+  }, [accounts]);
+
+  const saleAccounts = useMemo(
+    () => filterAccountsByRoles(accounts, normalizeRole, ['sale', 'sales_manager', 'head_sales']),
+    [accounts]
   );
 
-  const [draftTaskByProjectId, setDraftTaskByProjectId] = useState<Record<number, ProjectTask>>({});
+  const pmAccounts = useMemo(
+    () => filterAccountsByRoles(accounts, normalizeRole, ['dev_manager', 'head_tech', 'sales_manager', 'head_sales']),
+    [accounts]
+  );
 
-  const getDraftTask = (projectId: number) => draftTaskByProjectId[projectId] ?? emptyDraftTask;
+  const devAccounts = useMemo(
+    () => filterAccountsByRoles(accounts, normalizeRole, ['dev', 'dev_manager', 'head_tech']),
+    [accounts]
+  );
 
-  const setDraftTask = (projectId: number, patch: Partial<ProjectTask>) => {
-    setDraftTaskByProjectId((prev) => ({
-      ...prev,
-      [projectId]: { ...getDraftTask(projectId), ...patch },
-    }));
-  };
-
-  const addTask = (projectId: number) => {
-    const draft = getDraftTask(projectId);
-    const title = draft.tieuDe.trim();
-    if (!title) return;
-
-    (async () => {
-      try {
-        const res = await fetch(`${apiBaseUrl}/api/projects/${projectId}/tasks`, {
-          method: 'POST',
-          headers: buildAuthHeaders({ 'Content-Type': 'application/json' }),
-          body: JSON.stringify({
-            tieuDe: title,
-            nguoiPhuTrach: draft.nguoiPhuTrach.trim(),
-            hanChot: draft.hanChot,
-            trangThai: draft.trangThai,
-            ghiChu: draft.ghiChu?.trim() || '',
-          }),
-        });
-        if (!res.ok) throw new Error(await readErrorMessage(res));
-        const created = (await res.json()) as ProjectTask;
-        setTasksByProjectId((prev) => {
-          const existing = prev[projectId] ?? [];
-          return { ...prev, [projectId]: [created, ...existing] };
-        });
-
-        setDraftTaskByProjectId((prev) => ({
-          ...prev,
-          [projectId]: emptyDraftTask,
-        }));
-      } catch (err) {
-        console.error('Failed to add task', err);
-      }
-    })();
-  };
-
-  const updateTask = (projectId: number, taskId: number, patch: Partial<ProjectTask>) => {
-    setTasksByProjectId((prev) => {
-      const existing = prev[projectId] ?? [];
-      return {
-        ...prev,
-        [projectId]: existing.map((t) => (t.id === taskId ? { ...t, ...patch } : t)),
-      };
-    });
-
-    const key = `${projectId}:${taskId}`;
-    const existingTimer = pendingTaskSaveTimersRef.current.get(key);
-    if (existingTimer) window.clearTimeout(existingTimer);
-
-    const timer = window.setTimeout(() => {
-      (async () => {
-        try {
-          const res = await fetch(`${apiBaseUrl}/api/projects/${projectId}/tasks/${taskId}`, {
-            method: 'PATCH',
-            headers: buildAuthHeaders({ 'Content-Type': 'application/json' }),
-            body: JSON.stringify(patch),
-          });
-          if (!res.ok) throw new Error(await readErrorMessage(res));
-          const updated = (await res.json()) as ProjectTask;
-          setTasksByProjectId((prev) => {
-            const list = prev[projectId] ?? [];
-            return {
-              ...prev,
-              [projectId]: list.map((t) => (t.id === taskId ? { ...t, ...updated } : t)),
-            };
-          });
-        } catch (err) {
-          console.error('Failed to update task', err);
-        }
-      })();
-    }, 500);
-
-    pendingTaskSaveTimersRef.current.set(key, timer);
-  };
-
-  const deleteTask = (projectId: number, taskId: number) => {
-    (async () => {
-      try {
-        const res = await fetch(`${apiBaseUrl}/api/projects/${projectId}/tasks/${taskId}`, {
-          method: 'DELETE',
-          headers: buildAuthHeaders(),
-        });
-        if (!res.ok) throw new Error(await readErrorMessage(res));
-        setTasksByProjectId((prev) => {
-          const existing = prev[projectId] ?? [];
-          return { ...prev, [projectId]: existing.filter((t) => t.id !== taskId) };
-        });
-      } catch (err) {
-        console.error('Failed to delete task', err);
-      }
-    })();
-  };
+  const allAccounts = accounts;
 
   const expandedProject = useMemo(
     () => projects.find((p) => p.id === expandedProjectId) ?? null,
@@ -264,15 +196,46 @@ export default function ProjectsTable({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [expandedProjectId, apiBaseUrl]);
 
-  useEffect(() => {
-    return () => {
-      const timers = pendingTaskSaveTimersRef.current;
-      for (const timer of timers.values()) {
-        window.clearTimeout(timer);
-      }
-      timers.clear();
-    };
-  }, []);
+  const parseISODateUtcMs = (value: string): number | null => {
+    // expects YYYY-MM-DD
+    const m = /^([0-9]{4})-([0-9]{2})-([0-9]{2})$/.exec(value);
+    if (!m) return null;
+    const year = Number(m[1]);
+    const monthIndex = Number(m[2]) - 1;
+    const day = Number(m[3]);
+    if (!Number.isFinite(year) || !Number.isFinite(monthIndex) || !Number.isFinite(day)) return null;
+    return Date.UTC(year, monthIndex, day);
+  };
+
+  const estimateHoursFromDates = (startISO: string, endISO: string): number => {
+    const startMs = parseISODateUtcMs(startISO);
+    const endMs = parseISODateUtcMs(endISO);
+    if (startMs == null || endMs == null) return 0;
+    if (endMs < startMs) return 0;
+
+    const msPerDay = 24 * 60 * 60 * 1000;
+    const daysInclusive = Math.floor((endMs - startMs) / msPerDay) + 1;
+    return daysInclusive * 8;
+  };
+
+  const sumTaskHours = (projectId: number): number | null => {
+    const tasks = tasksByProjectId[projectId];
+    if (!tasks) return null;
+
+    const sum = tasks.reduce((acc, task) => {
+      const hours = Number(task.gioCong);
+      if (Number.isFinite(hours) && hours > 0) return acc + hours;
+
+      const start = (task.batDau ?? '').trim();
+      const end = (task.hanChot ?? '').trim();
+      if (!start || !end) return acc;
+
+      return acc + estimateHoursFromDates(start, end);
+    }, 0);
+
+    // Keep the display stable (avoid 0.30000000004)
+    return Math.round(sum * 100) / 100;
+  };
 
   return (
     <div className="w-full h-full flex flex-col bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
@@ -280,89 +243,108 @@ export default function ProjectsTable({
         <table className="min-w-max w-full border-collapse min-h-[400px] relative">
           <thead>
             <tr>
-              <th className={`${headerBase} w-16 sticky left-0 z-30 bg-gray-50`}>ID</th>
-              <th className={`${headerBase} ${stickyRightDivider} w-48 sticky left-16 z-30 bg-gray-50`}>Mã dự án</th>
-              <th className={`${headerBase} w-56`}>Tên website</th>
-              <th className={`${headerBase} w-36`}>Loại</th>
-              <th className={`${headerBase} w-28`}>Khách hàng</th>
-              <th className={`${headerBase} w-28`}>Sale</th>
-              <th className={`${headerBase} w-28`}>PM</th>
-              <th className={`${headerBase} w-40`}>Trạng thái</th>
-              <th className={`${headerBase} w-36`}>Độ ưu tiên</th>
-              <th className={`${headerBase} w-32`}>Ngân sách</th>
-              <th className={`${headerBase} w-32`}>Giá trị HĐ</th>
-              <th className={`${headerBase} w-32`}>Chi phí thực</th>
-              <th className={`${headerBase} w-32`}>Đã thu cọc</th>
-              <th className={`${headerBase} w-40`}>TT thanh toán</th>
-              <th className={`${headerBase} w-28`}>Tổng giờ</th>
-              <th className={`${headerBase} w-52`}>Công nghệ</th>
-              <th className={`${headerBase} w-56`}>Domain</th>
-              <th className={`${headerBase} w-56`}>Live</th>
-              <th className={`${headerBase} w-32`}>Ngày bắt đầu</th>
+              <th
+                className={`${headerBase} ${stickyRightDivider} w-30 sticky left-0 z-30 border-gray-200`}
+                style={{ width: '7.5rem', minWidth: '7.5rem' }}
+              >
+                Mã dự án
+              </th>
+              <th
+                className={`${headerBase} ${stickyRightDivider} w-45 sticky z-20 bg-gray-50 border-r border-gray-200`}
+                style={{ left: '7.5rem', width: '11.25rem', minWidth: '11.25rem' }}
+              >
+                Tên dự án
+              </th>
+              <th className={`${headerBase} w-25`}>Loại dự án</th>
+              <th className={`${headerBase} w-20`}>Mã khách hàng</th>
+              <th className={`${headerBase} w-30`}>PM</th>
+              <th className={`${headerBase} w-48`}>Trạng thái</th>
+              <th className={`${headerBase} w-50`}>Yêu cầu</th>
+              <th className={`${headerBase} w-50`}>Source</th>
+              <th className={`${headerBase} w-32`}>Bắt đầu</th>
               <th className={`${headerBase} w-32`}>Deadline</th>
-              <th className={`${headerBase} w-40`}>Ngày xong</th>
-              <th className={`${headerBase} w-72`}>Mô tả</th>
-              <th className={`${headerBase} w-44`}>Ngày tạo</th>
-              <th className={`${headerBase} w-44`}>Ngày cập nhật</th>
+              <th className={`${headerBase} w-32`}>Tiến độ (%)</th>
+              <th className={`${headerBase} w-40`}>Sale</th>
+              <th className={`${headerBase} w-40`}>Người làm</th>
+              <th className={`${headerBase} w-28`}>Giờ công</th>
+              <th className={`${headerBase} w-40`}>User kỹ thuật</th>
+              <th className={`${headerBase} w-40`}>User gửi khách</th>
               <th className={`${headerBase} w-20 text-center`}>Xóa</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
             {projects.length === 0 ? (
               <tr>
-                <td className="py-8 px-4 text-center text-gray-500 italic" colSpan={25}>
+                <td className="py-8 px-4 text-center text-gray-500 italic" colSpan={18}>
                   Không có dữ liệu phù hợp.
                 </td>
               </tr>
             ) : (
-              projects.map((item) => (
-                <Fragment key={item.id}>
-                  <tr
-                    ref={(el) => {
-                      rowRefs.current[item.id] = el;
-                    }}
-                    onClick={() => {
-                      onSelect(item.id);
-                      setExpandedProjectId((prev) => (prev === item.id ? null : item.id));
-                    }}
-                    className={`h-14 group transition-colors ${selectedId === item.id ? 'bg-teal-50/60' : 'hover:bg-gray-50/50'}`}
-                  >
-                  <td className={`${stickyCellBase} font-medium text-gray-500 sticky left-0 z-20 ${selectedId === item.id ? 'bg-teal-50' : 'bg-white group-hover:bg-gray-50'}`}>#{item.id}</td>
+              projects.map((item) => {
+                const canEditRow = !readOnly && canEditProject(item);
+                const canDeleteRow = !readOnly && canDeleteProject(item);
+                const disabledClass = !canEditRow ? 'bg-gray-50/70 text-gray-500 cursor-not-allowed' : '';
 
-                  <td className={`${stickyCellBase} ${stickyRightDivider} sticky left-16 z-30 ${selectedId === item.id ? 'bg-teal-50' : 'bg-white group-hover:bg-gray-50'}`}>
+                return (
+                  <Fragment key={item.id}>
+                    <tr
+                      ref={(el) => {
+                        rowRefs.current[item.id] = el;
+                      }}
+                      onClick={() => {
+                        onSelect(item.id);
+                        setExpandedProjectId((prev) => (prev === item.id ? null : item.id));
+                      }}
+                      className={`h-14 group transition-colors ${selectedId === item.id ? 'bg-teal-50/60' : 'hover:bg-gray-50/50'}`}
+                    >
+                      <td
+                        className={`${stickyCellBase} ${stickyRightDivider} sticky left-0 z-30  ${selectedId === item.id ? 'bg-teal-50' : 'bg-white group-hover:bg-gray-50'}`}
+                        style={{ width: '7.5rem', minWidth: '7.5rem' }}
+                      >
+                        <input
+                          type="text"
+                          value={item.project_code}
+                          onFocus={() => onSelect(item.id)}
+                          onClick={(e) => e.stopPropagation()}
+                          onChange={(e) => canEditRow && onUpdate(item.id, { project_code: e.target.value })}
+                          disabled={!canEditRow}
+                          className={`${inputBase} font-medium text-gray-900 ${disabledClass}`}
+                          placeholder="PRJ-..."
+                        />
+                      </td>
+
+                  <td
+                    className={`${stickyCellBase} ${stickyRightDivider} sticky z-20 border-r border-gray-200 ${selectedId === item.id ? 'bg-teal-50' : 'bg-white group-hover:bg-gray-50'}`}
+                    style={{ left: '7.5rem', width: '11.25rem', minWidth: '11.25rem' }}
+                  >
                     <input
                       type="text"
-                      value={item.project_code}
-                      onFocus={() => onSelect(item.id)}
-                      onClick={(e) => e.stopPropagation()}
-                      onChange={(e) => onUpdate(item.id, { project_code: e.target.value })}
-                      className={`${inputBase} font-medium text-gray-900`}
-                      placeholder="PRJ-..."
-                    />
-                  </td>
-
-                  <td className={cellBase}>
-                    <textarea
-                      rows={1}
                       value={item.name}
                       onFocus={() => onSelect(item.id)}
                       onClick={(e) => e.stopPropagation()}
-                      onChange={(e) => onUpdate(item.id, { name: e.target.value })}
-                      className={`${textareaBase} h-8 font-medium text-gray-900 overflow-hidden`}
-                      placeholder="Tên website..."
+                      onChange={(e) => canEditRow && onUpdate(item.id, { name: e.target.value })}
+                      disabled={!canEditRow}
+                      className={`${input2} h-8 font-medium text-gray-900 overflow-hidden truncate ${disabledClass}`}
+                      placeholder="Tên dự án..."
+                      title={item.name}
                     />
                   </td>
 
                   <td className={cellBase}>
-                    <input
-                      type="text"
+                    <select
                       value={item.project_type}
                       onFocus={() => onSelect(item.id)}
                       onClick={(e) => e.stopPropagation()}
-                      onChange={(e) => onUpdate(item.id, { project_type: e.target.value })}
-                      className={inputBase}
-                      placeholder="Loại dự án..."
-                    />
+                      onChange={(e) => canEditRow && onUpdate(item.id, { project_type: e.target.value as ProjectType })}
+                      disabled={!canEditRow}
+                      className={`${selectBase} ${disabledClass}`}
+                    >
+                      {PROJECT_TYPES.map((t) => (
+                        <option key={t || 'empty'} value={t}>
+                          {t || 'Chọn loại'}
+                        </option>
+                      ))}
+                    </select>
                   </td>
 
                   <td className={cellBase}>
@@ -373,169 +355,217 @@ export default function ProjectsTable({
                       onClick={(e) => e.stopPropagation()}
                       onChange={(e) => {
                         const v = e.target.value;
+                        if (!canEditRow) return;
                         onUpdate(item.id, { client_id: v === '' ? null : Number(v) });
                       }}
-                      className={inputBase}
+                      disabled={!canEditRow}
+                      className={`${inputBase} ${disabledClass}`}
                       placeholder="Client ID"
                     />
                   </td>
 
                   <td className={cellBase}>
-                    <input
-                      type="number"
-                      value={item.sale_id ?? ''}
-                      onFocus={() => onSelect(item.id)}
-                      onClick={(e) => e.stopPropagation()}
-                      onChange={(e) => {
-                        const v = e.target.value;
-                        onUpdate(item.id, { sale_id: v === '' ? null : Number(v) });
-                      }}
-                      className={inputBase}
-                      placeholder="Sale ID"
+                    <AccountIdPicker
+                      valueId={item.pm_id}
+                      accountsById={accountsById}
+                      options={pmAccounts}
+                      placeholder="Chọn PM..."
+                      datalistId={`pm-${item.id}`}
+                      onChangeId={(next) => canEditRow && onUpdate(item.id, { pm_id: next })}
+                      className={`${inputBase} ${disabledClass}`}
+                      tokenForAccount={accountValueToken}
                     />
                   </td>
 
                   <td className={cellBase}>
-                    <input
-                      type="number"
-                      value={item.pm_id ?? ''}
-                      onFocus={() => onSelect(item.id)}
-                      onClick={(e) => e.stopPropagation()}
-                      onChange={(e) => {
-                        const v = e.target.value;
-                        onUpdate(item.id, { pm_id: v === '' ? null : Number(v) });
-                      }}
-                      className={inputBase}
-                      placeholder="PM ID"
-                    />
-                  </td>
-
-                  <td className={cellBase}>
-                    <select
-                      value={item.status}
-                      onFocus={() => onSelect(item.id)}
-                      onClick={(e) => e.stopPropagation()}
-                      onChange={(e) => onUpdate(item.id, { status: e.target.value as ProjectMgmtStatus })}
-                      className={selectBase}
-                    >
-                      <option value="not_started">{statusLabel('not_started')}</option>
-                      <option value="in_progress">{statusLabel('in_progress')}</option>
-                      <option value="on_hold">{statusLabel('on_hold')}</option>
-                      <option value="completed">{statusLabel('completed')}</option>
-                      <option value="late">{statusLabel('late')}</option>
-                    </select>
-                  </td>
-
-                  <td className={cellBase}>
-                    <div className="space-y-1.5">
+                    <div className={`relative rounded-md overflow-hidden ${statusClassName(item.status)}`}>
                       <select
-                        value={item.priority}
+                        value={item.status}
                         onFocus={() => onSelect(item.id)}
                         onClick={(e) => e.stopPropagation()}
-                        onChange={(e) => onUpdate(item.id, { priority: e.target.value as ProjectMgmtPriority })}
-                        className={selectBase}
+                        onChange={(e) => canEditRow && onUpdate(item.id, { status: e.target.value as ProjectMgmtStatus })}
+                        disabled={!canEditRow}
+                        className={`${selectBase} bg-transparent border-none focus:ring-0 h-full py-1 pl-2 pr-8 text-xs font-medium ${disabledClass}`}
                       >
-                        <option value="low">{priorityLabel('low')}</option>
-                        <option value="medium">{priorityLabel('medium')}</option>
-                        <option value="high">{priorityLabel('high')}</option>
-                        <option value="urgent">{priorityLabel('urgent')}</option>
+                        {PROJECT_STATUSES.map((s) => (
+                          <option key={s} value={s} className="bg-white text-gray-900">
+                            {statusLabel(s)}
+                          </option>
+                        ))}
                       </select>
-                      <div className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium border ${priorityClassName(item.priority)}`}>
-                        {priorityLabel(item.priority)}
-                      </div>
                     </div>
-                  </td>
-
-                  <td className={cellBase}>
-                    <input type="number" step="0.01" value={item.budget} onFocus={() => onSelect(item.id)} onClick={(e) => e.stopPropagation()} onChange={(e) => onUpdate(item.id, { budget: Number(e.target.value) })} className={inputBase} />
-                  </td>
-
-                  <td className={cellBase}>
-                    <input type="number" step="0.01" value={item.contract_value} onFocus={() => onSelect(item.id)} onClick={(e) => e.stopPropagation()} onChange={(e) => onUpdate(item.id, { contract_value: Number(e.target.value) })} className={inputBase} />
-                  </td>
-
-                  <td className={cellBase}>
-                    <input type="number" step="0.01" value={item.actual_cost} onFocus={() => onSelect(item.id)} onClick={(e) => e.stopPropagation()} onChange={(e) => onUpdate(item.id, { actual_cost: Number(e.target.value) })} className={inputBase} />
-                  </td>
-
-                  <td className={cellBase}>
-                    <input type="number" step="0.01" value={item.deposit_received} onFocus={() => onSelect(item.id)} onClick={(e) => e.stopPropagation()} onChange={(e) => onUpdate(item.id, { deposit_received: Number(e.target.value) })} className={inputBase} />
-                  </td>
-
-                  <td className={cellBase}>
-                    <input type="text" value={item.payment_status} onFocus={() => onSelect(item.id)} onClick={(e) => e.stopPropagation()} onChange={(e) => onUpdate(item.id, { payment_status: e.target.value })} className={inputBase} placeholder="payment_status..." />
-                  </td>
-
-                  <td className={cellBase}>
-                    <input type="number" step="0.25" value={item.total_hours} onFocus={() => onSelect(item.id)} onClick={(e) => e.stopPropagation()} onChange={(e) => onUpdate(item.id, { total_hours: Number(e.target.value) })} className={inputBase} />
-                  </td>
-
-                  <td className={cellBase}>
-                    <textarea
-                      rows={1}
-                      value={item.technology_stack}
-                      onFocus={() => onSelect(item.id)}
-                      onClick={(e) => e.stopPropagation()}
-                      onChange={(e) => onUpdate(item.id, { technology_stack: e.target.value })}
-                      className={`${textareaBase} h-8 overflow-hidden`}
-                      placeholder="React, Node.js..."
-                    />
-                  </td>
-
-                  <td className={cellBase}>
-                    <input type="text" value={item.domain_url} onFocus={() => onSelect(item.id)} onClick={(e) => e.stopPropagation()} onChange={(e) => onUpdate(item.id, { domain_url: e.target.value })} className={inputBase} placeholder="https://..." />
-                  </td>
-
-                  <td className={cellBase}>
-                    <input type="text" value={item.production_url} onFocus={() => onSelect(item.id)} onClick={(e) => e.stopPropagation()} onChange={(e) => onUpdate(item.id, { production_url: e.target.value })} className={inputBase} placeholder="https://..." />
-                  </td>
-
-                  <td className={cellBase}>
-                    <input type="date" value={item.start_date} onFocus={() => onSelect(item.id)} onClick={(e) => e.stopPropagation()} onChange={(e) => onUpdate(item.id, { start_date: e.target.value })} className={inputBase} />
-                  </td>
-
-                  <td className={cellBase}>
-                    <input type="date" value={item.deadline} onFocus={() => onSelect(item.id)} onClick={(e) => e.stopPropagation()} onChange={(e) => onUpdate(item.id, { deadline: e.target.value })} className={inputBase} />
-                  </td>
-
-                  <td className={cellBase}>
-                    <input type="datetime-local" value={item.completed_at ? item.completed_at.slice(0, 16) : ''} onFocus={() => onSelect(item.id)} onClick={(e) => e.stopPropagation()} onChange={(e) => onUpdate(item.id, { completed_at: e.target.value ? new Date(e.target.value).toISOString() : '' })} className={inputBase} />
                   </td>
 
                   <td className={cellBase}>
                     <textarea
                       rows={2}
-                      value={item.description}
+                      value={item.requirements ?? ''}
                       onFocus={() => onSelect(item.id)}
                       onClick={(e) => e.stopPropagation()}
-                      onChange={(e) => onUpdate(item.id, { description: e.target.value })}
-                      className={`${textareaBase} h-10 overflow-hidden`}
-                      placeholder="Mô tả..."
+                      onChange={(e) => canEditRow && onUpdate(item.id, { requirements: e.target.value })}
+                      disabled={!canEditRow}
+                      className={`${input2} min-h-10 resize-y overflow-auto ${disabledClass}`}
+                      placeholder="Yêu cầu..."
                     />
                   </td>
 
-                  <td className={`${cellBase} text-l text-gray-600 whitespace-nowrap`}>{item.created_at ? new Date(item.created_at).toLocaleString('vi-VN') : ''}</td>
-                  <td className={`${cellBase} text-l text-gray-600 whitespace-nowrap`}>{item.updated_at ? new Date(item.updated_at).toLocaleString('vi-VN') : ''}</td>
+                  <td className={cellBase}>
+                    <textarea
+                      value={item.source ?? ''}
+                      rows={2}
+                      onFocus={() => onSelect(item.id)}
+                      onClick={(e) => e.stopPropagation()}
+                      onChange={(e) => canEditRow && onUpdate(item.id, { source: e.target.value })}
+                      disabled={!canEditRow}
+                      className={`${inputBase} resize-y overflow-auto ${disabledClass}`}
+                      placeholder="Source..."
+                    />
+                  </td>
+
+                  <td className={cellBase}>
+                    <input
+                      type="date"
+                      value={item.start_date}
+                      onFocus={() => onSelect(item.id)}
+                      onClick={(e) => e.stopPropagation()}
+                      onChange={(e) => canEditRow && onUpdate(item.id, { start_date: e.target.value })}
+                      disabled={!canEditRow}
+                      className={`${inputBase} ${disabledClass}`}
+                    />
+                  </td>
+
+                  <td className={cellBase}>
+                    <input
+                      type="date"
+                      value={item.deadline}
+                      onFocus={() => onSelect(item.id)}
+                      onClick={(e) => e.stopPropagation()}
+                      onChange={(e) => canEditRow && onUpdate(item.id, { deadline: e.target.value })}
+                      disabled={!canEditRow}
+                      className={`${inputBase} ${disabledClass}`}
+                    />
+                  </td>
+
+                  <td className={cellBase}>
+                    <div className="flex flex-col gap-1">
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="number"
+                          step="1"
+                          min={0}
+                          max={100}
+                          value={Number.isFinite(Number(item.progress_percent)) ? Number(item.progress_percent) : 0}
+                          onFocus={() => onSelect(item.id)}
+                          onClick={(e) => e.stopPropagation()}
+                          onChange={(e) => canEditRow && onUpdate(item.id, { progress_percent: Number(e.target.value) })}
+                          disabled={!canEditRow}
+                          className={`${inputBase} w-16 text-right ${disabledClass}`}
+                          placeholder="0"
+                        />
+                        <span className="text-gray-400 text-xs">%</span>
+                      </div>
+                      <div className="w-full h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                        <div 
+                          className={`h-full rounded-full transition-all duration-500 ${
+                            (item.progress_percent || 0) >= 100 ? 'bg-green-500' : 
+                            (item.progress_percent || 0) > 75 ? 'bg-teal-500' : 
+                            (item.progress_percent || 0) > 50 ? 'bg-blue-500' : 
+                            (item.progress_percent || 0) > 25 ? 'bg-orange-400' : 'bg-gray-300'
+                          }`}
+                          style={{ width: `${Math.min(100, Math.max(0, item.progress_percent || 0))}%` }}
+                        />
+                      </div>
+                    </div>
+                  </td>
+
+                  <td className={cellBase}>
+                    <AccountIdPicker
+                      valueId={item.sale_id}
+                      accountsById={accountsById}
+                      options={saleAccounts}
+                      placeholder="Chọn Sale..."
+                      datalistId={`sale-${item.id}`}
+                      onChangeId={(next) => canEditRow && onUpdate(item.id, { sale_id: next })}
+                      className={`${inputBase} ${disabledClass}`}
+                      tokenForAccount={accountValueToken}
+                    />
+                  </td>
+
+                  <td className={cellBase}>
+                    <input
+                      type="text"
+                      value={item.assignee ?? ''}
+                      onFocus={() => onSelect(item.id)}
+                      onClick={(e) => e.stopPropagation()}
+                      onChange={(e) => canEditRow && onUpdate(item.id, { assignee: e.target.value })}
+                      onBlur={(e) => canEditRow && onUpdate(item.id, { assignee: normalizeMultiUsers(e.target.value) })}
+                      disabled={!canEditRow}
+                      className={`${inputBase} ${disabledClass}`}
+                      placeholder="Người làm..."
+                      list={`assignee-${item.id}`}
+                    />
+                    <datalist id={`assignee-${item.id}`}>
+                      {allAccounts.map((a) => (
+                        <option key={a.id} value={a.username || a.name} />
+                      ))}
+                    </datalist>
+                  </td>
+
+                  <td className={cellBase}>
+                    <input
+                      type="number"
+                      step="0.25"
+                      value={sumTaskHours(item.id) ?? (Number.isFinite(Number(item.total_hours)) ? Number(item.total_hours) : 0)}
+                      readOnly
+                      className={`${inputBase} bg-gray-50/70 text-gray-500 cursor-default`}
+                      title="Tổng giờ công (tính từ tasks)"
+                    />
+                  </td>
+
+                  <td className={cellBase}>
+                    <AccountTextPicker
+                      value={item.tech_user ?? ''}
+                      options={devAccounts}
+                      placeholder="Chọn Dev..."
+                      datalistId={`dev-${item.id}`}
+                      onChange={(next) => canEditRow && onUpdate(item.id, { tech_user: next })}
+                      className={`${inputBase} ${disabledClass}`}
+                    />
+                  </td>
+
+                  <td className={cellBase}>
+                    <AccountTextPicker
+                      value={item.customer_sender ?? ''}
+                      options={allAccounts}
+                      placeholder="Chọn user..."
+                      datalistId={`sender-${item.id}`}
+                      onChange={(next) => canEditRow && onUpdate(item.id, { customer_sender: next })}
+                      className={`${inputBase} ${disabledClass}`}
+                    />
+                  </td>
 
                   <td className={`${cellBase} text-center align-middle`}>
                     <button
                       type="button"
-                      className="cursor-pointer p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all"
+                      className={`cursor-pointer p-1.5 rounded-md transition-all ${canDeleteRow ? 'text-gray-400 hover:text-red-600 hover:bg-red-50 opacity-0 group-hover:opacity-100 focus:opacity-100' : 'text-gray-200 cursor-not-allowed opacity-0 group-hover:opacity-100 focus:opacity-100'}`}
                       onClick={(e) => {
                         e.stopPropagation();
+                        if (!canDeleteRow) return;
                         onDelete(item.id);
                       }}
                       title="Xóa dự án"
+                      disabled={!canDeleteRow}
                     >
-                      <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                         <polyline points="3 6 5 6 21 6"></polyline>
                         <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
                       </svg>
                     </button>
-                  </td>
-                  </tr>
-                </Fragment>
-              ))
+                      </td>
+                    </tr>
+                  </Fragment>
+                );
+              })
             )}
           </tbody>
         </table>
@@ -545,12 +575,23 @@ export default function ProjectsTable({
             expandedProject={expandedProject}
             layout={taskPanelLayout}
             tasks={tasksByProjectId[expandedProject.id] ?? []}
+            accounts={accounts}
             isLoading={taskLoadingByProjectId[expandedProject.id] ?? false}
             draftTask={getDraftTask(expandedProject.id)}
             onDraftChange={(patch) => setDraftTask(expandedProject.id, patch)}
-            onAddTask={() => addTask(expandedProject.id)}
-            onUpdateTask={(taskId, patch) => updateTask(expandedProject.id, taskId, patch)}
-            onDeleteTask={(taskId) => deleteTask(expandedProject.id, taskId)}
+            readOnly={readOnly || !canEditTasksInProject(expandedProject)}
+            onAddTask={() => {
+              if (readOnly || !canEditTasksInProject(expandedProject)) return;
+              addTask(expandedProject.id);
+            }}
+            onUpdateTask={(taskId, patch) => {
+              if (readOnly || !canEditTasksInProject(expandedProject)) return;
+              updateTask(expandedProject.id, taskId, patch);
+            }}
+            onDeleteTask={(taskId) => {
+              if (readOnly || !canEditTasksInProject(expandedProject)) return;
+              deleteTask(expandedProject.id, taskId);
+            }}
           />
         )}
       </div>

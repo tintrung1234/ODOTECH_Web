@@ -4,6 +4,10 @@ async function listTasksByProjectId(projectId) {
   return projectTasksRepository.listTasksByProjectId(projectId);
 }
 
+async function getTaskById(projectId, taskId) {
+  return projectTasksRepository.getTaskById(projectId, taskId);
+}
+
 async function createTask(projectId, input) {
   return projectTasksRepository.createTask(projectId, input);
 }
@@ -18,6 +22,7 @@ async function deleteTask(projectId, taskId) {
 
 module.exports = {
   listTasksByProjectId,
+  getTaskById,
   createTask,
   updateTask,
   deleteTask,

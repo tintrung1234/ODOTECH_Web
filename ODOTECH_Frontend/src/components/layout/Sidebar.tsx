@@ -16,7 +16,7 @@ export default function Sidebar() {
       {/* Logo */}
       <div className="p-4 border-b border-gray-100">
         <div className="flex items-center gap-2">
-          <img src={logo} alt="ODOTECH" className="w-full h-10 object-contain" />
+          <img src={logo} alt="ODOTECH" className="w-full h-20 object-contain" />
         </div>
       </div>
 

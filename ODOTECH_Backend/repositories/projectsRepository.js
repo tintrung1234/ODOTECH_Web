@@ -1,18 +1,47 @@
 const { pool } = require("../config/postgres");
 const projectModel = require("../models/project");
 
-async function listProjects({ limit, offset, q, status }) {
+async function listProjects({ limit, offset, q, status, scope }) {
   const where = [];
   const params = [];
 
   if (q) {
     params.push(`%${q.toLowerCase()}%`);
-    where.push(`(LOWER(name) LIKE $${params.length} OR LOWER(project_code) LIKE $${params.length})`);
+    where.push(`(LOWER(p.name) LIKE $${params.length} OR LOWER(p.project_code) LIKE $${params.length})`);
   }
 
   if (status) {
     params.push(status);
-    where.push(`status = $${params.length}`);
+    where.push(`p.status = $${params.length}`);
+  }
+
+  if (scope && scope.saleId !== undefined && scope.saleId !== null) {
+    params.push(scope.saleId);
+    where.push(`p.sale_id = $${params.length}`);
+  }
+
+  if (scope && scope.pmId !== undefined && scope.pmId !== null) {
+    params.push(scope.pmId);
+    where.push(`p.pm_id = $${params.length}`);
+  }
+
+  if (scope && Array.isArray(scope.memberTokens) && scope.memberTokens.length > 0) {
+    const tokens = scope.memberTokens
+      .map((x) => String(x || '').trim())
+      .filter(Boolean)
+      .slice(0, 10);
+
+    if (tokens.length > 0) {
+      const sub = [];
+      for (const t of tokens) {
+        params.push(`%${t.toLowerCase()}%`);
+        const idx = params.length;
+        sub.push(
+          `(LOWER(COALESCE(p.tech_user,'')) LIKE $${idx} OR LOWER(COALESCE(p.assignee,'')) LIKE $${idx})`
+        );
+      }
+      where.push(`(${sub.join(' OR ')})`);
+    }
   }
 
   const whereSql = where.length ? `WHERE ${where.join(" AND ")}` : "";
@@ -23,14 +52,21 @@ async function listProjects({ limit, offset, q, status }) {
   const offsetParam = params.length;
 
   const listSql = `
-    SELECT *
-    FROM projects
+    SELECT
+      p.*,
+      COALESCE(ts.total_hours, 0) AS total_hours
+    FROM projects p
+    LEFT JOIN (
+      SELECT project_id, SUM(COALESCE(gio_cong, 0))::numeric AS total_hours
+      FROM project_tasks
+      GROUP BY project_id
+    ) ts ON ts.project_id = p.id
     ${whereSql}
-    ORDER BY id DESC
+    ORDER BY p.id DESC
     LIMIT $${limitParam} OFFSET $${offsetParam}
   `;
 
-  const countSql = `SELECT COUNT(*)::int AS total FROM projects ${whereSql}`;
+  const countSql = `SELECT COUNT(*)::int AS total FROM projects p ${whereSql}`;
 
   const [listResult, countResult] = await Promise.all([
     pool.query(listSql, params),
@@ -48,9 +84,17 @@ async function listProjects({ limit, offset, q, status }) {
 async function getProjectById(projectId) {
   const result = await pool.query(
     `
-      SELECT *
-      FROM projects
-      WHERE id = $1
+      SELECT
+        p.*,
+        COALESCE(ts.total_hours, 0) AS total_hours
+      FROM projects p
+      LEFT JOIN (
+        SELECT project_id, SUM(COALESCE(gio_cong, 0))::numeric AS total_hours
+        FROM project_tasks
+        WHERE project_id = $1
+        GROUP BY project_id
+      ) ts ON ts.project_id = p.id
+      WHERE p.id = $1
       LIMIT 1
     `,
     [projectId]
@@ -77,16 +121,21 @@ async function createProject(input) {
         actual_cost,
         deposit_received,
         payment_status,
-        total_hours,
         technology_stack,
         domain_url,
         production_url,
         start_date,
         deadline,
         completed_at,
-        description
+        description,
+        requirements,
+        source,
+        progress_percent,
+        assignee,
+        tech_user,
+        customer_sender
       ) VALUES (
-        $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21
+        $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26
       )
       RETURNING *
     `,
@@ -104,7 +153,6 @@ async function createProject(input) {
       input.actual_cost,
       input.deposit_received,
       input.payment_status,
-      input.total_hours,
       input.technology_stack,
       input.domain_url,
       input.production_url,
@@ -112,6 +160,12 @@ async function createProject(input) {
       projectModel.toDbDate(input.deadline),
       projectModel.toDbTimestamp(input.completed_at),
       input.description,
+      input.requirements,
+      input.source,
+      input.progress_percent,
+      input.assignee,
+      input.tech_user,
+      input.customer_sender,
     ]
   );
 
@@ -136,14 +190,19 @@ async function updateProject(projectId, input) {
         actual_cost = $12,
         deposit_received = $13,
         payment_status = $14,
-        total_hours = $15,
-        technology_stack = $16,
-        domain_url = $17,
-        production_url = $18,
-        start_date = $19,
-        deadline = $20,
-        completed_at = $21,
-        description = $22,
+        technology_stack = $15,
+        domain_url = $16,
+        production_url = $17,
+        start_date = $18,
+        deadline = $19,
+        completed_at = $20,
+        description = $21,
+        requirements = $22,
+        source = $23,
+        progress_percent = $24,
+        assignee = $25,
+        tech_user = $26,
+        customer_sender = $27,
         updated_at = NOW()
       WHERE id = $1
       RETURNING *
@@ -163,7 +222,6 @@ async function updateProject(projectId, input) {
       input.actual_cost,
       input.deposit_received,
       input.payment_status,
-      input.total_hours,
       input.technology_stack,
       input.domain_url,
       input.production_url,
@@ -171,6 +229,12 @@ async function updateProject(projectId, input) {
       projectModel.toDbDate(input.deadline),
       projectModel.toDbTimestamp(input.completed_at),
       input.description,
+      input.requirements,
+      input.source,
+      input.progress_percent,
+      input.assignee,
+      input.tech_user,
+      input.customer_sender,
     ]
   );
 

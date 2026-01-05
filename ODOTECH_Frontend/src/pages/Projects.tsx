@@ -1,12 +1,19 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import ConfirmDeleteModal from '../components/accountsDasboard/ConfirmDeleteModal';
 
 import ProjectsDashboard from '../components/projectsDasboard/ProjectsDashboard';
 import ProjectsTable from '../components/projectsDasboard/ProjectsTable';
 import ProjectsToolbar from '../components/projectsDasboard/ProjectsToolbar';
-import type { ProjectManagementItem } from '../components/projectsDasboard/interface/type';
-import { buildAuthHeaders } from '../utils/auth';
+import type {
+  Account,
+  ProjectManagementItem,
+  ProjectMgmtStatus,
+  ProjectType,
+} from '../components/projectsDasboard/interface/type';
+import { buildAuthHeaders, getTokenUser, normalizeRole } from '../utils/auth';
+
+type ListTab = 'all' | 'done';
 
 type ToastType = 'success' | 'error';
 type ToastState = { open: boolean; type: ToastType; message: string };
@@ -25,11 +32,11 @@ const createDraftProject = (): Omit<ProjectManagementItem, 'id' | 'created_at' |
   return {
     project_code: code,
     project_type: '',
-    name: 'New website',
+    name: 'New project',
     client_id: null,
     sale_id: null,
     pm_id: null,
-    status: 'not_started',
+    status: 'Đợi sắp xếp',
     priority: 'medium',
     budget: 0,
     contract_value: 0,
@@ -44,13 +51,29 @@ const createDraftProject = (): Omit<ProjectManagementItem, 'id' | 'created_at' |
     deadline: '',
     completed_at: '',
     description: '',
+
+    requirements: '',
+    source: '',
+    progress_percent: 0,
+    assignee: '',
+    tech_user: '',
+    customer_sender: '',
   };
 };
 
 export default function Projects() {
   const [projects, setProjects] = useState<ProjectManagementItem[]>([]);
+  const [accounts, setAccounts] = useState<Account[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
+  const [projectType, setProjectType] = useState<ProjectType | ''>('');
+  const [projectStatus, setProjectStatus] = useState<ProjectMgmtStatus | ''>('');
   const [selectedId, setSelectedId] = useState<number | null>(null);
+
+  const [selectedSalesManagerTab, setSelectedSalesManagerTab] = useState<string>('');
+  const [selectedSaleTab, setSelectedSaleTab] = useState<string>('');
+  const [selectedDevTab, setSelectedDevTab] = useState<string>('');
+  const [selectedDevManagerTab, setSelectedDevManagerTab] = useState<string>('');
+  const [listTab, setListTab] = useState<ListTab>('all');
 
   const [loading, setLoading] = useState<boolean>(true);
   const [toast, setToast] = useState<ToastState>({ open: false, type: 'success', message: '' });
@@ -61,6 +84,96 @@ export default function Projects() {
   const [deleteTargetId, setDeleteTargetId] = useState<number | null>(null);
 
   const today = useMemo(() => new Date(), []);
+
+  const tokenUser = useMemo(() => getTokenUser(), []);
+  const uid = typeof tokenUser?.uid === 'number' ? tokenUser.uid : Number(tokenUser?.uid ?? NaN);
+  const role = useMemo(() => normalizeRole(tokenUser?.role), [tokenUser?.role]);
+
+  const readOnly = role === 'support';
+  const canCreate = !readOnly && (role === 'admin' || role === 'head_sales' || role === 'head_tech' || role === 'sales_manager' || role === 'dev_manager');
+
+  const currentAccount = useMemo(() => {
+    if (!Number.isFinite(uid)) return null;
+    return accounts.find((a) => a.id === uid) ?? null;
+  }, [accounts, uid]);
+
+  const currentIdentityTokens = useMemo(() => {
+    const tokens = new Set<string>();
+    if (Number.isFinite(uid)) tokens.add(String(uid));
+    const name = (currentAccount?.name || tokenUser?.name || '').trim();
+    const username = (currentAccount?.username || tokenUser?.username || '').trim();
+    if (name) tokens.add(name);
+    if (username) tokens.add(username);
+    return Array.from(tokens);
+  }, [currentAccount?.name, currentAccount?.username, tokenUser?.name, tokenUser?.username, uid]);
+
+  const isDoneStatus = (status: ProjectMgmtStatus | string) => {
+    const s = String(status || '').trim();
+    return (
+      s === 'completed' ||
+      s === 'Kết thúc hài lòng' ||
+      s === 'Kết thúc thất vọng' ||
+      s === 'Hoàn thành đợi tất toán'
+    );
+  };
+
+  const projectHasMember = (p: ProjectManagementItem, accountOrTokens: Account | string[]) => {
+    const tokens = Array.isArray(accountOrTokens)
+      ? accountOrTokens
+      : [String(accountOrTokens.id), (accountOrTokens.username || '').trim(), (accountOrTokens.name || '').trim()].filter(Boolean);
+
+    const hay = [p.tech_user ?? '', p.assignee ?? ''].join(',').toLowerCase();
+    return tokens.some((t) => t && hay.includes(String(t).toLowerCase()));
+  };
+
+  const canViewProject = useCallback(
+    (p: ProjectManagementItem) => {
+      if (role === 'admin' || role === 'support' || role === 'head_sales' || role === 'head_tech') return true;
+      if (!Number.isFinite(uid)) return false;
+      if (role === 'sale') return p.sale_id === uid;
+      if (role === 'sales_manager') return p.pm_id === uid;
+      if (role === 'dev_manager') return p.pm_id === uid;
+      if (role === 'dev') return projectHasMember(p, currentIdentityTokens);
+      return false;
+    },
+    [currentIdentityTokens, role, uid]
+  );
+
+  const canEditProject = useCallback(
+    (p: ProjectManagementItem) => {
+      if (readOnly) return false;
+      if (role === 'admin' || role === 'head_sales' || role === 'head_tech') return true;
+      if (!Number.isFinite(uid)) return false;
+      if (role === 'sale') return p.sale_id === uid;
+      if (role === 'sales_manager') return p.pm_id === uid;
+      if (role === 'dev_manager') return p.pm_id === uid;
+      return false;
+    },
+    [readOnly, role, uid]
+  );
+
+  const canDeleteProject = useCallback(
+    (p: ProjectManagementItem) => {
+      void p;
+      if (readOnly) return false;
+      // Keep delete stricter.
+      if (role === 'admin' || role === 'head_sales' || role === 'head_tech') return true;
+      return false;
+    },
+    [readOnly, role]
+  );
+
+  const canEditTasksInProject = useCallback(
+    (p: ProjectManagementItem) => {
+      if (readOnly) return false;
+      if (role === 'admin' || role === 'head_sales' || role === 'head_tech') return true;
+      if (!Number.isFinite(uid)) return false;
+      if (role === 'sales_manager' || role === 'dev_manager') return p.pm_id === uid;
+      if (role === 'dev') return projectHasMember(p, currentIdentityTokens);
+      return false;
+    },
+    [currentIdentityTokens, readOnly, role, uid]
+  );
 
   const apiBaseUrl = useMemo(() => {
     const envUrl = import.meta.env.VITE_API_URL as string | undefined;
@@ -113,8 +226,22 @@ export default function Projects() {
     }
   };
 
+  const loadAccounts = async () => {
+    try {
+      const res = await fetch(`${apiBaseUrl}/api/accounts?limit=200`, { headers: buildAuthHeaders() });
+      if (!res.ok) throw new Error(await readErrorMessage(res));
+      const json = await res.json();
+      const items = Array.isArray(json) ? json : (json.items ?? []);
+      setAccounts(items);
+    } catch (e: unknown) {
+      // Non-blocking for the page, but user-pickers will be empty.
+      showToast('error', e instanceof Error ? e.message : 'Không tải được danh sách nhân sự');
+    }
+  };
+
   useEffect(() => {
     void loadProjects();
+    void loadAccounts();
     const pendingSaves = pendingSaveTimersRef.current;
     return () => {
       clearToastTimers();
@@ -126,10 +253,118 @@ export default function Projects() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [apiBaseUrl]);
 
+  const salesManagerTabs = useMemo(() => {
+    if (!(role === 'head_sales' || role === 'admin' || role === 'support')) return [];
+    const managers = accounts
+      .filter((a) => normalizeRole(a.role_system) === 'sales_manager')
+      .sort((a, b) => String(a.name || '').localeCompare(String(b.name || ''), 'vi'));
+    return managers.map((a) => String(a.id));
+  }, [accounts, role]);
+
+  const saleTabs = useMemo(() => {
+    if (!(role === 'sales_manager' || role === 'head_sales' || role === 'admin' || role === 'support')) return [];
+
+    // Head/admin/support: show all sales from accounts.
+    if (role === 'head_sales' || role === 'admin' || role === 'support') {
+      const sales = accounts
+        .filter((a) => normalizeRole(a.role_system) === 'sale')
+        .sort((a, b) => String(a.name || '').localeCompare(String(b.name || ''), 'vi'));
+      return sales.map((a) => String(a.id));
+    }
+
+    // Sales manager: tabs only for their sales (sale_id) in projects they manage.
+    if (role === 'sales_manager' && Number.isFinite(uid)) {
+      const set = new Set<string>();
+      for (const p of projects) {
+        if (!canViewProject(p)) continue;
+        if (p.pm_id !== uid) continue;
+        const saleId = String(p.sale_id ?? '').trim();
+        if (saleId) set.add(saleId);
+      }
+      return Array.from(set).sort((a, b) => a.localeCompare(b, 'vi'));
+    }
+
+    return [];
+  }, [accounts, canViewProject, projects, role, uid]);
+
+  const devTabs = useMemo(() => {
+    if (!(role === 'dev_manager' || role === 'head_tech' || role === 'admin' || role === 'support')) return [];
+    const devs = accounts
+      .filter((a) => normalizeRole(a.role_system) === 'dev')
+      .sort((a, b) => String(a.name || '').localeCompare(String(b.name || ''), 'vi'));
+    return devs.map((a) => String(a.id));
+  }, [accounts, role]);
+
+  const devManagerTabs = useMemo(() => {
+    if (!(role === 'head_tech' || role === 'admin' || role === 'support')) return [];
+    const managers = accounts
+      .filter((a) => normalizeRole(a.role_system) === 'dev_manager')
+      .sort((a, b) => String(a.name || '').localeCompare(String(b.name || ''), 'vi'));
+    return managers.map((a) => String(a.id));
+  }, [accounts, role]);
+
+  useEffect(() => {
+    if (!selectedSalesManagerTab) return;
+    if (salesManagerTabs.length === 0) return;
+    if (!salesManagerTabs.includes(selectedSalesManagerTab)) setSelectedSalesManagerTab('');
+  }, [salesManagerTabs, selectedSalesManagerTab]);
+
+  useEffect(() => {
+    if (!selectedSaleTab) return;
+    if (saleTabs.length === 0) return;
+    if (!saleTabs.includes(selectedSaleTab)) setSelectedSaleTab('');
+  }, [saleTabs, selectedSaleTab]);
+
+  useEffect(() => {
+    if (!selectedDevTab) return;
+    if (devTabs.length === 0) return;
+    if (!devTabs.includes(selectedDevTab)) setSelectedDevTab('');
+  }, [devTabs, selectedDevTab]);
+
+  useEffect(() => {
+    if (!selectedDevManagerTab) return;
+    if (devManagerTabs.length === 0) return;
+    if (!devManagerTabs.includes(selectedDevManagerTab)) setSelectedDevManagerTab('');
+  }, [devManagerTabs, selectedDevManagerTab]);
+
+  const visibleProjects = useMemo(() => {
+    let list = projects.filter(canViewProject);
+
+    // Head tech/admin/support: allow filtering by each dev_manager (pm_id).
+    if (selectedDevManagerTab) {
+      list = list.filter((p) => String(p.pm_id ?? '').trim() === selectedDevManagerTab);
+    }
+
+    if (role === 'dev' && listTab === 'done') {
+      list = list.filter((p) => isDoneStatus(p.status));
+    }
+
+    // Sales manager select filters by pm_id.
+    if (selectedSalesManagerTab) {
+      list = list.filter((p) => String(p.pm_id ?? '').trim() === selectedSalesManagerTab);
+    }
+
+    // Sale select filters by sale_id.
+    if (selectedSaleTab) {
+      list = list.filter((p) => String(p.sale_id ?? '').trim() === selectedSaleTab);
+    }
+
+    // Dev tabs (manager view): filter by project member fields.
+    if (selectedDevTab) {
+      const selectedDev = accounts.find((a) => String(a.id) === selectedDevTab);
+      if (selectedDev) list = list.filter((p) => projectHasMember(p, selectedDev));
+    }
+
+    return list;
+  }, [accounts, projects, role, listTab, selectedSaleTab, selectedSalesManagerTab, selectedDevTab, selectedDevManagerTab, canViewProject]);
+
   const filteredProjects = useMemo(() => {
     const term = searchTerm.trim().toLowerCase();
-    if (!term) return projects;
-    return projects.filter((item) => {
+    return visibleProjects.filter((item) => {
+      if (projectType && item.project_type !== projectType) return false;
+      if (projectStatus && item.status !== projectStatus) return false;
+
+      if (!term) return true;
       return (
         String(item.id).includes(term) ||
         item.project_code.toLowerCase().includes(term) ||
@@ -138,7 +373,7 @@ export default function Projects() {
         String(item.pm_id ?? '').includes(term)
       );
     });
-  }, [projects, searchTerm]);
+  }, [visibleProjects, searchTerm, projectType, projectStatus]);
 
   const toApiPayload = (p: ProjectManagementItem): Omit<ProjectManagementItem, 'id' | 'created_at' | 'updated_at'> => ({
     project_code: p.project_code,
@@ -162,6 +397,13 @@ export default function Projects() {
     deadline: p.deadline,
     completed_at: p.completed_at,
     description: p.description,
+
+    requirements: p.requirements ?? '',
+    source: p.source ?? '',
+    progress_percent: p.progress_percent ?? 0,
+    assignee: p.assignee ?? '',
+    tech_user: p.tech_user ?? '',
+    customer_sender: p.customer_sender ?? '',
   });
 
   const scheduleSave = (id: number, nextProject: ProjectManagementItem) => {
@@ -198,7 +440,7 @@ export default function Projects() {
   };
 
   return (
-    <main className="flex-1 min-w-0 p-6">
+    <main className="flex-1 min-w-0 px-6 py-3">
       <div className="bg-white rounded-2xl p-6 shadow-sm">
         <h1 className="text-3xl font-extrabold text-gray-900 mb-5">Quản lý dự án</h1>
 
@@ -224,13 +466,125 @@ export default function Projects() {
           <div className="text-gray-600">Đang tải dữ liệu...</div>
         ) : (
           <>
-            <ProjectsDashboard projects={projects}/>
+            <ProjectsDashboard projects={filteredProjects} role={role} today={today} accounts={accounts} />
+
+            {(salesManagerTabs.length > 0 || saleTabs.length > 0 || devTabs.length > 0 || devManagerTabs.length > 0 || role === 'dev') && (
+              <div className="mt-4 flex flex-wrap items-center gap-3">
+                {role === 'dev' && (
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setListTab('all')}
+                      className={`h-9 px-3 rounded-lg border text-sm ${listTab === 'all' ? 'bg-teal-600 text-white border-teal-600' : 'bg-white text-gray-700 border-gray-300'}`}
+                    >
+                      Tất cả
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setListTab('done')}
+                      className={`h-9 px-3 rounded-lg border text-sm ${listTab === 'done' ? 'bg-teal-600 text-white border-teal-600' : 'bg-white text-gray-700 border-gray-300'}`}
+                    >
+                      Đã done
+                    </button>
+                  </div>
+                )}
+
+                {salesManagerTabs.length > 0 && (
+                  <select
+                    value={selectedSalesManagerTab}
+                    onChange={(e) => setSelectedSalesManagerTab(e.target.value)}
+                    className="h-9 px-3 border border-gray-300 rounded-lg bg-white text-sm text-gray-700 outline-none focus:border-gray-600"
+                    aria-label="Tab Quản lý sale"
+                  >
+                    <option value="">Tất cả quản lý sale</option>
+                    {salesManagerTabs.map((id) => {
+                      const a = accounts.find((x) => String(x.id) === id);
+                      const label = a ? (a.name || a.username || `#${a.id}`) : `#${id}`;
+                      return (
+                        <option key={id} value={id}>
+                          {label}
+                        </option>
+                      );
+                    })}
+                  </select>
+                )}
+
+                {saleTabs.length > 0 && (
+                  <select
+                    value={selectedSaleTab}
+                    onChange={(e) => setSelectedSaleTab(e.target.value)}
+                    className="h-9 px-3 border border-gray-300 rounded-lg bg-white text-sm text-gray-700 outline-none focus:border-gray-600"
+                    aria-label="Tab Sale"
+                  >
+                    <option value="">Tất cả sale</option>
+                    {saleTabs.map((id) => {
+                      const a = accounts.find((x) => String(x.id) === id);
+                      const label = a ? (a.name || a.username || `#${a.id}`) : `#${id}`;
+                      return (
+                        <option key={id} value={id}>
+                          {label}
+                        </option>
+                      );
+                    })}
+                  </select>
+                )}
+
+                {devManagerTabs.length > 0 && (
+                  <select
+                    value={selectedDevManagerTab}
+                    onChange={(e) => setSelectedDevManagerTab(e.target.value)}
+                    className="h-9 px-3 border border-gray-300 rounded-lg bg-white text-sm text-gray-700 outline-none focus:border-gray-600"
+                    aria-label="Tab Quản lý dev"
+                  >
+                    <option value="">Tất cả quản lý dev</option>
+                    {devManagerTabs.map((id) => {
+                      const a = accounts.find((x) => String(x.id) === id);
+                      const label = a ? (a.name || a.username || `#${a.id}`) : `#${id}`;
+                      return (
+                        <option key={id} value={id}>
+                          {label}
+                        </option>
+                      );
+                    })}
+                  </select>
+                )}
+
+                {devTabs.length > 0 && (
+                  <select
+                    value={selectedDevTab}
+                    onChange={(e) => setSelectedDevTab(e.target.value)}
+                    className="h-9 px-3 border border-gray-300 rounded-lg bg-white text-sm text-gray-700 outline-none focus:border-gray-600"
+                    aria-label="Tab Dev"
+                  >
+                    <option value="">Tất cả dev</option>
+                    {devTabs.map((id) => {
+                      const a = accounts.find((x) => String(x.id) === id);
+                      const label = a ? (a.name || a.username || `#${a.id}`) : `#${id}`;
+                      return (
+                        <option key={id} value={id}>
+                          {label}
+                        </option>
+                      );
+                    })}
+                  </select>
+                )}
+              </div>
+            )}
 
             <ProjectsToolbar
               searchTerm={searchTerm}
               onChangeSearchTerm={setSearchTerm}
+              projectType={projectType}
+              onChangeProjectType={setProjectType}
+              projectStatus={projectStatus}
+              onChangeProjectStatus={setProjectStatus}
               filteredCount={filteredProjects.length}
+              canCreate={canCreate}
               onCreate={() => {
+                if (!canCreate) {
+                  showToast('error', 'Tài khoản chỉ có quyền xem');
+                  return;
+                }
                 (async () => {
                   try {
                     const res = await fetch(`${apiBaseUrl}/api/projects`, {
@@ -253,12 +607,29 @@ export default function Projects() {
             <div className="mt-4">
               <ProjectsTable
                 projects={filteredProjects}
+                accounts={accounts}
                 selectedId={selectedId}
                 today={today}
                 apiBaseUrl={apiBaseUrl}
                 onSelect={(id) => setSelectedId(id)}
-                onUpdate={patchProject}
+                readOnly={readOnly}
+                canEditProject={canEditProject}
+                canDeleteProject={canDeleteProject}
+                canEditTasksInProject={canEditTasksInProject}
+                onUpdate={(id, patch) => {
+                  const p = projects.find((x) => x.id === id);
+                  if (!p || !canEditProject(p)) {
+                    showToast('error', 'Bạn không có quyền sửa dự án này');
+                    return;
+                  }
+                  patchProject(id, patch);
+                }}
                 onDelete={(id) => {
+                  const p = projects.find((x) => x.id === id);
+                  if (!p || !canDeleteProject(p)) {
+                    showToast('error', 'Bạn không có quyền xóa dự án này');
+                    return;
+                  }
                   setDeleteTargetId(id);
                   setDeleteOpen(true);
                 }}
@@ -278,6 +649,13 @@ export default function Projects() {
         }}
         onConfirm={() => {
           if (!deleteTargetId) return;
+          const p = projects.find((x) => x.id === deleteTargetId);
+          if (!p || !canDeleteProject(p)) {
+            showToast('error', 'Bạn không có quyền xóa dự án này');
+            setDeleteOpen(false);
+            setDeleteTargetId(null);
+            return;
+          }
           (async () => {
             try {
               const res = await fetch(`${apiBaseUrl}/api/projects/${deleteTargetId}`, { method: 'DELETE', headers: buildAuthHeaders() });
