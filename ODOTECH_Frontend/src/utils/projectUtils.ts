@@ -1,14 +1,39 @@
 import type { ProjectPriority, ProjectStatus, ProjectMgmtPriority, ProjectMgmtStatus } from '../components/projectsDasboard/interface/type';
 
 export function statusLabel(status: ProjectStatus | ProjectMgmtStatus) {
+  // New project management statuses (VN)
+  if (status === 'Đợi sắp xếp') return 'Đợi sắp xếp';
+  if (status === 'Đang làm') return 'Đang làm';
+  if (status === 'Chờ thêm thông tin') return 'Chờ thêm thông tin';
+  if (status === 'Đợi khách duyệt - feedback') return 'Đợi khách duyệt - feedback';
+  if (status === 'Hoàn thành đợi tất toán') return 'Hoàn thành đợi tất toán';
+  if (status === 'Đã thông báo thanh toán') return 'Đã thông báo thanh toán';
+  if (status === 'Kết thúc hài lòng') return 'Kết thúc hài lòng';
+  if (status === 'Kết thúc thất vọng') return 'Kết thúc thất vọng';
+  if (status === 'Nhờ sale réo khách') return 'Nhờ sale réo khách';
+
+  // Backward compatibility
   if (status === 'not_started') return 'Chưa bắt đầu';
   if (status === 'in_progress') return 'Đang thực hiện';
   if (status === 'on_hold') return 'Tạm dừng';
   if (status === 'completed') return 'Hoàn thành';
-  return 'Trễ tiến độ';
+  if (status === 'late') return 'Trễ tiến độ';
+  return String(status);
 }
 
-export function statusClassName(status: ProjectStatus) {
+export function statusClassName(status: ProjectStatus | ProjectMgmtStatus) {
+  // New statuses
+  if (status === 'Đợi sắp xếp') return 'bg-slate-100 text-slate-700 border-slate-200';
+  if (status === 'Đang làm') return 'bg-blue-50 text-blue-700 border-blue-200';
+  if (status === 'Chờ thêm thông tin') return 'bg-amber-50 text-amber-700 border-amber-200';
+  if (status === 'Đợi khách duyệt - feedback') return 'bg-purple-50 text-purple-700 border-purple-200';
+  if (status === 'Hoàn thành đợi tất toán') return 'bg-indigo-50 text-indigo-700 border-indigo-200';
+  if (status === 'Đã thông báo thanh toán') return 'bg-cyan-50 text-cyan-700 border-cyan-200';
+  if (status === 'Kết thúc hài lòng') return 'bg-green-50 text-green-700 border-green-200';
+  if (status === 'Kết thúc thất vọng') return 'bg-red-50 text-red-700 border-red-200';
+  if (status === 'Nhờ sale réo khách') return 'bg-pink-50 text-pink-700 border-pink-200';
+
+  // Old statuses
   if (status === 'completed') return 'bg-green-50 text-green-700 border-green-200';
   if (status === 'late') return 'bg-red-50 text-red-700 border-red-200';
   if (status === 'on_hold') return 'bg-yellow-50 text-yellow-800 border-yellow-200';

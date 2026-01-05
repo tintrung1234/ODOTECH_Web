@@ -1,88 +1,44 @@
 const projectsService = require("../services/projectsService");
 
-function toInt(value, fallback) {
-  if (value === null || value === undefined || value === "") return fallback;
-  const parsed = Number.parseInt(String(value), 10);
-  return Number.isFinite(parsed) ? parsed : fallback;
+const { requireUser, getIdentityTokens } = require("../utils/authz");
+
+function canViewProjects(role) {
+  return ["admin", "support", "head_sales", "head_tech", "sales_manager", "dev_manager", "sale", "dev"].includes(role);
 }
 
-function toNumber(value, fallback = 0) {
-  if (value === undefined || value === null || value === "") return fallback;
-  const parsed = Number(value);
-  return Number.isFinite(parsed) ? parsed : fallback;
+function canCreateProject(role) {
+  // Keep in sync with frontend.
+  return ["admin", "head_sales", "head_tech", "sales_manager", "dev_manager"].includes(role);
 }
 
-function toString(value, fallback = "") {
-  if (value === undefined || value === null) return fallback;
-  return String(value);
+function canEditProject(role, uid, project) {
+  if (role === "support") return false;
+  if (["admin", "head_sales", "head_tech"].includes(role)) return true;
+  if (["sales_manager", "dev_manager"].includes(role)) return Number(project?.pm_id) === uid;
+  if (role === "sale") return Number(project?.sale_id) === uid;
+  return false;
 }
 
-function normalizeDate(value) {
-  if (value === undefined || value === null) return "";
-  return String(value).trim();
-}
-
-function normalizeNullableId(value) {
-  if (value === undefined || value === null || value === "") return null;
-  const parsed = Number.parseInt(String(value), 10);
-  return Number.isFinite(parsed) ? parsed : null;
-}
-
-function normalizeProjectInput(body, { requireBasics }) {
-  const project_code = toString(body?.project_code).trim();
-  const name = toString(body?.name).trim();
-
-  if (requireBasics) {
-    if (!project_code) return { error: "project_code is required" };
-    if (!name) return { error: "name is required" };
-  }
-
-  return {
-    value: {
-      project_code,
-      project_type: toString(body?.project_type).trim(),
-      name,
-
-      client_id: normalizeNullableId(body?.client_id),
-      sale_id: normalizeNullableId(body?.sale_id),
-      pm_id: normalizeNullableId(body?.pm_id),
-
-      status: toString(body?.status).trim(),
-      priority: toString(body?.priority).trim(),
-
-      budget: toNumber(body?.budget, 0),
-      contract_value: toNumber(body?.contract_value, 0),
-      actual_cost: toNumber(body?.actual_cost, 0),
-      deposit_received: toNumber(body?.deposit_received, 0),
-
-      payment_status: toString(body?.payment_status).trim(),
-      total_hours: toNumber(body?.total_hours, 0),
-
-      technology_stack: toString(body?.technology_stack).trim(),
-      domain_url: toString(body?.domain_url).trim(),
-      production_url: toString(body?.production_url).trim(),
-
-      start_date: normalizeDate(body?.start_date),
-      deadline: normalizeDate(body?.deadline),
-      completed_at: toString(body?.completed_at).trim(),
-
-      description: toString(body?.description),
-
-      // created_at / updated_at are managed by DB
-      created_at: undefined,
-      updated_at: undefined,
-    },
-  };
+function canDeleteProject(role) {
+  if (role === "support") return false;
+  return ["admin", "head_sales", "head_tech"].includes(role);
 }
 
 async function listProjects(req, res, next) {
   try {
-    const limit = Math.min(Math.max(toInt(req.query.limit, 50), 1), 200);
-    const offset = Math.max(toInt(req.query.offset, 0), 0);
-    const q = typeof req.query.q === "string" ? req.query.q.trim() : "";
-    const status = typeof req.query.status === "string" ? req.query.status.trim() : "";
+    const auth = requireUser(req, { requireUid: true });
+    if (auth.error) return res.status(auth.error.status).json({ message: auth.error.message });
+    const { role, uid } = auth;
+    if (!canViewProjects(role)) return res.status(403).json({ message: "Forbidden" });
 
-    const result = await projectsService.listProjects({ limit, offset, q, status });
+    const { limit = 50, offset = 0, q = "", status = "" } = req.listQuery || {};
+
+    let scope = null;
+    if (role === "sale") scope = { saleId: uid };
+    else if (role === "sales_manager" || role === "dev_manager") scope = { pmId: uid };
+    else if (role === "dev") scope = { memberTokens: getIdentityTokens(req, uid) };
+
+    const result = await projectsService.listProjects({ limit, offset, q, status, scope });
     res.json(result);
   } catch (err) {
     next(err);
@@ -91,14 +47,31 @@ async function listProjects(req, res, next) {
 
 async function getProjectById(req, res, next) {
   try {
-    const id = toInt(req.params.id, NaN);
-    if (!Number.isFinite(id)) {
-      return res.status(400).json({ message: "Invalid project id" });
-    }
+    const auth = requireUser(req, { requireUid: true });
+    if (auth.error) return res.status(auth.error.status).json({ message: auth.error.message });
+    const { role, uid } = auth;
+    if (!canViewProjects(role)) return res.status(403).json({ message: "Forbidden" });
+
+    const id = Number(req.params.id);
 
     const project = await projectsService.getProjectById(id);
     if (!project) {
       return res.status(404).json({ message: "Project not found" });
+    }
+
+    if (["admin", "support", "head_sales", "head_tech"].includes(role)) {
+      return res.json(project);
+    }
+    if (role === "sale" && Number(project.sale_id) !== uid) {
+      return res.status(403).json({ message: "Forbidden" });
+    }
+    if ((role === "sales_manager" || role === "dev_manager") && Number(project.pm_id) !== uid) {
+      return res.status(403).json({ message: "Forbidden" });
+    }
+    if (role === "dev") {
+      const tokens = getIdentityTokens(req, uid).map((t) => t.toLowerCase());
+      const hay = `${project.tech_user || ""},${project.assignee || ""}`.toLowerCase();
+      if (!tokens.some((t) => t && hay.includes(t))) return res.status(403).json({ message: "Forbidden" });
     }
 
     res.json(project);
@@ -109,12 +82,12 @@ async function getProjectById(req, res, next) {
 
 async function createProject(req, res, next) {
   try {
-    const normalized = normalizeProjectInput(req.body, { requireBasics: true });
-    if (normalized.error) {
-      return res.status(400).json({ message: normalized.error });
-    }
+    const auth = requireUser(req);
+    if (auth.error) return res.status(auth.error.status).json({ message: auth.error.message });
+    const { role } = auth;
+    if (!canCreateProject(role)) return res.status(403).json({ message: "Forbidden" });
 
-    const created = await projectsService.createProject(normalized.value);
+    const created = await projectsService.createProject(req.projectInput);
     res.status(201).json(created);
   } catch (err) {
     // Handle unique conflict on project_code
@@ -127,17 +100,22 @@ async function createProject(req, res, next) {
 
 async function updateProject(req, res, next) {
   try {
-    const id = toInt(req.params.id, NaN);
-    if (!Number.isFinite(id)) {
-      return res.status(400).json({ message: "Invalid project id" });
+    const auth = requireUser(req, { requireUid: true });
+    if (auth.error) return res.status(auth.error.status).json({ message: auth.error.message });
+    const { role, uid } = auth;
+    if (role === "support") return res.status(403).json({ message: "Forbidden" });
+
+    const id = Number(req.params.id);
+
+    const existing = await projectsService.getProjectById(id);
+    if (!existing) {
+      return res.status(404).json({ message: "Project not found" });
+    }
+    if (!canEditProject(role, uid, existing)) {
+      return res.status(403).json({ message: "Forbidden" });
     }
 
-    const normalized = normalizeProjectInput(req.body, { requireBasics: true });
-    if (normalized.error) {
-      return res.status(400).json({ message: normalized.error });
-    }
-
-    const updated = await projectsService.updateProject(id, normalized.value);
+    const updated = await projectsService.updateProject(id, req.projectInput);
     if (!updated) {
       return res.status(404).json({ message: "Project not found" });
     }
@@ -153,9 +131,20 @@ async function updateProject(req, res, next) {
 
 async function deleteProject(req, res, next) {
   try {
-    const id = toInt(req.params.id, NaN);
-    if (!Number.isFinite(id)) {
-      return res.status(400).json({ message: "Invalid project id" });
+    const auth = requireUser(req, { requireUid: true });
+    if (auth.error) return res.status(auth.error.status).json({ message: auth.error.message });
+    const { role, uid } = auth;
+    if (!canDeleteProject(role)) return res.status(403).json({ message: "Forbidden" });
+
+    const id = Number(req.params.id);
+
+    const existing = await projectsService.getProjectById(id);
+    if (!existing) {
+      return res.status(404).json({ message: "Project not found" });
+    }
+    // Extra safety: even for head roles we can delete; for managers we currently don't allow at all.
+    if (!canEditProject(role, uid, existing)) {
+      return res.status(403).json({ message: "Forbidden" });
     }
 
     const ok = await projectsService.deleteProject(id);

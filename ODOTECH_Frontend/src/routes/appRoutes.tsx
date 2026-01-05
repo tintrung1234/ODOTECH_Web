@@ -1,7 +1,7 @@
 import type { ReactNode, ReactElement } from 'react';
 import { Navigate } from 'react-router-dom';
 
-import Dashboard from '../pages/Dashboard';
+import Dashboard from '../pages/Accounts';
 import Login from '../pages/Login';
 import Register from '../pages/Register';
 import Projects from '../pages/Projects';

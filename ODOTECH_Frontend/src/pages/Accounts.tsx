@@ -12,7 +12,7 @@ function toLocalIsoDate(date: Date): string {
   return `${year}-${month}-${day}`;
 }
 
-export default function Dashboard() {
+export default function Accounts() {
   const apiBaseUrl = useMemo(() => {
     const envUrl = import.meta.env.VITE_API_URL;
     return (envUrl && envUrl.trim()) ? envUrl.trim().replace(/\/$/, '') : 'http://localhost:5000';
@@ -135,7 +135,7 @@ export default function Dashboard() {
   console.log(accounts);
   
   return (
-    <main className="flex-1 p-6">
+    <main className="flex-1 px-6 py-3">
       <div className="bg-white rounded-2xl p-6 shadow-sm">
         <h1 className="text-3xl font-extrabold text-gray-900 mb-5">Quản lý tài khoản</h1>
 

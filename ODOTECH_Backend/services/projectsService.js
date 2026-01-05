@@ -1,7 +1,7 @@
 const projectsRepository = require("../repositories/projectsRepository");
 
-async function listProjects({ limit, offset, q, status }) {
-  return projectsRepository.listProjects({ limit, offset, q, status });
+async function listProjects({ limit, offset, q, status, scope }) {
+  return projectsRepository.listProjects({ limit, offset, q, status, scope });
 }
 
 async function getProjectById(projectId) {

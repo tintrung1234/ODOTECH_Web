@@ -35,12 +35,30 @@ CREATE TABLE IF NOT EXISTS projects (
 
   description TEXT,
 
+  -- Additional project management fields
+  requirements TEXT,
+  source TEXT,
+  progress_percent NUMERIC(5, 2) NOT NULL DEFAULT 0,
+  assignee TEXT,
+  tech_user TEXT,
+  customer_sender TEXT,
+
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+-- For existing databases, ensure new columns exist
+ALTER TABLE projects ADD COLUMN IF NOT EXISTS requirements TEXT;
+ALTER TABLE projects ADD COLUMN IF NOT EXISTS source TEXT;
+ALTER TABLE projects ADD COLUMN IF NOT EXISTS progress_percent NUMERIC(5, 2) NOT NULL DEFAULT 0;
+ALTER TABLE projects ADD COLUMN IF NOT EXISTS assignee TEXT;
+ALTER TABLE projects ADD COLUMN IF NOT EXISTS tech_user TEXT;
+ALTER TABLE projects ADD COLUMN IF NOT EXISTS customer_sender TEXT;
+
 CREATE INDEX IF NOT EXISTS idx_projects_project_code ON projects(project_code);
 CREATE INDEX IF NOT EXISTS idx_projects_name ON projects(name);
 CREATE INDEX IF NOT EXISTS idx_projects_status ON projects(status);
+
+CREATE INDEX IF NOT EXISTS idx_projects_project_type ON projects(project_type);
 
 COMMIT;

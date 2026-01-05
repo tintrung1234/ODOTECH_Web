@@ -8,6 +8,8 @@ type StatCardProps = {
   suffix?: string;
   icon?: ReactNode;
   color?: StatCardColor;
+  tooltipTitle?: string;
+  tooltipItems?: string[];
 };
 
 const colorClass = (color: StatCardColor | undefined) => {
@@ -64,7 +66,7 @@ const colorClass = (color: StatCardColor | undefined) => {
   }
 };
 
-export default function StatCard({ title, value, suffix, icon, color = 'gray' }: StatCardProps) {
+export default function StatCard({ title, value, suffix, icon, color = 'gray', tooltipTitle, tooltipItems }: StatCardProps) {
   const classes = colorClass(color);
 
   const displayValue =
@@ -72,8 +74,14 @@ export default function StatCard({ title, value, suffix, icon, color = 'gray' }:
       ? value.toLocaleString()
       : value;
 
+  const tooltipLines = (tooltipItems ?? []).map((s) => String(s).trim()).filter(Boolean);
+  const hasTooltip = Boolean((tooltipTitle && tooltipTitle.trim()) || tooltipLines.length > 0);
+
   return (
-    <div className={`relative rounded-xl bg-gradient-to-br ${classes.bgFrom} to-gray-50 border ${classes.border} shadow-sm p-5`}>
+    <div
+      className={`relative rounded-xl bg-gradient-to-br ${classes.bgFrom} to-gray-50 border ${classes.border} shadow-sm p-5 ${hasTooltip ? 'group' : ''}`}
+      tabIndex={hasTooltip ? 0 : undefined}
+    >
       {/* Top accent line */}
       <div
         className={`absolute top-0 left-0 w-full h-[2px] bg-gradient-to-r ${classes.line} to-transparent rounded-t-xl`}
@@ -88,6 +96,29 @@ export default function StatCard({ title, value, suffix, icon, color = 'gray' }:
         <p className={`text-3xl font-semibold tracking-tight ${classes.value}`}>{displayValue}</p>
         {suffix && <span className="text-sm text-gray-500 mb-1">{suffix}</span>}
       </div>
+
+      {hasTooltip && (
+        <div
+          role="tooltip"
+          className="absolute left-0 right-0 top-full mt-2 rounded-lg border border-gray-200 bg-white shadow-lg p-3 opacity-0 invisible transition-opacity duration-150 group-hover:opacity-100 group-hover:visible group-focus-within:opacity-100 group-focus-within:visible z-50 max-h-72 overflow-auto"
+        >
+          {(tooltipTitle && tooltipTitle.trim()) && (
+            <div className="text-xs font-semibold text-gray-800 mb-2">{tooltipTitle}</div>
+          )}
+
+          {tooltipLines.length > 0 ? (
+            <ul className="text-[11px] text-gray-700 space-y-1 break-words">
+              {tooltipLines.map((line, idx) => (
+                <li key={`${idx}-${line}`} className="leading-snug break-words">
+                  {line}
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <div className="text-[11px] text-gray-500">Không có dữ liệu chi tiết.</div>
+          )}
+        </div>
+      )}
     </div>
   );
 }

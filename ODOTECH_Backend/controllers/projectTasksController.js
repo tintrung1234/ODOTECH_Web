@@ -1,52 +1,61 @@
 const projectTasksService = require("../services/projectTasksService");
+const projectsService = require("../services/projectsService");
 
-function toInt(value, fallback) {
-  if (value === null || value === undefined || value === "") return fallback;
-  const parsed = Number.parseInt(String(value), 10);
-  return Number.isFinite(parsed) ? parsed : fallback;
-}
+const { requireUser, getIdentityTokens } = require("../utils/authz");
 
-function toString(value, fallback = "") {
-  if (value === undefined || value === null) return fallback;
-  return String(value);
-}
-
-function normalizeDate(value) {
-  if (value === undefined || value === null) return "";
-  return String(value).trim();
-}
-
-const ALLOWED_STATUSES = new Set(["Chưa làm", "Đang làm", "Đã xong"]);
-
-function normalizeTaskInput(body, { requireTitle }) {
-  const tieuDe = toString(body?.tieuDe).trim();
-  const nguoiPhuTrach = toString(body?.nguoiPhuTrach).trim();
-  const hanChot = normalizeDate(body?.hanChot);
-  const trangThai = toString(body?.trangThai, "Chưa làm").trim() || "Chưa làm";
-  const ghiChu = toString(body?.ghiChu).trim();
-
-  if (requireTitle && !tieuDe) return { error: "tieuDe is required" };
-  if (trangThai && !ALLOWED_STATUSES.has(trangThai)) {
-    return { error: "Invalid trangThai" };
+function canViewProject(role, uid, project, identityTokens) {
+  if (["admin", "support", "head_sales", "head_tech"].includes(role)) return true;
+  if (!project) return false;
+  if (role === "sale") return Number(project.sale_id) === uid;
+  if (role === "sales_manager" || role === "dev_manager") return Number(project.pm_id) === uid;
+  if (role === "dev") {
+    const hay = `${project.tech_user || ""},${project.assignee || ""}`.toLowerCase();
+    return identityTokens.some((t) => t && hay.includes(String(t).toLowerCase()));
   }
+  return false;
+}
 
-  return {
-    value: {
-      tieuDe,
-      nguoiPhuTrach,
-      hanChot,
-      trangThai: trangThai || "Chưa làm",
-      ghiChu,
-    },
-  };
+function canManageTasks(role, uid, project) {
+  if (role === "support") return false;
+  if (["admin", "head_sales", "head_tech"].includes(role)) return true;
+  if (role === "sales_manager" || role === "dev_manager") return Number(project?.pm_id) === uid;
+  return false;
+}
+
+function isTaskAssignedTo(identityTokens, task) {
+  const hay = [task?.nguoiChinh, task?.nguoiPhuTrach, task?.nguoiHoTro]
+    .filter(Boolean)
+    .join(",")
+    .toLowerCase();
+  return identityTokens.some((t) => t && hay.includes(String(t).toLowerCase()));
+}
+
+function canEditTask(role, uid, project, task, identityTokens) {
+  if (role === "support") return false;
+  if (["admin", "head_sales", "head_tech"].includes(role)) return true;
+  if (role === "sales_manager" || role === "dev_manager") return Number(project?.pm_id) === uid;
+  if (role === "dev") return Boolean(task && isTaskAssignedTo(identityTokens, task));
+  return false;
+}
+
+function canDeleteTask(role, uid, project) {
+  if (role === "support") return false;
+  if (["admin", "head_sales", "head_tech"].includes(role)) return true;
+  if (role === "sales_manager" || role === "dev_manager") return Number(project?.pm_id) === uid;
+  return false;
 }
 
 async function listProjectTasks(req, res, next) {
   try {
-    const projectId = toInt(req.params.id, NaN);
-    if (!Number.isFinite(projectId)) {
-      return res.status(400).json({ message: "Invalid project id" });
-    }
+    const auth = requireUser(req, { requireUid: true });
+    if (auth.error) return res.status(auth.error.status).json({ message: auth.error.message });
+    const { role, uid } = auth;
+    const identityTokens = getIdentityTokens(req, uid);
+
+    const projectId = Number(req.params.id);
+    const project = await projectsService.getProjectById(projectId);
+    if (!project) return res.status(404).json({ message: "Project not found" });
+    if (!canViewProject(role, uid, project, identityTokens)) return res.status(403).json({ message: "Forbidden" });
 
     const items = await projectTasksService.listTasksByProjectId(projectId);
     res.json({ items });
@@ -57,17 +66,16 @@ async function listProjectTasks(req, res, next) {
 
 async function createProjectTask(req, res, next) {
   try {
-    const projectId = toInt(req.params.id, NaN);
-    if (!Number.isFinite(projectId)) {
-      return res.status(400).json({ message: "Invalid project id" });
-    }
+    const auth = requireUser(req, { requireUid: true });
+    if (auth.error) return res.status(auth.error.status).json({ message: auth.error.message });
+    const { role, uid } = auth;
 
-    const normalized = normalizeTaskInput(req.body, { requireTitle: true });
-    if (normalized.error) {
-      return res.status(400).json({ message: normalized.error });
-    }
+    const projectId = Number(req.params.id);
+    const project = await projectsService.getProjectById(projectId);
+    if (!project) return res.status(404).json({ message: "Project not found" });
+    if (!canManageTasks(role, uid, project)) return res.status(403).json({ message: "Forbidden" });
 
-    const created = await projectTasksService.createTask(projectId, normalized.value);
+    const created = await projectTasksService.createTask(projectId, req.taskInput);
     res.status(201).json(created);
   } catch (err) {
     next(err);
@@ -76,32 +84,24 @@ async function createProjectTask(req, res, next) {
 
 async function updateProjectTask(req, res, next) {
   try {
-    const projectId = toInt(req.params.id, NaN);
-    const taskId = toInt(req.params.taskId, NaN);
-    if (!Number.isFinite(projectId)) {
-      return res.status(400).json({ message: "Invalid project id" });
-    }
-    if (!Number.isFinite(taskId)) {
-      return res.status(400).json({ message: "Invalid task id" });
-    }
+    const auth = requireUser(req, { requireUid: true });
+    if (auth.error) return res.status(auth.error.status).json({ message: auth.error.message });
+    const { role, uid } = auth;
+    const identityTokens = getIdentityTokens(req, uid);
 
-    const normalized = normalizeTaskInput(req.body, { requireTitle: false });
-    if (normalized.error) {
-      return res.status(400).json({ message: normalized.error });
-    }
+    const projectId = Number(req.params.id);
+    const taskId = Number(req.params.taskId);
 
-    // Keep PATCH semantics: only pass provided fields.
-    const patch = {};
-    if (req.body?.tieuDe !== undefined) patch.tieuDe = normalized.value.tieuDe;
-    if (req.body?.nguoiPhuTrach !== undefined) patch.nguoiPhuTrach = normalized.value.nguoiPhuTrach;
-    if (req.body?.hanChot !== undefined) patch.hanChot = normalized.value.hanChot;
-    if (req.body?.trangThai !== undefined) patch.trangThai = normalized.value.trangThai;
-    if (req.body?.ghiChu !== undefined) patch.ghiChu = normalized.value.ghiChu;
+    const project = await projectsService.getProjectById(projectId);
+    if (!project) return res.status(404).json({ message: "Project not found" });
+    if (!canViewProject(role, uid, project, identityTokens)) return res.status(403).json({ message: "Forbidden" });
 
-    const updated = await projectTasksService.updateTask(projectId, taskId, patch);
-    if (!updated) {
-      return res.status(404).json({ message: "Task not found" });
-    }
+    const existingTask = await projectTasksService.getTaskById(projectId, taskId);
+    if (!existingTask) return res.status(404).json({ message: "Task not found" });
+    if (!canEditTask(role, uid, project, existingTask, identityTokens)) return res.status(403).json({ message: "Forbidden" });
+
+    const updated = await projectTasksService.updateTask(projectId, taskId, req.taskPatch);
+    if (!updated) return res.status(404).json({ message: "Task not found" });
 
     res.json(updated);
   } catch (err) {
@@ -111,14 +111,18 @@ async function updateProjectTask(req, res, next) {
 
 async function deleteProjectTask(req, res, next) {
   try {
-    const projectId = toInt(req.params.id, NaN);
-    const taskId = toInt(req.params.taskId, NaN);
-    if (!Number.isFinite(projectId)) {
-      return res.status(400).json({ message: "Invalid project id" });
-    }
-    if (!Number.isFinite(taskId)) {
-      return res.status(400).json({ message: "Invalid task id" });
-    }
+    const auth = requireUser(req, { requireUid: true });
+    if (auth.error) return res.status(auth.error.status).json({ message: auth.error.message });
+    const { role, uid } = auth;
+    const identityTokens = getIdentityTokens(req, uid);
+
+    const projectId = Number(req.params.id);
+    const taskId = Number(req.params.taskId);
+
+    const project = await projectsService.getProjectById(projectId);
+    if (!project) return res.status(404).json({ message: "Project not found" });
+    if (!canViewProject(role, uid, project, identityTokens)) return res.status(403).json({ message: "Forbidden" });
+    if (!canDeleteTask(role, uid, project)) return res.status(403).json({ message: "Forbidden" });
 
     const ok = await projectTasksService.deleteTask(projectId, taskId);
     if (!ok) {
