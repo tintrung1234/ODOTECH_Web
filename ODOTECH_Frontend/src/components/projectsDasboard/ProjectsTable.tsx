@@ -73,6 +73,10 @@ export default function ProjectsTable({
 
   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
   const rowRefs = useRef<Record<number, HTMLTableRowElement | null>>({});
+  const assigneeInputRefs = useRef<Record<number, HTMLInputElement | null>>({});
+  const assigneeCellRefs = useRef<Record<number, HTMLDivElement | null>>({});
+
+  const [openAssigneeProjectId, setOpenAssigneeProjectId] = useState<number | null>(null);
 
   const [taskPanelLayout, setTaskPanelLayout] = useState<{
     top: number;
@@ -142,6 +146,96 @@ export default function ProjectsTable({
   );
 
   const allAccounts = accounts;
+
+  const assigneeOptionValues = useMemo(() => {
+    return allAccounts
+      .map((a) => (a.username || a.name || '').trim())
+      .filter((v): v is string => Boolean(v));
+  }, [allAccounts]);
+
+  const assigneeOptionSet = useMemo(() => new Set(assigneeOptionValues), [assigneeOptionValues]);
+
+  const getAssigneeQuery = (valueRaw: string): string => {
+    const value = (valueRaw ?? '').toString();
+    const endsWithDelimiter = /[;,]\s*$/.test(value);
+    if (endsWithDelimiter) return '';
+    const parts = value.split(/[;,]/);
+    return (parts[parts.length - 1] ?? '').trim();
+  };
+
+  const applyAssigneePick = (prevRaw: string, pickedRaw: string): string => {
+    const prev = (prevRaw ?? '').toString();
+    const picked = (pickedRaw ?? '').toString().trim();
+    if (!picked) return prev;
+
+    const endsWithDelimiter = /[;,]\s*$/.test(prev);
+    const tokens = prev
+      .split(/[;,]/)
+      .map((t) => t.trim())
+      .filter(Boolean);
+
+    if (tokens.includes(picked)) return tokens.join(', ');
+
+    if (endsWithDelimiter || tokens.length === 0) {
+      tokens.push(picked);
+    } else {
+      tokens[tokens.length - 1] = picked;
+    }
+
+    return tokens.join(', ');
+  };
+
+  const mergeAssigneeInput = (prevRaw: string, nextRaw: string): string => {
+    const prev = (prevRaw ?? '').toString();
+    const next = (nextRaw ?? '').toString();
+    const nextTrim = next.trim();
+
+    // If user is typing a multi-user string manually, don't interfere.
+    if (/[;,]/.test(next)) return next;
+
+    // If next isn't one of the known accounts, treat as free text.
+    if (!assigneeOptionSet.has(nextTrim)) return next;
+
+    // If there's no delimiter in prev, allow selecting a single user normally.
+    if (!/[;,]/.test(prev)) return nextTrim;
+
+    const prevHasTrailingDelimiter = /[;,]\s*$/.test(prev);
+    const tokens = prev
+      .split(/[;,]/)
+      .map((t) => t.trim())
+      .filter(Boolean);
+
+    if (tokens.includes(nextTrim)) {
+      // Keep stable; normalization on blur will dedupe/format.
+      return prev;
+    }
+
+    if (prevHasTrailingDelimiter) {
+      tokens.push(nextTrim);
+    } else if (tokens.length > 0) {
+      // Common datalist behavior replaces the whole input when selecting.
+      // We interpret this as "replace the current (last) token".
+      tokens[tokens.length - 1] = nextTrim;
+    } else {
+      tokens.push(nextTrim);
+    }
+
+    return tokens.join(', ');
+  };
+
+  useEffect(() => {
+    if (openAssigneeProjectId == null) return;
+
+    const onMouseDown = (e: MouseEvent) => {
+      const container = assigneeCellRefs.current[openAssigneeProjectId];
+      if (!container) return;
+      if (e.target instanceof Node && container.contains(e.target)) return;
+      setOpenAssigneeProjectId(null);
+    };
+
+    document.addEventListener('mousedown', onMouseDown);
+    return () => document.removeEventListener('mousedown', onMouseDown);
+  }, [openAssigneeProjectId]);
 
   const expandedProject = useMemo(
     () => projects.find((p) => p.id === expandedProjectId) ?? null,
@@ -707,23 +801,133 @@ export default function ProjectsTable({
                   </td>
 
                   <td className={cellBase}>
-                    <input
-                      type="text"
-                      value={item.assignee ?? ''}
-                      onFocus={() => onSelect(item.id)}
+                    <div
+                      ref={(el) => {
+                        assigneeCellRefs.current[item.id] = el;
+                      }}
+                      className="relative"
                       onClick={(e) => e.stopPropagation()}
-                      onChange={(e) => canEditRow && onUpdate(item.id, { assignee: e.target.value })}
-                      onBlur={(e) => canEditRow && onUpdate(item.id, { assignee: normalizeMultiUsers(e.target.value) })}
-                      disabled={!canEditRow}
-                      className={`${inputBase} ${disabledClass}`}
-                      placeholder="Người làm..."
-                      list={`assignee-${item.id}`}
-                    />
-                    <datalist id={`assignee-${item.id}`}>
-                      {allAccounts.map((a) => (
-                        <option key={a.id} value={a.username || a.name} />
-                      ))}
-                    </datalist>
+                    >
+                      <div className="flex items-center gap-2">
+                      <input
+                        ref={(el) => {
+                          assigneeInputRefs.current[item.id] = el;
+                        }}
+                        type="text"
+                        value={item.assignee ?? ''}
+                        onFocus={() => onSelect(item.id)}
+                        onClick={(e) => e.stopPropagation()}
+                        onChange={(e) => {
+                          if (!canEditRow) return;
+                          const merged = mergeAssigneeInput(item.assignee ?? '', e.target.value);
+                          onUpdate(item.id, { assignee: merged });
+                          setOpenAssigneeProjectId(item.id);
+                        }}
+                        onBlur={(e) => canEditRow && onUpdate(item.id, { assignee: normalizeMultiUsers(e.target.value) })}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Escape') setOpenAssigneeProjectId(null);
+                        }}
+                        disabled={!canEditRow}
+                        className={`${inputBase} ${disabledClass}`}
+                        placeholder="Người làm..."
+                      />
+                      <button
+                        type="button"
+                        onMouseDown={(e) => {
+                          // Keep focus on the input so we don't trigger onBlur/normalize.
+                          e.preventDefault();
+                        }}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (!canEditRow) return;
+
+                          const current = (item.assignee ?? '').toString();
+                          const trimmed = current.trim();
+                          const next =
+                            trimmed.length === 0
+                              ? ''
+                              : /[;,]\s*$/.test(current)
+                                ? current
+                                : `${current}, `;
+
+                          onUpdate(item.id, { assignee: next });
+
+                          setOpenAssigneeProjectId(item.id);
+
+                          // Focus input and move caret to end for fast next-pick.
+                          requestAnimationFrame(() => {
+                            const el = assigneeInputRefs.current[item.id];
+                            if (!el) return;
+                            el.focus();
+                            const end = el.value.length;
+                            try {
+                              el.setSelectionRange(end, end);
+                            } catch {
+                              // ignore (some input types/environments)
+                            }
+                          });
+                        }}
+                        disabled={!canEditRow}
+                        className={`h-8 w-8 flex items-center justify-center rounded border border-gray-200 text-gray-600 hover:bg-gray-50 hover:border-gray-300 transition-colors ${
+                          !canEditRow ? 'bg-gray-50/70 text-gray-400 cursor-not-allowed' : ''
+                        }`}
+                        aria-label="Thêm người làm"
+                        title="Thêm người làm"
+                      >
+                        +
+                      </button>
+                    </div>
+
+                      {openAssigneeProjectId === item.id && canEditRow && (
+                        <div className="absolute left-0 right-0 mt-1 z-50 max-h-56 overflow-auto rounded-md border border-gray-200 bg-white shadow-sm">
+                          {(() => {
+                            const query = getAssigneeQuery(item.assignee ?? '');
+                            const q = query.toLowerCase();
+                            const filtered = q
+                              ? assigneeOptionValues.filter((v) => v.toLowerCase().includes(q))
+                              : assigneeOptionValues;
+
+                            if (filtered.length === 0) {
+                              return (
+                                <div className="px-3 py-2 text-sm text-gray-500">Không có kết quả</div>
+                              );
+                            }
+
+                            return filtered.map((v) => (
+                              <button
+                                key={v}
+                                type="button"
+                                className="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                                onMouseDown={(e) => {
+                                  // Keep focus on input
+                                  e.preventDefault();
+                                }}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  if (!canEditRow) return;
+                                  const nextValue = applyAssigneePick(item.assignee ?? '', v);
+                                  onUpdate(item.id, { assignee: nextValue });
+                                  setOpenAssigneeProjectId(null);
+                                  requestAnimationFrame(() => {
+                                    const el = assigneeInputRefs.current[item.id];
+                                    if (!el) return;
+                                    el.focus();
+                                    const end = el.value.length;
+                                    try {
+                                      el.setSelectionRange(end, end);
+                                    } catch {
+                                      // ignore
+                                    }
+                                  });
+                                }}
+                              >
+                                {v}
+                              </button>
+                            ));
+                          })()}
+                        </div>
+                      )}
+                    </div>
                   </td>
 
                   <td className={cellBase}>
