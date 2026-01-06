@@ -1,4 +1,5 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
+import { createPortal } from 'react-dom';
 
 import type { Account, ProjectManagementItem, ProjectTask, TaskPriority, TaskStatus } from './interface/type';
 
@@ -96,10 +97,155 @@ export default function ProjectTasksPanel({
     );
   }, [accounts, tasks, draftTask.nguoiChinh, draftTask.nguoiHoTro, draftTask.nguoiPhuTrach, displayPerson]);
 
-  const peopleDatalistId = useMemo(
-    () => `people-options-${String(expandedProject.project_code ?? 'project').replace(/\s+/g, '-')}`,
-    [expandedProject.project_code],
-  );
+  const PeoplePicker = ({
+    value,
+    onChange,
+    options,
+    placeholder,
+    title,
+    disabled,
+  }: {
+    value: string;
+    onChange: (next: string) => void;
+    options: string[];
+    placeholder?: string;
+    title?: string;
+    disabled?: boolean;
+  }) => {
+    const containerRef = useRef<HTMLDivElement | null>(null);
+    const inputRef = useRef<HTMLInputElement | null>(null);
+    const dropdownRef = useRef<HTMLDivElement | null>(null);
+    const [open, setOpen] = useState(false);
+    const [dropdownStyle, setDropdownStyle] = useState<CSSProperties | null>(null);
+
+    const updateDropdownPosition = useCallback(() => {
+      const input = inputRef.current;
+      if (!input) return;
+
+      const rect = input.getBoundingClientRect();
+      const gap = 4;
+      const minDropdownHeight = 160;
+      const spaceBelow = window.innerHeight - rect.bottom;
+      const spaceAbove = rect.top;
+
+      // Prefer opening below; open above only when there's not enough space below but there is above.
+      const openAbove = spaceBelow < minDropdownHeight && spaceAbove > spaceBelow;
+
+      const base: React.CSSProperties = {
+        position: 'fixed',
+        left: Math.max(8, Math.min(rect.left, window.innerWidth - rect.width - 8)),
+        width: rect.width,
+        zIndex: 9999,
+      };
+
+      if (openAbove) {
+        setDropdownStyle({
+          ...base,
+          bottom: Math.max(8, window.innerHeight - rect.top + gap),
+        });
+      } else {
+        setDropdownStyle({
+          ...base,
+          top: Math.min(window.innerHeight - 8, rect.bottom + gap),
+        });
+      }
+    }, []);
+
+    useEffect(() => {
+      if (!open) return;
+
+      updateDropdownPosition();
+
+      const onMouseDown = (e: MouseEvent) => {
+        const container = containerRef.current;
+        const dropdown = dropdownRef.current;
+        if (!container) return;
+
+        if (e.target instanceof Node) {
+          if (container.contains(e.target)) return;
+          if (dropdown && dropdown.contains(e.target)) return;
+        }
+
+        setOpen(false);
+      };
+
+      const onReflow = () => updateDropdownPosition();
+
+      document.addEventListener('mousedown', onMouseDown);
+      window.addEventListener('scroll', onReflow, true);
+      window.addEventListener('resize', onReflow);
+
+      return () => {
+        document.removeEventListener('mousedown', onMouseDown);
+        window.removeEventListener('scroll', onReflow, true);
+        window.removeEventListener('resize', onReflow);
+      };
+    }, [open, updateDropdownPosition]);
+
+    const filtered = useMemo(() => {
+      const q = (value ?? '').trim().toLowerCase();
+      if (!q) return options;
+      return options.filter((p) => p.toLowerCase().includes(q));
+    }, [value, options]);
+
+    return (
+      <div ref={containerRef} className="relative" onClick={(e) => e.stopPropagation()}>
+        <input
+          ref={inputRef}
+          type="text"
+          value={value}
+          onFocus={() => !disabled && setOpen(true)}
+          onClick={() => !disabled && setOpen(true)}
+          onChange={(e) => {
+            onChange(e.target.value);
+            if (!disabled) setOpen(true);
+          }}
+          onKeyDown={(e) => {
+            if (e.key === 'Escape') setOpen(false);
+          }}
+          className={taskInputBase}
+          placeholder={placeholder}
+          title={title}
+          disabled={disabled}
+        />
+
+        {open && !disabled && dropdownStyle &&
+          createPortal(
+            <div
+              ref={dropdownRef}
+              style={dropdownStyle}
+              className="max-h-56 overflow-auto rounded-md border border-gray-200 bg-white shadow-sm"
+            >
+              {filtered.length === 0 ? (
+                <div className="px-3 py-2 text-[11px] text-gray-500">Không có kết quả</div>
+              ) : (
+                filtered.map((p) => (
+                  <button
+                    key={p}
+                    type="button"
+                    className="w-full text-left px-3 py-2 text-[11px] text-gray-700 hover:bg-gray-50"
+                    onMouseDown={(e) => {
+                      // Keep focus on input (avoid blur while selecting)
+                      e.preventDefault();
+                    }}
+                    onClick={() => {
+                      onChange(p);
+                      setOpen(false);
+                      requestAnimationFrame(() => {
+                        inputRef.current?.focus();
+                      });
+                    }}
+                  >
+                    {p}
+                  </button>
+                ))
+              )}
+            </div>,
+            document.body,
+          )}
+      </div>
+    );
+  };
 
   const filteredTasks = useMemo(() => {
     const term = taskSearchTerm.trim().toLowerCase();
@@ -141,11 +287,8 @@ export default function ProjectTasksPanel({
         </div>
 
         <div className="p-3">
-          <datalist id={peopleDatalistId}>
-            {peopleOptions.map((p) => (
-              <option key={p} value={p} />
-            ))}
-          </datalist>
+          {/* NOTE: Native datalist can't be reliably forced open on click/button in all browsers.
+              We use a controlled dropdown instead (PeoplePicker). */}
 
           <div className="mb-3 flex flex-wrap items-center gap-2">
             <div className="relative flex-1 min-w-[220px]">
@@ -210,24 +353,20 @@ export default function ProjectTasksPanel({
               />
             </div>
             <div className="md:col-span-2">
-              <input
-                type="text"
-                list={peopleDatalistId}
+              <PeoplePicker
                 value={displayPerson(draftTask.nguoiChinh)}
-                onChange={(e) => onDraftChange({ nguoiChinh: e.target.value })}
-                className={taskInputBase}
+                onChange={(next) => onDraftChange({ nguoiChinh: next })}
+                options={peopleOptions}
                 placeholder="Chọn/nhập người chính..."
                 title="Người chính (chọn trong danh sách hoặc nhập tự do)"
                 disabled={readOnly}
               />
             </div>
             <div className="md:col-span-2">
-              <input
-                type="text"
-                list={peopleDatalistId}
+              <PeoplePicker
                 value={displayPerson(draftTask.nguoiHoTro)}
-                onChange={(e) => onDraftChange({ nguoiHoTro: e.target.value })}
-                className={taskInputBase}
+                onChange={(next) => onDraftChange({ nguoiHoTro: next })}
+                options={peopleOptions}
                 placeholder="Chọn/nhập người hỗ trợ (tuỳ chọn)..."
                 title="Người hỗ trợ (tuỳ chọn)"
                 disabled={readOnly}
@@ -408,23 +547,19 @@ export default function ProjectTasksPanel({
                         />
                       </td>
                       <td className="px-2 py-2">
-                        <input
-                          type="text"
-                          list={peopleDatalistId}
+                        <PeoplePicker
                           value={displayPerson(t.nguoiChinh)}
-                          onChange={(e) => onUpdateTask(t.id, { nguoiChinh: e.target.value })}
-                          className={taskInputBase}
+                          onChange={(next) => onUpdateTask(t.id, { nguoiChinh: next })}
+                          options={peopleOptions}
                           title="Người chính"
                           disabled={readOnly}
                         />
                       </td>
                       <td className="px-2 py-2">
-                        <input
-                          type="text"
-                          list={peopleDatalistId}
+                        <PeoplePicker
                           value={displayPerson(t.nguoiHoTro)}
-                          onChange={(e) => onUpdateTask(t.id, { nguoiHoTro: e.target.value })}
-                          className={taskInputBase}
+                          onChange={(next) => onUpdateTask(t.id, { nguoiHoTro: next })}
+                          options={peopleOptions}
                           title="Người hỗ trợ"
                           disabled={readOnly}
                         />

@@ -243,12 +243,12 @@ export default function Dashboard({
           <tbody>
             {projects.map(p => (
               <tr key={p.id} className="border-b border-gray-100 hover:bg-gray-50">
-                <td className="p-3">{p.ma_du_an}</td>
-                <td className="p-3">
+                <td className="p-3 border-r border-gray-100">{p.ma_du_an}</td>
+                <td className="p-3 border-r border-gray-100">
                   <div className="font-medium text-gray-800">{p.ten_khach}</div>
                   <small className="text-gray-500">{p.sdt}</small>
                 </td>
-                <td className="p-3">
+                <td className="p-3 border-r border-gray-100">
                   <span className={`px-2 py-1 rounded text-xs font-medium ${p.trang_thai_chot === 'DaKy' ? 'bg-green-100 text-green-800' :
                       p.trang_thai_chot === 'Huy' ? 'bg-red-100 text-red-800' :
                         'bg-yellow-100 text-yellow-800'
@@ -257,11 +257,11 @@ export default function Dashboard({
                   </span>
                 </td>
                 <td className="p-3 font-medium">{formatCurrency(Number(p.contract_value ?? 0) + Number(p.phat_sinh ?? 0))}</td>
-                <td className="p-3">
+                <td className="p-3 border-r border-gray-100">
                   {p.ngay_cham_cuoi}
                   {calculateDaysDiff(p.ngay_cham_cuoi) > 7 && <span className="text-red-500 font-bold ml-2" title="Quá hạn chăm sóc"> ( ! )</span>}
                 </td>
-                <td className="p-3">
+                <td className="p-3 border-r border-gray-100">
                   <button
                     onClick={() => onSelect(p)}
                     className="cursor-pointer text-blue-600 hover:text-blue-800 hover:underline font-medium"
