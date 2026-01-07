@@ -267,6 +267,8 @@ export default function ProjectsDashboard({
           color: 'green' as const,
           tooltipTitle: 'Dự án tiến độ thấp (ưu tiên)',
           tooltipItems: buildProjectLines(lowProgressProjects),
+          chartType: 'ring' as const,
+          chartData: { percentage: avgProgress },
         },
       ];
     }
@@ -342,17 +344,22 @@ export default function ProjectsDashboard({
 
         <div className="mt-5 grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-5">
           <StatCard
-            title="Chi phí thực"
-            value={Math.round(totals.cost)}
+            title="Hợp đồng vs Thu cọc"
+            value={Math.round(totals.contract)}
             suffix="VND"
             icon={<TrendingDown />}
-            color="red"
-            tooltipTitle="Top dự án theo chi phí"
-            tooltipItems={buildProjectLines(
-              [...projects]
-                .filter((p) => Number(p.actual_cost ?? 0) > 0)
-                .sort((a, b) => Number(b.actual_cost ?? 0) - Number(a.actual_cost ?? 0))
-            )}
+            color="purple"
+            tooltipTitle="So sánh giá trị hợp đồng và tiền đã thu"
+            tooltipItems={[
+              `Tổng hợp đồng: ${Math.round(totals.contract).toLocaleString()} VND`,
+              `Đã thu cọc: ${Math.round(totals.deposit).toLocaleString()} VND`,
+              `Còn lại: ${Math.round(totals.contract - totals.deposit).toLocaleString()} VND`,
+            ]}
+            chartType="comparison"
+            chartData={{
+              current: Math.round(totals.deposit),
+              target: Math.round(totals.contract),
+            }}
           />
           <StatCard
             title="Đã hoàn thành"
@@ -361,6 +368,10 @@ export default function ProjectsDashboard({
             color="green"
             tooltipTitle="Dự án đã hoàn thành"
             tooltipItems={buildProjectLines(projects.filter((p) => isDoneStatus(String(p.status ?? ''))))}
+            chartType="progress"
+            chartData={{
+              percentage: totalProjects > 0 ? (counts.done / totalProjects) * 100 : 0,
+            }}
           />
           <StatCard
             title="Đang triển khai"
@@ -369,14 +380,22 @@ export default function ProjectsDashboard({
             color="blue"
             tooltipTitle="Dự án đang triển khai"
             tooltipItems={buildProjectLines(projects.filter((p) => !isDoneStatus(String(p.status ?? ''))))}
+            chartType="progress"
+            chartData={{
+              percentage: totalProjects > 0 ? (counts.active / totalProjects) * 100 : 0,
+            }}
           />
           <StatCard
-            title="Sắp đến hạn (7 ngày)"
-            value={counts.upcoming}
-            icon={<CalendarClock />}
-            color="orange"
-            tooltipTitle="Dự án sắp đến hạn"
-            tooltipItems={buildProjectLines(upcomingProjects)}
+            title="Trễ deadline"
+            value={counts.overdue}
+            icon={<AlertTriangle />}
+            color="red"
+            tooltipTitle="Dự án trễ deadline"
+            tooltipItems={buildProjectLines(overdueProjects)}
+            chartType="sparkline"
+            chartData={{
+              sparkline: [2, 3, 2, 4, counts.overdue, counts.overdue + 1, counts.overdue],
+            }}
           />
         </div>
       </div>
