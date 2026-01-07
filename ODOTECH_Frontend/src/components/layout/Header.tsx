@@ -10,7 +10,6 @@ import {
   LogOut,
   Settings,
   ChevronDown,
-  Building2,
   X
 } from 'lucide-react';
 
