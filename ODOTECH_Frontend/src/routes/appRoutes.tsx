@@ -7,6 +7,7 @@ import Register from '../pages/Register';
 import Projects from '../pages/Projects';
 import Renewals from '../pages/Renewals';
 import Sales from '../pages/Sales';
+import Customers from '../pages/Customers';
 
 export interface SidebarItem {
   to: string;
@@ -64,7 +65,7 @@ export const sidebarItems: SidebarItem[] = [
   },
   {
     to: '/renewals',
-    label: 'Quản lý gói gia hạn',
+    label: 'Quản lý gia hạn thu',
     icon: (
       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path
@@ -72,6 +73,20 @@ export const sidebarItems: SidebarItem[] = [
           strokeLinejoin="round"
           strokeWidth={2}
           d="M4 4v6h6M20 20v-6h-6M20 10a8 8 0 00-14.9-3M4 14a8 8 0 0014.9 3"
+        />
+      </svg>
+    ),
+  },
+  {
+    to: '/customers',
+    label: 'Quản lý khách hàng',
+    icon: (
+      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth={2}
+          d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"
         />
       </svg>
     ),
@@ -86,5 +101,6 @@ export const appRoutes: AppRoute[] = [
   { path: '/sales', element: <Sales /> },
   { path: '/projects', element: <Projects /> },
   { path: '/renewals', element: <Renewals /> },
+  { path: '/customers', element: <Customers /> },
   { path: '*', element: <Navigate to="/accounts" replace /> },
 ];

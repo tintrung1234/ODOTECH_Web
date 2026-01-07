@@ -1,7 +1,12 @@
 function formatDate(value) {
   if (!value) return "";
   if (typeof value === "string") return value.slice(0, 10);
-  if (value instanceof Date) return value.toISOString().slice(0, 10);
+  if (value instanceof Date) {
+    const y = value.getFullYear();
+    const m = String(value.getMonth() + 1).padStart(2, '0');
+    const d = String(value.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+  }
   return String(value);
 }
 
@@ -32,7 +37,7 @@ function mapSalesProjectRow(row) {
     trang_thai_thu_tien: row.trang_thai_thu_tien ?? "Chua",
 
     // Derive deployment status from projects.status when matching project_code = ma_du_an
-    trang_thai_trien_khai: row.project_status ?? row.trang_thai_trien_khai ?? "",
+    trang_thai_trien_khai: row.trang_thai_trien_khai ?? row.project_status ?? "",
 
     ngay_tao: formatDate(row.ngay_tao),
     lich_hen: formatDate(row.lich_hen),
@@ -48,7 +53,7 @@ function mapSalesProjectRow(row) {
     danh_sach_thanh_toan: [],
 
     // Derive handover date from projects.completed_at when matching project_code = ma_du_an
-    ngay_ban_giao: formatDate(row.project_completed_at ?? row.ngay_ban_giao),
+    ngay_ban_giao: formatDate(row.ngay_ban_giao ?? row.project_completed_at),
     ngay_tat_toan: formatDate(row.ngay_tat_toan),
     ly_do_lau: row.ly_do_lau ?? "",
     chi_phi_outsource: Number(row.chi_phi_outsource ?? 0),
