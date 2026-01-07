@@ -16,52 +16,40 @@ const colorClass = (color: StatCardColor | undefined) => {
   switch (color) {
     case 'green':
       return {
-        line: 'from-green-300',
-        icon: 'text-green-500',
-        value: 'text-green-700',
-        border: 'border-green-100',
-        bgFrom: 'from-green-50',
+        iconBg: 'bg-green-100 text-green-600',
+        value: 'text-gray-900',
+        border: 'border-l-4 border-l-green-500',
       };
     case 'purple':
       return {
-        line: 'from-purple-300',
-        icon: 'text-purple-500',
-        value: 'text-purple-700',
-        border: 'border-purple-100',
-        bgFrom: 'from-purple-50',
+        iconBg: 'bg-purple-100 text-purple-600',
+        value: 'text-gray-900',
+        border: 'border-l-4 border-l-purple-500',
       };
     case 'orange':
       return {
-        line: 'from-orange-300',
-        icon: 'text-orange-500',
-        value: 'text-orange-700',
-        border: 'border-orange-100',
-        bgFrom: 'from-orange-50',
+        iconBg: 'bg-orange-100 text-orange-600',
+        value: 'text-gray-900',
+        border: 'border-l-4 border-l-orange-500',
       };
     case 'blue':
       return {
-        line: 'from-blue-300',
-        icon: 'text-blue-500',
-        value: 'text-blue-700',
-        border: 'border-blue-100',
-        bgFrom: 'from-blue-50',
+        iconBg: 'bg-blue-100 text-blue-600',
+        value: 'text-gray-900',
+        border: 'border-l-4 border-l-blue-500',
       };
     case 'red':
       return {
-        line: 'from-red-300',
-        icon: 'text-red-500',
-        value: 'text-red-700',
-        border: 'border-red-100',
-        bgFrom: 'from-red-50',
+        iconBg: 'bg-red-100 text-red-600',
+        value: 'text-gray-900',
+        border: 'border-l-4 border-l-red-500',
       };
     case 'gray':
     default:
       return {
-        line: 'from-gray-200',
-        icon: 'text-gray-400',
+        iconBg: 'bg-gray-100 text-gray-600',
         value: 'text-gray-900',
-        border: 'border-gray-100',
-        bgFrom: 'from-white',
+        border: 'border-l-4 border-l-gray-500',
       };
   }
 };
@@ -79,43 +67,44 @@ export default function StatCard({ title, value, suffix, icon, color = 'gray', t
 
   return (
     <div
-      className={`relative rounded-xl bg-gradient-to-br ${classes.bgFrom} to-gray-50 border ${classes.border} shadow-sm p-5 ${hasTooltip ? 'group' : ''}`}
+      className={`relative rounded-xl bg-white border border-gray-100 shadow-sm p-5 hover:shadow-md transition-shadow cursor-default ${hasTooltip ? 'group' : ''} ${classes.border}`}
       tabIndex={hasTooltip ? 0 : undefined}
     >
-      {/* Top accent line */}
-      <div
-        className={`absolute top-0 left-0 w-full h-[2px] bg-gradient-to-r ${classes.line} to-transparent rounded-t-xl`}
-      />
-
-      <div className="flex items-center justify-between">
-        <p className="text-sm text-gray-500">{title}</p>
-        {icon && <div className={`${classes.icon} text-lg`}>{icon}</div>}
-      </div>
-
-      <div className="mt-4 flex items-end gap-1">
-        <p className={`text-3xl font-semibold tracking-tight ${classes.value}`}>{displayValue}</p>
-        {suffix && <span className="text-sm text-gray-500 mb-1">{suffix}</span>}
+      <div className="flex items-start justify-between">
+        <div>
+          <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">{title}</p>
+          <div className="mt-2 flex items-baseline gap-1">
+            <h3 className={`text-2xl font-bold tracking-tight ${classes.value}`}>{displayValue}</h3>
+            {suffix && <span className="text-xs text-gray-500 font-medium">{suffix}</span>}
+          </div>
+        </div>
+        {icon && (
+          <div className={`p-2.5 rounded-lg ${classes.iconBg}`}>
+            {icon}
+          </div>
+        )}
       </div>
 
       {hasTooltip && (
         <div
           role="tooltip"
-          className="absolute left-0 right-0 top-full mt-2 rounded-lg border border-gray-200 bg-white shadow-lg p-3 opacity-0 invisible transition-opacity duration-150 group-hover:opacity-100 group-hover:visible group-focus-within:opacity-100 group-focus-within:visible z-50 max-h-72 overflow-auto"
+          className="absolute left-0 right-0 top-full mt-2 rounded-lg border border-gray-100 bg-white shadow-xl p-3 opacity-0 invisible transition-all duration-200 group-hover:opacity-100 group-hover:visible group-focus-within:opacity-100 group-focus-within:visible z-50 max-h-72 overflow-auto"
         >
           {(tooltipTitle && tooltipTitle.trim()) && (
-            <div className="text-xs font-semibold text-gray-800 mb-2">{tooltipTitle}</div>
+            <div className="text-xs font-bold text-gray-800 mb-2 pb-1 border-b border-gray-100">{tooltipTitle}</div>
           )}
 
           {tooltipLines.length > 0 ? (
-            <ul className="text-[11px] text-gray-700 space-y-1 break-words">
+            <ul className="space-y-1.5">
               {tooltipLines.map((line, idx) => (
-                <li key={`${idx}-${line}`} className="leading-snug break-words">
-                  {line}
+                <li key={`${idx}-${line}`} className="text-[11px] text-gray-600 leading-snug flex items-start gap-1.5">
+                  <span className="mt-1 w-1 h-1 rounded-full bg-gray-300 shrink-0" />
+                  <span>{line}</span>
                 </li>
               ))}
             </ul>
           ) : (
-            <div className="text-[11px] text-gray-500">Không có dữ liệu chi tiết.</div>
+            <div className="text-[11px] text-gray-400 italic">Không có dữ liệu chi tiết.</div>
           )}
         </div>
       )}

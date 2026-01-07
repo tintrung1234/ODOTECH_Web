@@ -10,6 +10,7 @@ const {
   getProjectById,
   createProject,
   updateProject,
+  listSalePeople,
 } = require("../controllers/salesController");
 
 const router = express.Router();
@@ -19,6 +20,8 @@ router.get("/health", (req, res) => {
 });
 
 router.use(authMiddleware);
+
+router.get("/people", listSalePeople);
 
 function parseSalesListQuery(req, res, next) {
   req.listQuery = {

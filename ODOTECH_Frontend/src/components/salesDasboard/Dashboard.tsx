@@ -1,11 +1,23 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import type { ProjectData } from './interface/type';
 import type { Account } from '../projectsDasboard/interface/type';
 import { formatCurrency, calculateDaysDiff } from '../../utils/formatDate';
-import { normalizeRole } from '../../utils/auth';
-import SalesChart from './SalesChart';
+import SalesChartsSection from './SalesChartsSection';
 import RenewalPackagesModal from './RenewalPackagesModal';
-import './style.css'
+import './style.css';
+import {
+  Building2,
+  CircleDollarSign,
+  Filter,
+  LayoutList,
+  PieChart,
+  Plus,
+  Search,
+  Users,
+  AlertCircle,
+  MoreVertical,
+  Calendar
+} from 'lucide-react';
 
 interface Props {
   projects: ProjectData[];
@@ -56,224 +68,338 @@ export default function Dashboard({
     return n;
   };
 
+  // Stats calculation
+  const stats = useMemo(() => {
+    const totalProjects = projects.length;
+    const closedProjects = projects.filter(p => p.trang_thai_chot === 'DaKy').length;
+    const workingProjects = projects.filter(p => p.trang_thai_chot === 'DangCham').length;
+    return {
+      total: totalProjects,
+      closed: closedProjects,
+      working: workingProjects,
+    };
+  }, [projects]);
+
+  const handleFilter = () => {
+    onFilter({
+      q,
+      trang_thai_chot: trangThaiChot,
+      min_total: toNullableNumber(minTotal),
+      max_total: toNullableNumber(maxTotal),
+    });
+  };
+
   return (
-    <div className="p-6">
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold text-gray-800">Quản lý Sale</h1>
-        {canCreate ? (
-          <button
-            onClick={onCreate}
-            className="button-color text-white px-4 py-2 rounded hover:bg-blue-700 transition-colors"
-          >
-            Tạo Sale
-          </button>
-        ) : null}
-      </div>
+    <div className="min-h-screen bg-gray-50/50 p-6 space-y-8 font-sans text-gray-900">
 
-      {/* Tabs */}
-      <div className="flex flex-wrap items-center gap-3 mb-4">
-        <div className="flex items-center gap-2 bg-white border border-gray-200 rounded-xl p-1">
-          <button
-            type="button"
-            onClick={() => onChangeListTab?.('full')}
-            className={`px-3 py-2 rounded-lg text-sm font-medium cursor-pointer ${listTab === 'full' ? 'bg-gray-900 text-white' : 'bg-white text-gray-700 hover:bg-gray-50'
-              }`}
-          >
-            Full
-          </button>
-          <button
-            type="button"
-            onClick={() => onChangeListTab?.('doi_tien')}
-            className={`px-3 py-2 rounded-lg text-sm font-medium cursor-pointer ${listTab === 'doi_tien' ? 'bg-gray-900 text-white' : 'bg-white text-gray-700 hover:bg-gray-50'
-              }`}
-          >
-            Chưa thanh toán hết
-          </button>
-          <button
-            type="button"
-            onClick={() => onChangeListTab?.('dang_trien_khai')}
-            className={`px-3 py-2 rounded-lg text-sm font-medium cursor-pointer ${listTab === 'dang_trien_khai' ? 'bg-gray-900 text-white' : 'bg-white text-gray-700 hover:bg-gray-50'
-              }`}
-          >
-            Đang triển khai
-          </button>
+      {/* Header Section */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight text-gray-900">Quản lý Sale</h1>
+          <p className="text-gray-500 mt-1 flex items-center gap-2">
+            <LayoutList size={16} />
+            Tổng quan hoạt động kinh doanh và dự án
+          </p>
         </div>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => setIsRenewalModalOpen(true)}
+            className="flex items-center gap-2 h-10 px-4 rounded-xl text-sm font-medium border border-gray-200 bg-white text-gray-700 hover:bg-gray-50 hover:border-gray-300 transition-all shadow-sm cursor-pointer"
+          >
+            <Calendar size={16} />
+            Gói gia hạn
+          </button>
 
-        <div className="ml-auto text-sm text-gray-700">
-          Tổng tiền: <span className="font-semibold">{formatCurrency(totalAmount)}</span>
-        </div>
-      </div>
-
-      {saleTabs && saleTabs.length > 0 ? (
-        <div className="flex flex-wrap items-center gap-2 mb-4">
-          <div className="flex flex-wrap items-center gap-2 bg-white border border-gray-200 rounded-xl p-1">
+          {canCreate && (
             <button
-              type="button"
-              onClick={() => onSelectSaleTab?.('')}
-              className={`px-3 py-2 rounded-lg text-sm font-medium cursor-pointer ${!selectedSaleTab ? 'bg-teal-600 text-white' : 'bg-white text-gray-700 hover:bg-gray-50'
-                }`}
+              onClick={onCreate}
+              className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-xl font-medium shadow-md hover:shadow-lg transition-all active:scale-95 cursor-pointer"
+            >
+              <Plus size={18} />
+              Tạo Sale Mới
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* Stats Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100">
+          <div className="flex items-center justify-between mb-2">
+            <h3 className="text-sm font-medium text-gray-500">Doanh số tổng (Dự kiến)</h3>
+            <span className="p-2 bg-green-50 text-green-600 rounded-lg">
+              <CircleDollarSign size={20} />
+            </span>
+          </div>
+          <div className="text-2xl font-bold text-gray-900">{formatCurrency(totalAmount)}</div>
+        </div>
+
+        <div className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100">
+          <div className="flex items-center justify-between mb-2">
+            <h3 className="text-sm font-medium text-gray-500">Tổng Dự Án</h3>
+            <span className="p-2 bg-blue-50 text-blue-600 rounded-lg">
+              <Building2 size={20} />
+            </span>
+          </div>
+          <div className="text-2xl font-bold text-gray-900">{stats.total}</div>
+        </div>
+
+        <div className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100">
+          <div className="flex items-center justify-between mb-2">
+            <h3 className="text-sm font-medium text-gray-500">Đã Ký Hợp Đồng</h3>
+            <span className="p-2 bg-purple-50 text-purple-600 rounded-lg">
+              <PieChart size={20} />
+            </span>
+          </div>
+          <div className="text-2xl font-bold text-gray-900">{stats.closed}</div>
+        </div>
+
+        <div className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100">
+          <div className="flex items-center justify-between mb-2">
+            <h3 className="text-sm font-medium text-gray-500">Đang Chăm Sóc</h3>
+            <span className="p-2 bg-orange-50 text-orange-600 rounded-lg">
+              <Users size={20} />
+            </span>
+          </div>
+          <div className="text-2xl font-bold text-gray-900">{stats.working}</div>
+        </div>
+      </div>
+
+      {/* Main Content Area */}
+      <div className="flex flex-col lg:flex-row gap-6">
+
+        {/* Left Sidebar / Filters (Optional - integrated into main area for now or use top tabs) */}
+
+        <div className="flex-1 space-y-6">
+          {/* View Tabs */}
+          <div className="bg-white p-1.5 rounded-xl border border-gray-200 inline-flex shadow-sm">
+            <button
+              onClick={() => onChangeListTab?.('full')}
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${listTab === 'full'
+                ? 'bg-gray-100 text-gray-900 shadow-sm'
+                : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'}`}
             >
               Tất cả
             </button>
-            {saleTabs.map((s) => (
-              (() => {
+            <button
+              onClick={() => onChangeListTab?.('doi_tien')}
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${listTab === 'doi_tien'
+                ? 'bg-gray-100 text-gray-900 shadow-sm'
+                : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'}`}
+            >
+              Chưa thanh toán hết
+            </button>
+            <button
+              onClick={() => onChangeListTab?.('dang_trien_khai')}
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${listTab === 'dang_trien_khai'
+                ? 'bg-gray-100 text-gray-900 shadow-sm'
+                : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'}`}
+            >
+              Đang triển khai
+            </button>
+          </div>
+
+          {/* Sale Person Tabs Filter (if applicable) */}
+          {saleTabs && saleTabs.length > 0 && (
+            <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-hide">
+              <button
+                onClick={() => onSelectSaleTab?.('')}
+                className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium whitespace-nowrap border transition-colors cursor-pointer ${!selectedSaleTab
+                  ? 'bg-gray-800 text-white border-gray-800'
+                  : 'bg-white text-gray-600 border-gray-200 hover:border-gray-300'
+                  }`}
+              >
+                All Sales
+              </button>
+              {saleTabs.map((s) => {
                 const raw = String(s ?? '').trim();
                 const id = Number.parseInt(raw, 10);
                 const acc = Number.isFinite(id)
                   ? accounts?.find((a) => Number(a.id) === id)
                   : undefined;
                 const nameLabel = acc ? (String(acc.name || '').trim() || (Number.isFinite(id) ? `#${id}` : raw)) : raw;
-                const canonicalRole = acc ? normalizeRole(acc.role_system) : 'unknown';
-                const roleLabel = !acc
-                  ? ''
-                  : canonicalRole === 'sale'
-                    ? 'sale'
-                    : canonicalRole === 'sales_manager'
-                      ? 'quản lý sale'
-                      : (String(acc.role_system || '').trim() || '');
                 const isSelected = selectedSaleTab === raw;
-                const roleBadgeClass = isSelected
-                  ? 'bg-white/20 text-white'
-                  : canonicalRole === 'sale'
-                    ? 'bg-blue-100 text-blue-800'
-                    : canonicalRole === 'sales_manager'
-                      ? 'bg-purple-100 text-purple-800'
-                      : 'bg-gray-100 text-gray-700';
 
                 return (
                   <button
                     key={raw}
-                    type="button"
                     onClick={() => onSelectSaleTab?.(raw)}
-                    className={`px-3 py-2 rounded-lg text-sm font-medium cursor-pointer ${isSelected ? 'bg-teal-600 text-white' : 'bg-white text-gray-700 hover:bg-gray-50'
+                    className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium whitespace-nowrap border transition-colors cursor-pointer ${isSelected
+                      ? 'bg-gray-800 text-white border-gray-800'
+                      : 'bg-white text-gray-600 border-gray-200 hover:border-gray-300'
                       }`}
                   >
-                    {acc && roleLabel ? (
-                      <span className="inline-flex items-center gap-2">
-                        <span>{nameLabel}</span>
-                        <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-semibold ${roleBadgeClass}`}>{roleLabel}</span>
+                    {nameLabel}
+                    {acc?.role_system && (
+                      <span className={`text-[10px] px-1.5 py-0.5 rounded uppercase font-bold 
+                        ${isSelected
+                          ? 'bg-white/20 text-white'
+                          : acc.role_system === 'sales_manager' ? 'bg-purple-100 text-purple-700'
+                            : acc.role_system === 'head_sales' ? 'bg-rose-100 text-rose-700'
+                              : 'bg-blue-100 text-blue-700'
+                        }`}>
+                        {acc.role_system.replace('sales_manager', 'Manager').replace('sale', 'Sale').replace('head_sales', 'Head')}
                       </span>
-                    ) : (
-                      nameLabel
                     )}
                   </button>
                 );
-              })()
-            ))}
+              })}
+            </div>
+          )}
+
+          {/* Filter Bar */}
+          <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-200 flex flex-wrap items-center gap-3">
+            <div className="flex-1 min-w-[200px] relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+              <input
+                className="w-full pl-10 pr-4 h-10 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm"
+                placeholder="Tìm tên khách, mã DA, SĐT..."
+                value={q}
+                onChange={(e) => setQ(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && handleFilter()}
+              />
+            </div>
+
+            <div className="flex items-center gap-2">
+              <select
+                className="h-10 px-3 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-blue-500 cursor-pointer"
+                value={trangThaiChot}
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                onChange={(e) => setTrangThaiChot(e.target.value as any)}
+              >
+                <option value="">Tất cả trạng thái</option>
+                <option value="DangCham">Đang chăm</option>
+                <option value="DaKy">Đã ký</option>
+                <option value="Huy">Huỷ</option>
+              </select>
+
+              <div className="flex items-center border border-gray-200 rounded-lg bg-gray-50 px-2 h-10">
+                <span className="text-gray-500 text-sm px-1">₫</span>
+                <input
+                  type="number"
+                  placeholder="Min"
+                  className="w-20 bg-transparent border-none text-sm focus:ring-0 p-1"
+                  value={minTotal}
+                  onChange={(e) => setMinTotal(e.target.value)}
+                />
+                <span className="text-gray-300">-</span>
+                <input
+                  type="number"
+                  placeholder="Max"
+                  className="w-20 bg-transparent border-none text-sm focus:ring-0 p-1 text-right"
+                  value={maxTotal}
+                  onChange={(e) => setMaxTotal(e.target.value)}
+                />
+              </div>
+
+              <button
+                onClick={handleFilter}
+                className="h-10 w-10 flex items-center justify-center bg-gray-900 text-white rounded-lg hover:bg-gray-800 transition-colors shadow-sm"
+              >
+                <Filter size={18} />
+              </button>
+            </div>
           </div>
 
-          <button
-            type="button"
-            onClick={() => setIsRenewalModalOpen(true)}
-            className="ml-auto h-10 px-4 rounded-lg text-sm font-medium border cursor-pointer bg-white text-gray-700 border-gray-300 hover:bg-gray-50"
-          >
-            Xem gói gia hạn
-          </button>
+          <SalesChartsSection projects={projects} accounts={accounts} />
+
+          {/* Table */}
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full text-left">
+                <thead className="bg-gray-50/75 border-b border-gray-100">
+                  <tr>
+                    <th className="py-4 px-6 text-xs font-semibold uppercase tracking-wider text-gray-500">Dự án / Khách hàng</th>
+                    <th className="py-4 px-6 text-xs font-semibold uppercase tracking-wider text-gray-500 text-center">Trạng thái</th>
+                    <th className="py-4 px-6 text-xs font-semibold uppercase tracking-wider text-gray-500 text-right">Tổng giá trị</th>
+                    <th className="py-4 px-6 text-xs font-semibold uppercase tracking-wider text-gray-500">Lần chăm cuối</th>
+                    <th className="py-4 px-6 text-xs font-semibold uppercase tracking-wider text-gray-500 w-[50px]"></th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100">
+                  {projects.map((p) => {
+                    const daysDiff = calculateDaysDiff(p.ngay_cham_cuoi);
+                    const isLate = daysDiff > 7;
+
+                    return (
+                      <tr key={p.id} className="hover:bg-gray-50/50 transition-colors group">
+                        <td className="py-4 px-6">
+                          <div className="flex flex-col">
+                            <span className="font-semibold text-gray-900 group-hover:text-blue-600 transition-colors cursor-pointer" onClick={() => onSelect(p)}>
+                              {p.ma_du_an}
+                            </span>
+                            <div className="flex items-center gap-1.5 text-sm text-gray-500 mt-1">
+                              <span className="truncate max-w-[200px]">{p.ten_khach}</span>
+                              {p.sdt && <span className="text-gray-300">•</span>}
+                              {p.sdt && <span className="font-mono text-xs">{p.sdt}</span>}
+                            </div>
+                          </div>
+                        </td>
+                        <td className="py-4 px-6 text-center">
+                          <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium border ${p.trang_thai_chot === 'DaKy'
+                            ? 'bg-green-50 text-green-700 border-green-200'
+                            : p.trang_thai_chot === 'Huy'
+                              ? 'bg-red-50 text-red-700 border-red-200'
+                              : 'bg-yellow-50 text-yellow-700 border-yellow-200'
+                            }`}>
+                            {p.trang_thai_chot === 'DaKy' ? 'Đã ký' : p.trang_thai_chot === 'Huy' ? 'Đã huỷ' : 'Đang chăm'}
+                          </span>
+                        </td>
+                        <td className="py-4 px-6 text-right font-medium text-gray-900 tabular-nums">
+                          {formatCurrency(Number(p.contract_value ?? 0) + Number(p.phat_sinh ?? 0))}
+                        </td>
+                        <td className="py-4 px-6">
+                          <div className="flex items-center gap-2">
+                            {p.ngay_cham_cuoi ? (
+                              <>
+                                <span className={`text-sm ${isLate ? 'text-red-600 font-medium' : 'text-gray-600'}`}>
+                                  {p.ngay_cham_cuoi}
+                                </span>
+                                {isLate && (
+                                  <div className="relative group/tooltip">
+                                    <AlertCircle size={16} className="text-red-500" />
+                                    <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 hidden group-hover/tooltip:block px-2 py-1 bg-gray-900 text-white text-xs rounded whitespace-nowrap z-10">
+                                      Đã {daysDiff} ngày chưa chăm
+                                    </span>
+                                  </div>
+                                )}
+                              </>
+                            ) : (
+                              <span className="text-gray-400 text-sm italic">Chưa có</span>
+                            )}
+                          </div>
+                        </td>
+                        <td className="py-4 px-6 text-right">
+                          <button
+                            onClick={() => onSelect(p)}
+                            className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all opacity-0 group-hover:opacity-100"
+                            title="Xem chi tiết"
+                          >
+                            <MoreVertical size={18} />
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                  {projects.length === 0 && (
+                    <tr>
+                      <td colSpan={5} className="py-12 text-center text-gray-400 italic">
+                        Không tìm thấy dữ liệu phù hợp
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
         </div>
-      ) : null}
-      <div className="flex flex-wrap gap-3 mb-6">
-        <input
-          className="h-10 border border-gray-300 px-3 rounded w-64 focus:outline-none focus:ring-2 focus:ring-blue-500"
-          placeholder="Tìm tên khách, mã DA..."
-          value={q}
-          onChange={(e) => setQ(e.target.value)}
-        />
-        <select
-          className="h-10 border border-gray-300 cursor-pointer px-3 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
-          value={trangThaiChot}
-          onChange={(e) => setTrangThaiChot(e.target.value as '' | 'DangCham' | 'DaKy' | 'Huy')}
-        >
-          <option value="">Tất cả trạng thái</option>
-          <option value="DangCham">Đang chăm</option>
-          <option value="DaKy">Đã ký</option>
-          <option value="Huy">Huỷ</option>
-        </select>
-
-        <input
-          type="number"
-          min={0}
-          className="h-10 border border-gray-300 px-3 rounded w-40 focus:outline-none focus:ring-2 focus:ring-blue-500"
-          placeholder="Giá từ"
-          value={minTotal}
-          onChange={(e) => setMinTotal(e.target.value)}
-        />
-        <input
-          type="number"
-          min={0}
-          className="h-10 border border-gray-300 px-3 rounded w-40 focus:outline-none focus:ring-2 focus:ring-blue-500"
-          placeholder="Giá đến"
-          value={maxTotal}
-          onChange={(e) => setMaxTotal(e.target.value)}
-        />
-        <button
-          onClick={() =>
-            onFilter({
-              q,
-              trang_thai_chot: trangThaiChot,
-              min_total: toNullableNumber(minTotal),
-              max_total: toNullableNumber(maxTotal),
-            })
-          }
-          className="h-10 text-white px-5 button-color rounded hover:bg-blue-700 transition-colors"
-        >
-          Lọc
-        </button>
       </div>
-
-      <SalesChart projects={projects} />
 
       <RenewalPackagesModal
         open={isRenewalModalOpen}
         projects={projects}
         onClose={() => setIsRenewalModalOpen(false)}
       />
-
-      <div className="bg-white shadow-md rounded-lg overflow-hidden">
-        <table className="w-full">
-          <thead className="bg-gray-100">
-            <tr>
-              <th className="p-3 text-left font-semibold text-gray-600">Mã DA</th>
-              <th className="p-3 text-left font-semibold text-gray-600">Khách hàng</th>
-              <th className="p-3 text-left font-semibold text-gray-600">TT Chốt</th>
-              <th className="p-3 text-left font-semibold text-gray-600">Tổng phí</th>
-              <th className="p-3 text-left font-semibold text-gray-600">Chăm cuối</th>
-              <th className="p-3 text-left font-semibold text-gray-600">Hành động</th>
-            </tr>
-          </thead>
-          <tbody>
-            {projects.map(p => (
-              <tr key={p.id} className="border-b border-gray-100 hover:bg-gray-50">
-                <td className="p-3 border-r border-gray-100">{p.ma_du_an}</td>
-                <td className="p-3 border-r border-gray-100">
-                  <div className="font-medium text-gray-800">{p.ten_khach}</div>
-                  <small className="text-gray-500">{p.sdt}</small>
-                </td>
-                <td className="p-3 border-r border-gray-100">
-                  <span className={`px-2 py-1 rounded text-xs font-medium ${p.trang_thai_chot === 'DaKy' ? 'bg-green-100 text-green-800' :
-                      p.trang_thai_chot === 'Huy' ? 'bg-red-100 text-red-800' :
-                        'bg-yellow-100 text-yellow-800'
-                    }`}>
-                    {p.trang_thai_chot}
-                  </span>
-                </td>
-                <td className="p-3 font-medium">{formatCurrency(Number(p.contract_value ?? 0) + Number(p.phat_sinh ?? 0))}</td>
-                <td className="p-3 border-r border-gray-100">
-                  {p.ngay_cham_cuoi}
-                  {calculateDaysDiff(p.ngay_cham_cuoi) > 7 && <span className="text-red-500 font-bold ml-2" title="Quá hạn chăm sóc"> ( ! )</span>}
-                </td>
-                <td className="p-3 border-r border-gray-100">
-                  <button
-                    onClick={() => onSelect(p)}
-                    className="cursor-pointer text-blue-600 hover:text-blue-800 hover:underline font-medium"
-                  >
-                    Chi tiết
-                  </button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
     </div>
   );
 }

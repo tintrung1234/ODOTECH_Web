@@ -311,71 +311,74 @@ export default function ProjectsDashboard({
   })();
 
   return (
-    <section className="mb-8">
-      {/* Section title */}
-      <div className="mb-4">
-        <h2 className="text-lg font-semibold text-gray-800">
-          Tổng quan dự án
-        </h2>
-        <p className="text-sm text-gray-500">
-          Chỉ số theo vai trò 
-        </p>
-      </div>
+    <section className="mb-8 space-y-6">
+      {/* Overview Cards */}
+      <div>
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <h2 className="text-xl font-bold text-gray-900 tracking-tight">
+              Tổng quan dự án
+            </h2>
+            <p className="text-sm text-gray-500 mt-0.5 font-medium">
+              Chỉ số hiệu suất & trạng thái
+            </p>
+          </div>
+        </div>
 
-      {/* Stats */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-5">
-        {cards.map((c) => (
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-5">
+          {cards.map((c) => (
+            <StatCard
+              key={c.title}
+              title={c.title}
+              value={c.value}
+              suffix={c.suffix}
+              icon={c.icon}
+              color={c.color}
+              tooltipTitle={c.tooltipTitle}
+              tooltipItems={c.tooltipItems}
+            />
+          ))}
+        </div>
+
+        <div className="mt-5 grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-5">
           <StatCard
-            key={c.title}
-            title={c.title}
-            value={c.value}
-            suffix={c.suffix}
-            icon={c.icon}
-            color={c.color}
-            tooltipTitle={c.tooltipTitle}
-            tooltipItems={c.tooltipItems}
+            title="Chi phí thực"
+            value={Math.round(totals.cost)}
+            suffix="VND"
+            icon={<TrendingDown />}
+            color="red"
+            tooltipTitle="Top dự án theo chi phí"
+            tooltipItems={buildProjectLines(
+              [...projects]
+                .filter((p) => Number(p.actual_cost ?? 0) > 0)
+                .sort((a, b) => Number(b.actual_cost ?? 0) - Number(a.actual_cost ?? 0))
+            )}
           />
-        ))}
-      </div>
-
-      <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-5">
-        <StatCard
-          title="Chi phí thực"
-          value={Math.round(totals.cost)}
-          suffix="VND"
-          icon={<TrendingDown />}
-          color="red"
-          tooltipTitle="Top dự án theo chi phí"
-          tooltipItems={buildProjectLines(
-            [...projects]
-              .filter((p) => Number(p.actual_cost ?? 0) > 0)
-              .sort((a, b) => Number(b.actual_cost ?? 0) - Number(a.actual_cost ?? 0))
-          )}
-        />
-        <StatCard
-          title="Đã hoàn thành"
-          value={counts.done}
-          icon={<CheckCircle2 />}
-          color="green"
-          tooltipTitle="Dự án đã hoàn thành"
-          tooltipItems={buildProjectLines(projects.filter((p) => isDoneStatus(String(p.status ?? ''))))}
-        />
-        <StatCard
-          title="Đang triển khai"
-          value={counts.active}
-          icon={<FolderKanban />}
-          color="blue"
-          tooltipTitle="Dự án đang triển khai"
-          tooltipItems={buildProjectLines(projects.filter((p) => !isDoneStatus(String(p.status ?? ''))))}
-        />
-        <StatCard
-          title="Sắp đến hạn (7 ngày)"
-          value={counts.upcoming}
-          icon={<CalendarClock />}
-          color="orange"
-          tooltipTitle="Dự án sắp đến hạn"
-          tooltipItems={buildProjectLines(upcomingProjects)}
-        />
+          <StatCard
+            title="Đã hoàn thành"
+            value={counts.done}
+            icon={<CheckCircle2 />}
+            color="green"
+            tooltipTitle="Dự án đã hoàn thành"
+            tooltipItems={buildProjectLines(projects.filter((p) => isDoneStatus(String(p.status ?? ''))))}
+          />
+          <StatCard
+            title="Đang triển khai"
+            value={counts.active}
+            icon={<FolderKanban />}
+            color="blue"
+            tooltipTitle="Dự án đang triển khai"
+            tooltipItems={buildProjectLines(projects.filter((p) => !isDoneStatus(String(p.status ?? ''))))}
+          />
+          <StatCard
+            title="Sắp đến hạn (7 ngày)"
+            value={counts.upcoming}
+            icon={<CalendarClock />}
+            color="orange"
+            tooltipTitle="Dự án sắp đến hạn"
+            tooltipItems={buildProjectLines(upcomingProjects)}
+          />
+        </div>
       </div>
     </section>
   );

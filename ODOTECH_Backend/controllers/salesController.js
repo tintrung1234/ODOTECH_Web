@@ -1,5 +1,7 @@
 const salesService = require("../services/salesService");
 
+const { pool } = require("../config/postgres");
+
 const { requireUser } = require("../utils/authz");
 
 
@@ -112,9 +114,40 @@ async function updateProject(req, res, next) {
   }
 }
 
+async function listSalePeople(req, res, next) {
+  try {
+    const auth = requireUser(req);
+    if (auth.error) return res.status(auth.error.status).json({ message: auth.error.message });
+    if (!canViewSales(auth.role)) return res.status(403).json({ message: "Insufficient permissions" });
+
+    const result = await pool.query(
+      `
+        SELECT username, name, email, role_system, status
+        FROM accounts
+        WHERE role_system IN ('sale', 'sales_manager', 'head_sales')
+        ORDER BY name ASC, username ASC
+        LIMIT 200
+      `
+    );
+
+    const items = result.rows.map((row) => ({
+      username: row.username ?? "",
+      name: row.name ?? "",
+      email: row.email ?? "",
+      role_system: row.role_system ?? "",
+      status: row.status ?? "",
+    }));
+
+    res.json({ items });
+  } catch (err) {
+    next(err);
+  }
+}
+
 module.exports = {
   listProjects,
   getProjectById,
   createProject,
   updateProject,
+  listSalePeople,
 };
