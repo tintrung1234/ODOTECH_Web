@@ -1,5 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
-import { createPortal } from 'react-dom';
+import { useCallback, useMemo, useState } from 'react';
 import {
   Clock,
   Plus,

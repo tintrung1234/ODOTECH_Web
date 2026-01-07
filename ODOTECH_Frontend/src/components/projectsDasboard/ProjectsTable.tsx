@@ -8,7 +8,6 @@ import {
   Clock,
   MoreHorizontal,
   Trash2,
-  User as UserIcon
 } from 'lucide-react';
 
 import type {
@@ -16,7 +15,6 @@ import type {
   ProjectManagementItem,
   ProjectMgmtPriority,
   ProjectMgmtStatus,
-  ProjectType,
 } from './interface/type';
 import {
   statusLabel,
@@ -30,10 +28,8 @@ import { AccountIdPicker, AccountTextPicker } from './AccountPickers';
 import { useProjectTasks } from './helper/useProjectTasks';
 import {
   PROJECT_STATUSES,
-  PROJECT_TYPES,
   accountValueToken,
   filterAccountsByRoles,
-  normalizeMultiUsers,
 } from './helper/projectsTableHelpers';
 
 // Utility for Avatar colors
@@ -110,29 +106,6 @@ const PriorityBadge = ({ priority }: { priority: string }) => {
   );
 };
 
-// Editable Cell Wrapper
-const EditableCell = ({
-  children,
-  isEditing,
-  className = '',
-  onClick
-}: {
-  children: React.ReactNode;
-  isEditing?: boolean;
-  className?: string;
-  onClick?: (e: React.MouseEvent) => void;
-}) => {
-  return (
-    <div
-      className={`group/cell relative w-full h-full flex items-center ${className}`}
-      onClick={onClick}
-    >
-      {children}
-      {/* Visual indicator for editable fields on hover */}
-      <div className="absolute inset-0 border border-transparent group-hover/cell:border-gray-200 rounded pointer-events-none transition-colors" />
-    </div>
-  );
-};
 
 export default function ProjectsTable({
   projects,
@@ -269,7 +242,6 @@ export default function ProjectsTable({
   const devAccounts = useMemo(() => filterAccountsByRoles(accounts, normalizeRole, ['dev', 'dev_manager', 'head_tech']), [accounts]);
 
   const PRIORITIES: ProjectMgmtPriority[] = ['', 'low', 'medium', 'high', 'urgent'];
-  const PAYMENT_STATUSES = ['Chưa thanh toán', 'Một phần', 'Hoàn toàn'] as const;
 
   // Formatters
   const vndFormatter = new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND', maximumFractionDigits: 0 });
