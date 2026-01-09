@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 
-import { setToken } from '../utils/auth';
+
 
 export default function Register() {
   const navigate = useNavigate();
@@ -47,6 +47,7 @@ export default function Register() {
               const res = await fetch(`${apiBaseUrl}/api/auth/register`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
+                credentials: 'include', // Send/receive cookies
                 body: JSON.stringify({ username: username.trim(), password }),
               });
 
@@ -74,7 +75,8 @@ export default function Register() {
                 return;
               }
 
-              setToken(json.token);
+              // Token is now in httpOnly cookie, no need to store it
+              // Just navigate to accounts page
               navigate('/accounts', { replace: true });
             })();
           }}

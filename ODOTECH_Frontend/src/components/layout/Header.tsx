@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { formatDate } from '../../utils/formatDate';
 import { useNavigate } from 'react-router-dom';
-import { clearToken, getTokenUser, normalizeRole } from '../../utils/auth';
+import { logout, getTokenUser, normalizeRole } from '../../utils/auth';
 import type { CanonicalRole } from '../../utils/auth';
 import {
   Search,
@@ -61,7 +61,7 @@ const Avatar = ({ name }: { name: string }) => {
 export default function Header({ userName }: HeaderProps) {
   const navigate = useNavigate();
   const formattedDate = formatDate(new Date());
-  const userRole = normalizeRole(getTokenUser()?.role);
+  const [userRole, setUserRole] = useState<CanonicalRole>('unknown');
   const formattedUserRole = formatRole(userRole);
 
   const [showUserMenu, setShowUserMenu] = useState(false);
@@ -70,6 +70,16 @@ export default function Header({ userName }: HeaderProps) {
 
   const userMenuRef = useRef<HTMLDivElement>(null);
   const notificationRef = useRef<HTMLDivElement>(null);
+
+  // Fetch user role on mount
+  useEffect(() => {
+    (async () => {
+      const user = await getTokenUser();
+      if (user?.role) {
+        setUserRole(normalizeRole(user.role));
+      }
+    })();
+  }, []);
 
   // Close dropdowns when clicking outside
   useEffect(() => {
@@ -86,8 +96,8 @@ export default function Header({ userName }: HeaderProps) {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  const handleLogout = () => {
-    clearToken();
+  const handleLogout = async () => {
+    await logout();
     navigate('/login', { replace: true });
   };
 

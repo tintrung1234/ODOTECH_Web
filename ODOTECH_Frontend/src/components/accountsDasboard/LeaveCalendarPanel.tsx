@@ -53,7 +53,7 @@ export default function LeaveCalendarPanel({
       {selectedIsoDate ? (
         <div className="mb-4 border border-gray-200 rounded-lg overflow-hidden">
           <div className="px-4 py-3 bg-gray-50 border-b border-gray-200 font-semibold text-gray-800">
-            Đơn nghỉ trong ngày 123 ({dayRequests.length})
+            Đơn nghỉ trong ngày ({dayRequests.length})
           </div>
           <div className="divide-y divide-gray-200">
             {dayRequests.length === 0 ? (

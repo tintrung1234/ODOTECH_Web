@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
 import Header from './Header';
 import Sidebar from './Sidebar';
@@ -10,18 +11,39 @@ interface AppLayoutProps {
 }
 
 function pickDisplayName(value: unknown): string {
-  const str = String(value ?? '').trim();
+  if (value === null || value === undefined) return '';
+  const str = String(value).trim();
+  if (!str) return '';
+  const lowered = str.toLowerCase();
+  if (lowered === 'undefined' || lowered === 'null') return '';
   return str;
 }
 
 export default function AppLayout({ children, userName }: AppLayoutProps) {
-  const tokenUser = getTokenUser();
-  const displayName =
-    pickDisplayName(userName) ||
-    pickDisplayName(tokenUser?.name) ||
-    pickDisplayName(tokenUser?.username) ||
-    pickDisplayName(tokenUser?.email) ||
-    'Admin';
+  const [tokenUser, setTokenUser] = useState<{ name?: string; username?: string; email?: string } | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const user = await getTokenUser();
+      if (!cancelled) {
+        setTokenUser(user);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const displayName = useMemo(() => {
+    return (
+      pickDisplayName(userName) ||
+      pickDisplayName(tokenUser?.name) ||
+      pickDisplayName(tokenUser?.username) ||
+      pickDisplayName(tokenUser?.email) ||
+      'Admin'
+    );
+  }, [tokenUser?.email, tokenUser?.name, tokenUser?.username, userName]);
 
   return (
     <div className="flex min-h-screen bg-gray-100">

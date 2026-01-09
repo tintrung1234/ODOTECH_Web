@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import type { Customer, CustomerProject } from './interface/types';
-import { buildAuthHeaders } from '../../utils/auth';
+
 import { formatCurrency } from '../../utils/formatDate';
 import {
     ArrowLeft,
@@ -38,7 +38,7 @@ export default function CustomerDetail({ customer, onBack, onSave, readOnly = fa
         setLoadingProjects(true);
         try {
             const res = await fetch(`${apiBaseUrl}/api/customers/${customer.ma_kh}/projects`, {
-                headers: buildAuthHeaders(),
+                credentials: 'include',
             });
             if (res.ok) {
                 const data = await res.json();

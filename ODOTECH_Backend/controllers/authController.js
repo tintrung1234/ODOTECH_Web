@@ -56,6 +56,15 @@ async function login(req, res, next) {
       { expiresIn }
     );
 
+    // Set httpOnly cookie
+    const maxAge = expiresIn === "7d" ? 7 * 24 * 60 * 60 * 1000 : 24 * 60 * 60 * 1000;
+    res.cookie("token", token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "strict",
+      maxAge: maxAge
+    });
+
     res.json({
       token,
       user: {
@@ -101,6 +110,15 @@ async function register(req, res, next) {
       { expiresIn }
     );
 
+    // Set httpOnly cookie
+    const maxAge = expiresIn === "7d" ? 7 * 24 * 60 * 60 * 1000 : 24 * 60 * 60 * 1000;
+    res.cookie("token", token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "strict",
+      maxAge: maxAge
+    });
+
     res.status(201).json({
       token,
       user: {
@@ -125,8 +143,19 @@ async function me(req, res) {
   res.json({ user: req.user ?? null });
 }
 
+async function logout(req, res) {
+  // Clear the httpOnly cookie
+  res.clearCookie("token", {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "strict"
+  });
+  res.json({ message: "Logged out successfully" });
+}
+
 module.exports = {
   login,
   register,
   me,
+  logout,
 };

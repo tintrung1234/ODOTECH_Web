@@ -1,14 +1,28 @@
 import { NavLink } from 'react-router-dom';
+import { useEffect, useState } from 'react';
 
 import logo from '../../assets/img/logo.png';
 import { sidebarItems } from '../../routes/appRoutes';
 import { getTokenUser, normalizeRole } from '../../utils/auth';
 
 export default function Sidebar() {
-  const role = normalizeRole(getTokenUser()?.role);
+  const [role, setRole] = useState<ReturnType<typeof normalizeRole>>('unknown');
+
+  useEffect(() => {
+    getTokenUser().then((user) => {
+      setRole(normalizeRole(user?.role));
+    });
+  }, []);
   const visibleItems = sidebarItems.filter((item) => {
-    if (item.to !== '/sales') return true;
-    return !(role === 'dev' || role === 'dev_manager' || role === 'head_tech');
+    // Hide sales from dev roles
+    if (item.to === '/sales') {
+      return !(role === 'dev' || role === 'dev_manager' || role === 'head_tech');
+    }
+    // Hide websites from sales roles
+    if (item.to === '/websites') {
+      return !(role === 'sale' || role === 'sales_manager' || role === 'head_sales');
+    }
+    return true;
   });
 
   return (

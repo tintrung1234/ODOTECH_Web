@@ -3,15 +3,22 @@ import CustomerDashboard from '../components/customersDashboard/CustomerDashboar
 import CustomerDetail from '../components/customersDashboard/CustomerDetail';
 import type { Customer } from '../components/customersDashboard/interface/types';
 import type { Account } from '../components/projectsDasboard/interface/type';
-import { buildAuthHeaders, getTokenUser, normalizeRole, type CanonicalRole } from '../utils/auth';
+import { getTokenUser, normalizeRole, type CanonicalRole } from '../utils/auth';
 
 type ToastType = 'success' | 'error';
 type ToastState = { open: boolean; type: ToastType; message: string };
 
 export default function Customers() {
-    const role: CanonicalRole = useMemo(() => normalizeRole(getTokenUser()?.role), []);
+    const [role, setRole] = useState<CanonicalRole>('unknown');
     const canView = !(role === 'dev' || role === 'dev_manager' || role === 'head_tech');
     const readOnly = role === 'support';
+
+    useEffect(() => {
+        (async () => {
+            const user = await getTokenUser();
+            setRole(normalizeRole(user?.role));
+        })();
+    }, []);
 
     const [view, setView] = useState<'dashboard' | 'detail'>('dashboard');
     const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
@@ -67,7 +74,7 @@ export default function Customers() {
             if (opts.sale_id) params.set('sale_id', opts.sale_id);
             const qs = params.toString();
 
-            const res = await fetch(`${apiBaseUrl}/api/customers${qs ? `?${qs}` : ''}`, { headers: buildAuthHeaders() });
+            const res = await fetch(`${apiBaseUrl}/api/customers${qs ? `?${qs}` : ''}`, { credentials: 'include' });
             if (!res.ok) {
                 throw new Error(`HTTP ${res.status}`);
             }
@@ -95,7 +102,7 @@ export default function Customers() {
         let cancelled = false;
         (async () => {
             try {
-                const res = await fetch(`${apiBaseUrl}/api/accounts?limit=1000&offset=0`, { headers: buildAuthHeaders() });
+                const res = await fetch(`${apiBaseUrl}/api/accounts?limit=1000&offset=0`, { credentials: 'include' });
                 if (!res.ok) throw new Error(await readErrorMessage(res));
                 const json = (await res.json()) as { items?: Account[] } | Account[];
                 const items = Array.isArray(json) ? json : (json.items ?? []);
@@ -134,7 +141,8 @@ export default function Customers() {
             const url = `${apiBaseUrl}/api/customers/${data.ma_kh}`;
             const res = await fetch(url, {
                 method: 'PUT',
-                headers: buildAuthHeaders({ 'Content-Type': 'application/json' }),
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
                 body: JSON.stringify({
                     ten_khach: data.ten_khach,
                     sdt: data.sdt,
@@ -203,8 +211,8 @@ export default function Customers() {
                 >
                     <div
                         className={`rounded border px-4 py-3 shadow-md ${toast.type === 'success'
-                                ? 'bg-green-50 text-green-700 border-green-200'
-                                : 'bg-red-50 text-red-700 border-red-200'
+                            ? 'bg-green-50 text-green-700 border-green-200'
+                            : 'bg-red-50 text-red-700 border-red-200'
                             }`}
                     >
                         {toast.message}

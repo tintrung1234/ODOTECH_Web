@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import type { ProjectData, Payment, StaffId } from './interface/type';
 import { formatCurrency, getWeeksDiff } from '../../utils/formatDate';
 import type { Account } from '../projectsDasboard/interface/type';
-import { buildAuthHeaders, normalizeRole } from '../../utils/auth';
+import { normalizeRole } from '../../utils/auth';
 import {
   ArrowLeft,
   Calendar,
@@ -488,7 +488,8 @@ export default function ProjectDetail({ project, onBack, onSave, readOnly = fals
         try {
           await fetch(`${apiBaseUrl}/api/projects/actual-cost`, {
             method: 'PATCH',
-            headers: { ...buildAuthHeaders(), 'Content-Type': 'application/json' },
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
             body: JSON.stringify({ project_code: projectCode, actual_cost: current }),
           });
         } catch { /* empty */ }
@@ -513,7 +514,8 @@ export default function ProjectDetail({ project, onBack, onSave, readOnly = fals
         try {
           await fetch(`${apiBaseUrl}/api/projects/deposit-received`, {
             method: 'PATCH',
-            headers: { ...buildAuthHeaders(), 'Content-Type': 'application/json' },
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
             body: JSON.stringify({ project_code: projectCode, deposit_received: current }),
           });
         } catch { /* empty */ }
@@ -527,7 +529,7 @@ export default function ProjectDetail({ project, onBack, onSave, readOnly = fals
     (async () => {
       setAccountsLoading(true);
       try {
-        const res = await fetch(`${apiBaseUrl}/api/accounts?limit=500&offset=0`, { headers: buildAuthHeaders() });
+        const res = await fetch(`${apiBaseUrl}/api/accounts?limit=500&offset=0`, { credentials: 'include' });
         if (!res.ok) throw new Error();
         const json = await res.json();
         const items = Array.isArray(json) ? json : (json.items ?? []);
@@ -549,7 +551,7 @@ export default function ProjectDetail({ project, onBack, onSave, readOnly = fals
     (async () => {
       try {
         const q = encodeURIComponent(projectCode);
-        const res = await fetch(`${apiBaseUrl}/api/projects?limit=20&offset=0&q=${q}`, { headers: buildAuthHeaders() });
+        const res = await fetch(`${apiBaseUrl}/api/projects?limit=20&offset=0&q=${q}`, { credentials: 'include' });
         if (!res.ok) return;
         const json = await res.json();
         const items = Array.isArray(json) ? json : (json.items || []);

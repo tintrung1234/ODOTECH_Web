@@ -3,10 +3,11 @@ import { formatIsoDate, statusClassName, statusLabel, isPending, todayIsoDate } 
 
 interface LeaveApprovalPanelProps {
   request: LeaveRequest | null;
+  requesterName?: string;
   onUpdateRequest: (updated: LeaveRequest) => void;
 }
 
-export default function LeaveApprovalPanel({ request, onUpdateRequest }: LeaveApprovalPanelProps) {
+export default function LeaveApprovalPanel({ request, requesterName, onUpdateRequest }: LeaveApprovalPanelProps) {
   if (!request) {
     return <div className="text-gray-600">Chọn một đơn để xem chi tiết.</div>;
   }
@@ -14,7 +15,10 @@ export default function LeaveApprovalPanel({ request, onUpdateRequest }: LeaveAp
   return (
     <div>
       <div className="flex items-center justify-between gap-3">
-        <div className="text-lg font-semibold text-gray-900">Chi tiết đơn #{request.id}</div>
+        <div>
+          <div className="text-lg font-semibold text-gray-900">Chi tiết đơn #{request.id}</div>
+          <div className="text-sm text-gray-600 mt-1">Nhân sự xin nghỉ: <span className="font-medium text-gray-900">{requesterName || '-'}</span></div>
+        </div>
         <span className={`text-xs px-2 py-1 rounded-full border ${statusClassName(request.trangThai)}`}>
           {statusLabel(request.trangThai)}
         </span>

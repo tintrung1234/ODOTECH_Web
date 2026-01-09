@@ -4,7 +4,7 @@ import ProjectDetail from '../components/salesDasboard/ProjectDetail';
 import type { ProjectData } from '../components/salesDasboard/interface/type';
 import type { StaffId } from '../components/salesDasboard/interface/type';
 import type { Account } from '../components/projectsDasboard/interface/type';
-import { buildAuthHeaders, getTokenUser, normalizeRole } from '../utils/auth';
+import { getTokenUser, normalizeRole } from '../utils/auth';
 
 type ToastType = 'success' | 'error';
 type ToastState = { open: boolean; type: ToastType; message: string };
@@ -81,9 +81,16 @@ const createEmptyProject = (): ProjectData => {
 };
 
 export default function Sales() {
-  const role = normalizeRole(getTokenUser()?.role);
+  const [role, setRole] = useState<ReturnType<typeof normalizeRole>>('unknown');
   const canView = !(role === 'dev' || role === 'dev_manager' || role === 'head_tech');
   const readOnly = role === 'support';
+
+  useEffect(() => {
+    (async () => {
+      const user = await getTokenUser();
+      setRole(normalizeRole(user?.role));
+    })();
+  }, []);
   const canCreateAndEdit = !readOnly;
 
   const [view, setView] = useState<'dashboard' | 'detail'>('dashboard');
@@ -175,7 +182,7 @@ export default function Sales() {
       if (opts.trang_thai_chot) params.set('trang_thai_chot', opts.trang_thai_chot);
       const qs = params.toString();
 
-      const res = await fetch(`${apiBaseUrl}/api/sales/projects${qs ? `?${qs}` : ''}`, { headers: buildAuthHeaders() });
+      const res = await fetch(`${apiBaseUrl}/api/sales/projects${qs ? `?${qs}` : ''}`, { credentials: 'include' });
       if (!res.ok) {
         throw new Error(`HTTP ${res.status}`);
       }
@@ -199,13 +206,15 @@ export default function Sales() {
       try {
         const codesParam = encodeURIComponent(codes.join(','));
         const projRes = await fetch(`${apiBaseUrl}/api/projects/contract-values?codes=${codesParam}`, {
-          headers: buildAuthHeaders(),
+          credentials: 'include',
         });
         if (!projRes.ok) throw new Error(await readErrorMessage(projRes));
 
         const projJson = (await projRes.json()) as unknown;
         const projItems: Array<{ project_code?: unknown; contract_value?: unknown }> =
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           (projJson && typeof projJson === 'object' && Array.isArray((projJson as any).items))
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             ? (projJson as any).items
             : [];
 
@@ -248,7 +257,7 @@ export default function Sales() {
     let cancelled = false;
     (async () => {
       try {
-        const res = await fetch(`${apiBaseUrl}/api/accounts?limit=1000&offset=0`, { headers: buildAuthHeaders() });
+        const res = await fetch(`${apiBaseUrl}/api/accounts?limit=1000&offset=0`, { credentials: 'include' });
         if (!res.ok) throw new Error(await readErrorMessage(res));
         const json = (await res.json()) as { items?: Account[] } | Account[];
         const items = Array.isArray(json) ? json : (json.items ?? []);
@@ -318,7 +327,7 @@ export default function Sales() {
       setLoading(true);
       clearAlerts();
       try {
-        const res = await fetch(`${apiBaseUrl}/api/sales/projects/${project.id}`, { headers: buildAuthHeaders() });
+        const res = await fetch(`${apiBaseUrl}/api/sales/projects/${project.id}`, { credentials: 'include' });
         if (!res.ok) {
           throw new Error(`HTTP ${res.status}`);
         }
@@ -359,7 +368,8 @@ export default function Sales() {
 
       const res = await fetch(url, {
         method,
-        headers: buildAuthHeaders({ 'Content-Type': 'application/json' }),
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify(data),
       });
       if (!res.ok) {
@@ -492,11 +502,10 @@ export default function Sales() {
           aria-live="polite"
         >
           <div
-            className={`rounded border px-4 py-3 shadow-md ${
-              toast.type === 'success'
+            className={`rounded border px-4 py-3 shadow-md ${toast.type === 'success'
                 ? 'bg-green-50 text-green-700 border-green-200'
                 : 'bg-red-50 text-red-700 border-red-200'
-            }`}
+              }`}
           >
             {toast.message}
           </div>
