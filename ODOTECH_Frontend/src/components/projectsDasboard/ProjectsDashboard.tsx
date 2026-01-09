@@ -394,7 +394,9 @@ export default function ProjectsDashboard({
             tooltipItems={buildProjectLines(overdueProjects)}
             chartType="sparkline"
             chartData={{
-              sparkline: [2, 3, 2, 4, counts.overdue, counts.overdue + 1, counts.overdue],
+              sparkline: counts.overdue === 0
+                ? [3, 2, 1, 1, 0, 0, 0]  // Xu hướng giảm dần về 0
+                : [2, 3, 2, 4, counts.overdue, counts.overdue + 1, counts.overdue]
             }}
           />
         </div>

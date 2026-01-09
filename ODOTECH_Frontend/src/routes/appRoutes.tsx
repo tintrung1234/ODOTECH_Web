@@ -6,8 +6,11 @@ import Login from '../pages/Login';
 import Register from '../pages/Register';
 import Projects from '../pages/Projects';
 import Renewals from '../pages/Renewals';
+import ExpenseRenewals from '../pages/ExpenseRenewals';
 import Sales from '../pages/Sales';
 import Customers from '../pages/Customers';
+import Websites from '../pages/Websites';
+import SalaryDraft from '../pages/SalaryDraft';
 
 export interface SidebarItem {
   to: string;
@@ -78,6 +81,34 @@ export const sidebarItems: SidebarItem[] = [
     ),
   },
   {
+    to: '/salary-draft',
+    label: 'Tính lương nháp',
+    icon: (
+      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth={2}
+          d="M9 7h6m-6 4h6m-6 4h6M5 3h14a2 2 0 012 2v14a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2z"
+        />
+      </svg>
+    ),
+  },
+  {
+    to: '/expense-renewals',
+    label: 'Quản lý thu chi',
+    icon: (
+      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth={2}
+          d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"
+        />
+      </svg>
+    ),
+  },
+  {
     to: '/customers',
     label: 'Quản lý khách hàng',
     icon: (
@@ -87,6 +118,20 @@ export const sidebarItems: SidebarItem[] = [
           strokeLinejoin="round"
           strokeWidth={2}
           d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"
+        />
+      </svg>
+    ),
+  },
+  {
+    to: '/websites',
+    label: 'Quản lý Website',
+    icon: (
+      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth={2}
+          d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
         />
       </svg>
     ),
@@ -101,6 +146,9 @@ export const appRoutes: AppRoute[] = [
   { path: '/sales', element: <Sales /> },
   { path: '/projects', element: <Projects /> },
   { path: '/renewals', element: <Renewals /> },
+  { path: '/salary-draft', element: <SalaryDraft /> },
+  { path: '/expense-renewals', element: <ExpenseRenewals /> },
   { path: '/customers', element: <Customers /> },
+  { path: '/websites', element: <Websites /> },
   { path: '*', element: <Navigate to="/accounts" replace /> },
 ];

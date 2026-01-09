@@ -166,21 +166,52 @@ async function deleteAccount(accountId) {
 }
 
 async function getAccountStats() {
+  // Normalize role_system by trimming, lowercasing, and stripping spaces.
+  // Managers include (per requirement):
+  // headdev, truongphongsale, quanlydev, truongphongkinhdoanh, hotrotong, quanlysale, admin
+  // Plus common aliases already used across the app.
+  const managerRoleKeys = [
+    'admin',
+    'administrator',
+    'hotrotong',
+    'support',
+    'quanlysale',
+    'quanly_sale',
+    'salesmanager',
+    'sales_manager',
+    'truongphongsale',
+    'truongphongkinhdoanh',
+    'headsales',
+    'head_sales',
+    'quanlydev',
+    'quanly_dev',
+    'devmanager',
+    'dev_manager',
+    'headdev',
+    'headtech',
+    'head_tech',
+    'truongphongkythuat',
+  ];
+
   const result = await pool.query(
     `
       SELECT
         COUNT(*)::int AS total_accounts,
-        COUNT(*) FILTER (WHERE role_system = 'manager')::int AS total_managers,
-        COUNT(*) FILTER (WHERE role_system = 'employee')::int AS total_employees
+        COUNT(*) FILTER (
+          WHERE regexp_replace(lower(coalesce(role_system, '')), '\\s+', '', 'g') = ANY($1::text[])
+        )::int AS total_managers
       FROM accounts
-    `
+    `,
+    [managerRoleKeys]
   );
 
   const row = result.rows[0] ?? {};
+  const totalAccounts = row.total_accounts ?? 0;
+  const totalManagers = row.total_managers ?? 0;
   return {
-    totalAccounts: row.total_accounts ?? 0,
-    totalManagers: row.total_managers ?? 0,
-    totalEmployees: row.total_employees ?? 0,
+    totalAccounts,
+    totalManagers,
+    totalEmployees: Math.max(0, totalAccounts - totalManagers),
   };
 }
 

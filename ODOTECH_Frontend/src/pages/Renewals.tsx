@@ -5,7 +5,7 @@ import {
 } from 'lucide-react';
 
 import StatCard from '../components/accountsDasboard/StatCard';
-import { buildAuthHeaders, getTokenUser, normalizeRole, type CanonicalRole } from '../utils/auth';
+import { getTokenUser, normalizeRole, type CanonicalRole } from '../utils/auth';
 
 type RenewalKind = 'domain' | 'hosting' | 'email' | 'manage' | 'content' | 'ads';
 type DueStatus = '' | 'active' | 'expiring' | 'expired';
@@ -83,11 +83,18 @@ function keyOf(item: Pick<RenewalItem, 'sales_project_id' | 'kind'>) {
 }
 
 export default function Renewals() {
-  const role: CanonicalRole = useMemo(() => normalizeRole(getTokenUser()?.role), []);
+  const [role, setRole] = useState<CanonicalRole>('unknown');
   const canSeeMoney = !(role === 'dev' || role === 'dev_manager' || role === 'head_tech');
   const readOnly = role === 'support' || role === 'dev' || role === 'dev_manager' || role === 'head_tech';
   const canEditMeta = !readOnly && (role === 'admin' || role === 'sale' || role === 'sales_manager' || role === 'head_sales');
   const canGetPass = role === 'admin' || role === 'dev' || role === 'dev_manager' || role === 'head_tech';
+
+  useEffect(() => {
+    (async () => {
+      const user = await getTokenUser();
+      setRole(normalizeRole(user?.role));
+    })();
+  }, []);
 
   const apiBaseUrl = useMemo(() => {
     const envUrl = import.meta.env.VITE_API_URL;
@@ -139,7 +146,7 @@ export default function Renewals() {
   const loadSaleDirectory = async () => {
     try {
       // Use /api/accounts to ensure we get IDs
-      const res = await fetch(`${apiBaseUrl}/api/accounts?limit=1000`, { headers: buildAuthHeaders() });
+      const res = await fetch(`${apiBaseUrl}/api/accounts?limit=1000`, { credentials: 'include' });
       if (!res.ok) return;
 
       const json = (await res.json()) as { items?: AccountDirectoryItem[] } | AccountDirectoryItem[];
@@ -171,7 +178,7 @@ export default function Renewals() {
       url.searchParams.set('limit', '200');
       url.searchParams.set('offset', '0');
 
-      const res = await fetch(url.toString(), { headers: buildAuthHeaders() });
+      const res = await fetch(url.toString(), { credentials: 'include' });
       if (!res.ok) {
         const msg = await readErrorMessage(res);
         throw new Error(msg);
@@ -303,7 +310,8 @@ export default function Renewals() {
 
     const res = await fetch(url, {
       method: 'PUT',
-      headers: buildAuthHeaders({ 'Content-Type': 'application/json' }),
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
       body: JSON.stringify(body),
     });
 
@@ -322,7 +330,7 @@ export default function Renewals() {
     setFetchedPassword('');
     try {
       const url = `${apiBaseUrl}/api/renewals/packages/${selectedItem.sales_project_id}/${selectedItem.kind}/credentials`;
-      const res = await fetch(url, { method: 'POST', headers: buildAuthHeaders() });
+      const res = await fetch(url, { method: 'POST', credentials: 'include' });
       if (!res.ok) {
         const msg = await readErrorMessage(res);
         throw new Error(msg);

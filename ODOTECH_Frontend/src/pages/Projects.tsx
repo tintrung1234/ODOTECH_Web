@@ -11,7 +11,7 @@ import type {
   ProjectMgmtStatus,
   ProjectType,
 } from '../components/projectsDasboard/interface/type';
-import { buildAuthHeaders, getTokenUser, normalizeRole } from '../utils/auth';
+import { getTokenUser, normalizeRole } from '../utils/auth';
 
 type ListTab = 'all' | 'done';
 
@@ -85,9 +85,16 @@ export default function Projects() {
 
   const today = useMemo(() => new Date(), []);
 
-  const tokenUser = useMemo(() => getTokenUser(), []);
+  const [tokenUser, setTokenUser] = useState<Awaited<ReturnType<typeof getTokenUser>>>(null);
   const uid = typeof tokenUser?.uid === 'number' ? tokenUser.uid : Number(tokenUser?.uid ?? NaN);
   const role = useMemo(() => normalizeRole(tokenUser?.role), [tokenUser?.role]);
+
+  useEffect(() => {
+    (async () => {
+      const user = await getTokenUser();
+      setTokenUser(user);
+    })();
+  }, []);
 
   const readOnly = role === 'support';
   const canCreate = !readOnly && (role === 'admin' || role === 'head_sales' || role === 'head_tech' || role === 'sales_manager' || role === 'dev_manager');
@@ -214,7 +221,7 @@ export default function Projects() {
   const loadProjects = async () => {
     setLoading(true);
     try {
-      const res = await fetch(`${apiBaseUrl}/api/projects?limit=200`, { headers: buildAuthHeaders() });
+      const res = await fetch(`${apiBaseUrl}/api/projects?limit=200`, { credentials: 'include' });
       if (!res.ok) throw new Error(await readErrorMessage(res));
       const json = await res.json();
       const items = Array.isArray(json) ? json : (json.items ?? []);
@@ -228,7 +235,7 @@ export default function Projects() {
 
   const loadAccounts = async () => {
     try {
-      const res = await fetch(`${apiBaseUrl}/api/accounts?limit=200`, { headers: buildAuthHeaders() });
+      const res = await fetch(`${apiBaseUrl}/api/accounts?limit=200`, { credentials: 'include' });
       if (!res.ok) throw new Error(await readErrorMessage(res));
       const json = await res.json();
       const items = Array.isArray(json) ? json : (json.items ?? []);
@@ -415,7 +422,8 @@ export default function Projects() {
         try {
           const res = await fetch(`${apiBaseUrl}/api/projects/${id}`, {
             method: 'PUT',
-            headers: buildAuthHeaders({ 'Content-Type': 'application/json' }),
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
             body: JSON.stringify(toApiPayload(nextProject)),
           });
           if (!res.ok) throw new Error(await readErrorMessage(res));
@@ -451,11 +459,10 @@ export default function Projects() {
             aria-live="polite"
           >
             <div
-              className={`rounded border px-4 py-3 shadow-md ${
-                toast.type === 'success'
+              className={`rounded border px-4 py-3 shadow-md ${toast.type === 'success'
                   ? 'bg-green-50 text-green-700 border-green-200'
                   : 'bg-red-50 text-red-700 border-red-200'
-              }`}
+                }`}
             >
               {toast.message}
             </div>
@@ -589,7 +596,8 @@ export default function Projects() {
                   try {
                     const res = await fetch(`${apiBaseUrl}/api/projects`, {
                       method: 'POST',
-                      headers: buildAuthHeaders({ 'Content-Type': 'application/json' }),
+                      headers: { 'Content-Type': 'application/json' },
+                      credentials: 'include',
                       body: JSON.stringify(createDraftProject()),
                     });
                     if (!res.ok) throw new Error(await readErrorMessage(res));
@@ -658,7 +666,7 @@ export default function Projects() {
           }
           (async () => {
             try {
-              const res = await fetch(`${apiBaseUrl}/api/projects/${deleteTargetId}`, { method: 'DELETE', headers: buildAuthHeaders() });
+              const res = await fetch(`${apiBaseUrl}/api/projects/${deleteTargetId}`, { method: 'DELETE', credentials: 'include' });
               if (!res.ok) throw new Error(await readErrorMessage(res));
               setProjects((prev) => prev.filter((p) => p.id !== deleteTargetId));
               setSelectedId((prev) => (prev === deleteTargetId ? null : prev));

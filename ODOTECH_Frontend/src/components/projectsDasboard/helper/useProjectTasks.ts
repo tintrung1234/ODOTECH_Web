@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import type { ProjectTask } from '../interface/type';
-import { buildAuthHeaders } from '../../../utils/auth';
+
 import { readErrorMessage } from './projectsTableHelpers.ts';
 
 type TasksByProjectId = Record<number, ProjectTask[]>;
@@ -59,7 +59,7 @@ export function useProjectTasks({ apiBaseUrl }: UseProjectTasksArgs) {
       setTaskLoadingByProjectId((prev) => ({ ...prev, [projectId]: true }));
       try {
         const res = await fetch(`${apiBaseUrl}/api/projects/${projectId}/tasks`, {
-          headers: buildAuthHeaders(),
+          credentials: 'include',
         });
         if (!res.ok) throw new Error(await readErrorMessage(res));
         const json = (await res.json()) as { items?: ProjectTask[] } | ProjectTask[];
@@ -84,7 +84,8 @@ export function useProjectTasks({ apiBaseUrl }: UseProjectTasksArgs) {
         try {
           const res = await fetch(`${apiBaseUrl}/api/projects/${projectId}/tasks`, {
             method: 'POST',
-            headers: buildAuthHeaders({ 'Content-Type': 'application/json' }),
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
             body: JSON.stringify({
               tieuDe: title,
               nguoiPhuTrach: draft.nguoiPhuTrach.trim(),
@@ -137,7 +138,8 @@ export function useProjectTasks({ apiBaseUrl }: UseProjectTasksArgs) {
           try {
             const res = await fetch(`${apiBaseUrl}/api/projects/${projectId}/tasks/${taskId}`, {
               method: 'PATCH',
-              headers: buildAuthHeaders({ 'Content-Type': 'application/json' }),
+              headers: { 'Content-Type': 'application/json' },
+              credentials: 'include',
               body: JSON.stringify(patch),
             });
             if (!res.ok) throw new Error(await readErrorMessage(res));
@@ -166,7 +168,7 @@ export function useProjectTasks({ apiBaseUrl }: UseProjectTasksArgs) {
         try {
           const res = await fetch(`${apiBaseUrl}/api/projects/${projectId}/tasks/${taskId}`, {
             method: 'DELETE',
-            headers: buildAuthHeaders(),
+            credentials: 'include',
           });
           if (!res.ok) throw new Error(await readErrorMessage(res));
           setTasksByProjectId((prev) => {

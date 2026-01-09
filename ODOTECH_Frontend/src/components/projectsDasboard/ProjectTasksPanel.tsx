@@ -170,7 +170,7 @@ export default function ProjectTasksPanel({
         width: layout.width,
         maxHeight: '600px'
       }}
-      className="z-50 flex flex-col shadow-2xl rounded-xl border border-gray-200 bg-white ring-1 ring-black/5 animate-in fade-in slide-in-from-top-2 duration-200"
+      className="z-5000 flex flex-col shadow-2xl rounded-xl border border-gray-200 bg-white ring-1 ring-black/5 animate-in fade-in slide-in-from-top-2 duration-200"
     >
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100 bg-gray-50/50 rounded-t-xl">

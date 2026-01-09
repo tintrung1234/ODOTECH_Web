@@ -12,6 +12,8 @@ interface AccountTableProps {
   onCreateAccount: (input: Omit<Account, 'id' | 'created_at' | 'updated_at'>) => Promise<Account> | Account;
   onDeleteAccount: (id: number) => void | Promise<void>;
   onUpdateLeaveRequest: (updated: LeaveRequest) => void | Promise<void>;
+  readOnly?: boolean;
+  onSelectAccount?: (account: Account) => void;
 }
 
 export default function AccountTable({
@@ -20,6 +22,8 @@ export default function AccountTable({
   onUpdateAccount,
   onDeleteAccount,
   onUpdateLeaveRequest,
+  readOnly = false,
+  onSelectAccount,
 }: AccountTableProps) {
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState('');
@@ -123,6 +127,7 @@ export default function AccountTable({
     if (!selectedAccount) return;
     if (!isDirty) return;
     if (busy) return;
+    if (readOnly) return;
 
     if (autosaveTimerRef.current) {
       window.clearTimeout(autosaveTimerRef.current);
@@ -147,7 +152,7 @@ export default function AccountTable({
         autosaveTimerRef.current = null;
       }
     };
-  }, [busy, draft, isCreating, isDirty, onUpdateAccount, selectedAccount, selectedId]);
+  }, [busy, draft, isCreating, isDirty, onUpdateAccount, readOnly, selectedAccount, selectedId]);
 
   return (
     <div className="mt-6">
@@ -176,17 +181,19 @@ export default function AccountTable({
 
         {/* Action Buttons */}
         <div className="flex gap-3">
-          <button
-            type="button"
-            className="h-10 px-5 rounded-lg bg-teal-600 text-white font-medium disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
-            disabled={busy}
-            onClick={() => {
-              setErrorMessage('');
-              navigate('/register');
-            }}
-          >
-            Thêm tài khoản
-          </button>
+          {!readOnly ? (
+            <button
+              type="button"
+              className="h-10 px-5 rounded-lg bg-teal-600 text-white font-medium disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+              disabled={busy}
+              onClick={() => {
+                setErrorMessage('');
+                navigate('/register');
+              }}
+            >
+              Thêm tài khoản
+            </button>
+          ) : null}
 
           <button
             type="button"
@@ -306,12 +313,14 @@ export default function AccountTable({
                       setIsCreating(false);
                       setSelectedId(account.id);
                       setDraft({ ...account, username: (account as unknown as { username?: string }).username ?? '' });
+                      onSelectAccount?.(account);
                     }}
                     className={`group transition-colors ${selectedId === account.id ? 'bg-teal-50/60' : 'hover:bg-gray-50/50'} cursor-pointer`}
                   >
                     {(() => {
                       const isActiveRow = selectedId === account.id && Boolean(draft);
                       const row = isActiveRow && draft ? draft : account;
+                        const canEditRow = !readOnly && isActiveRow && Boolean(draft);
 
                       const inputBase = 'h-9 w-full px-2 border border-gray-300 rounded bg-white outline-none focus:border-gray-600';
 
@@ -328,7 +337,7 @@ export default function AccountTable({
                             className={`${stickyCellBase} ${stickyRightDivider} sticky left-16 z-30 font-medium text-gray-900 ${selectedId === account.id ? 'bg-teal-50' : 'bg-white group-hover:bg-gray-50'
                               }`}
                           >
-                            {isActiveRow && draft ? (
+                            {canEditRow && draft ? (
                               <input
                                 value={draft.name}
                                 onChange={(e) => setDraft({ ...draft, name: e.target.value })}
@@ -341,7 +350,7 @@ export default function AccountTable({
                           </td>
 
                           <td className={`${cellBase} text-gray-800`}>
-                            {isActiveRow && draft ? (
+                            {canEditRow && draft ? (
                               <input
                                 value={draft.username}
                                 onChange={(e) => setDraft({ ...draft, username: e.target.value })}
@@ -365,7 +374,7 @@ export default function AccountTable({
                           </td>
 
                           <td className={`${cellBase} text-gray-800`}>
-                            {isActiveRow && draft ? (
+                            {canEditRow && draft ? (
                               <input
                                 type="email"
                                 value={draft.email}
@@ -379,7 +388,7 @@ export default function AccountTable({
                           </td>
 
                           <td className={`${cellBase} text-gray-800`}>
-                            {isActiveRow && draft ? (
+                            {canEditRow && draft ? (
                               <input
                                 value={draft.phone}
                                 onChange={(e) => setDraft({ ...draft, phone: e.target.value })}
@@ -392,7 +401,7 @@ export default function AccountTable({
                           </td>
 
                           <td className={`${cellBase} text-gray-800`}>
-                            {isActiveRow && draft ? (
+                            {canEditRow && draft ? (
                               <input
                                 value={draft.role_system}
                                 onChange={(e) => setDraft({ ...draft, role_system: e.target.value })}
@@ -405,7 +414,7 @@ export default function AccountTable({
                           </td>
 
                           <td className={`${cellBase} text-gray-800`}>
-                            {isActiveRow && draft ? (
+                            {canEditRow && draft ? (
                               <input
                                 type="number"
                                 value={draft.point}
@@ -422,7 +431,7 @@ export default function AccountTable({
                           </td>
 
                           <td className={`${cellBase} text-gray-800`}>
-                            {isActiveRow && draft ? (
+                            {canEditRow && draft ? (
                               <input
                                 value={draft.position}
                                 onChange={(e) => setDraft({ ...draft, position: e.target.value })}
@@ -435,7 +444,7 @@ export default function AccountTable({
                           </td>
 
                           <td className={`${cellBase} text-gray-800`}>
-                            {isActiveRow && draft ? (
+                            {canEditRow && draft ? (
                               <input
                                 type="number"
                                 value={draft.salary}
@@ -452,7 +461,7 @@ export default function AccountTable({
                           </td>
 
                           <td className={`${cellBase} text-gray-800`}>
-                            {isActiveRow && draft ? (
+                            {canEditRow && draft ? (
                               <input
                                 type="number"
                                 value={draft.payable}
@@ -469,7 +478,7 @@ export default function AccountTable({
                           </td>
 
                           <td className={`${cellBase} text-gray-800`}>
-                            {isActiveRow && draft ? (
+                            {canEditRow && draft ? (
                               <input
                                 type="date"
                                 value={draft.join_date}
@@ -483,7 +492,7 @@ export default function AccountTable({
                           </td>
 
                           <td className={`${cellBase} text-gray-800`}>
-                            {isActiveRow && draft ? (
+                            {canEditRow && draft ? (
                               <input
                                 value={draft.status}
                                 onChange={(e) => setDraft({ ...draft, status: e.target.value })}
@@ -500,24 +509,28 @@ export default function AccountTable({
                           <td className={`${cellBase} text-sm text-gray-600`}>{formatDateTimeVi(row.updated_at)}</td>
 
                           <td className={`${cellBase} text-right`}>
-                            <button
-                              type="button"
-                              className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all cursor-pointer"
-                              disabled={busy}
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setErrorMessage('');
-                                setIsCreating(false);
-                                setSelectedId(account.id);
-                                setDraft({ ...account, username: (account as unknown as { username?: string }).username ?? '' });
-                                setIsDeleteConfirmOpen(true);
-                              }}
-                            >
-                              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                <polyline points="3 6 5 6 21 6"></polyline>
-                                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-                              </svg>
-                            </button>
+                            {!readOnly ? (
+                              <button
+                                type="button"
+                                className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all cursor-pointer"
+                                disabled={busy}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setErrorMessage('');
+                                  setIsCreating(false);
+                                  setSelectedId(account.id);
+                                  setDraft({ ...account, username: (account as unknown as { username?: string }).username ?? '' });
+                                  setIsDeleteConfirmOpen(true);
+                                }}
+                              >
+                                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                  <polyline points="3 6 5 6 21 6"></polyline>
+                                  <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                                </svg>
+                              </button>
+                            ) : (
+                              <span className="text-sm text-gray-400">-</span>
+                            )}
                           </td>
                         </>
                       );

@@ -1,39 +1,9 @@
-const TOKEN_KEY = 'odotech_token';
-
-export function getToken(): string {
-  return localStorage.getItem(TOKEN_KEY) ?? '';
-}
-
-export function setToken(token: string) {
-  if (!token) return;
-  localStorage.setItem(TOKEN_KEY, token);
-}
-
-export function clearToken() {
-  localStorage.removeItem(TOKEN_KEY);
-}
 
 export function buildAuthHeaders(extra?: HeadersInit): HeadersInit {
-  const token = getToken();
-  const base: Record<string, string> = {};
-
-  if (token) base.Authorization = `Bearer ${token}`;
-
-  if (!extra) return base;
-
-  if (Array.isArray(extra)) {
-    const merged = new Headers(extra);
-    for (const [k, v] of Object.entries(base)) merged.set(k, v);
-    return merged;
-  }
-
-  if (extra instanceof Headers) {
-    const merged = new Headers(extra);
-    for (const [k, v] of Object.entries(base)) merged.set(k, v);
-    return merged;
-  }
-
-  return { ...extra, ...base };
+  // Token is in httpOnly cookie, no need to add Authorization header
+  // Just return the extra headers if provided
+  if (!extra) return {};
+  return extra;
 }
 
 type JwtUser = {
@@ -44,27 +14,49 @@ type JwtUser = {
   email?: string;
 };
 
-function base64UrlDecode(input: string): string {
-  const pad = '='.repeat((4 - (input.length % 4)) % 4);
-  const b64 = (input + pad).replace(/-/g, '+').replace(/_/g, '/');
-  return decodeURIComponent(
-    atob(b64)
-      .split('')
-      .map((c) => `%${c.charCodeAt(0).toString(16).padStart(2, '0')}`)
-      .join('')
-  );
+let cachedUser: JwtUser | null | undefined = undefined;
+
+export async function getTokenUser(): Promise<JwtUser | null> {
+  // Return cached value if available
+  if (cachedUser !== undefined) return cachedUser;
+
+  try {
+    const apiBaseUrl = import.meta.env.VITE_API_URL?.trim().replace(/\/$/, '') || 'http://localhost:5000';
+    const res = await fetch(`${apiBaseUrl}/api/auth/me`, {
+      credentials: 'include', // Important: send cookies
+    });
+
+    if (!res.ok) {
+      cachedUser = null;
+      return null;
+    }
+
+    const data = await res.json() as { user?: JwtUser };
+    cachedUser = data.user ?? null;
+    return cachedUser;
+  } catch (error) {
+    console.error('Failed to fetch user:', error);
+    cachedUser = null;
+    return null;
+  }
 }
 
-export function getTokenUser(): JwtUser | null {
-  const token = getToken();
-  if (!token) return null;
-  const parts = token.split('.');
-  if (parts.length < 2) return null;
+export function clearUserCache() {
+  cachedUser = undefined;
+}
+
+export async function logout(): Promise<void> {
   try {
-    const json = JSON.parse(base64UrlDecode(parts[1])) as JwtUser;
-    return json ?? null;
-  } catch {
-    return null;
+    const apiBaseUrl = import.meta.env.VITE_API_URL?.trim().replace(/\/$/, '') || 'http://localhost:5000';
+    await fetch(`${apiBaseUrl}/api/auth/logout`, {
+      method: 'POST',
+      credentials: 'include', // Important: send cookies
+    });
+    clearUserCache();
+  } catch (error) {
+    console.error('Logout failed:', error);
+    // Clear cache anyway
+    clearUserCache();
   }
 }
 

@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 
 import { useLocation, useNavigate } from 'react-router-dom';
 
-import { setToken } from '../utils/auth';
+import { clearUserCache, getTokenUser } from '../utils/auth';
 
 export default function Login() {
     const [username, setUsername] = useState('');
@@ -20,8 +20,10 @@ export default function Login() {
 
     useEffect(() => {
         // If already logged in, don't stay on /login.
-        const token = localStorage.getItem('odotech_token') ?? '';
-        if (token) navigate('/accounts', { replace: true });
+        (async () => {
+            const user = await getTokenUser();
+            if (user) navigate('/accounts', { replace: true });
+        })();
     }, [navigate]);
 
     const redirectTo = useMemo(() => {
@@ -62,6 +64,7 @@ export default function Login() {
                                     method: 'POST',
                                     headers: { 'Content-Type': 'application/json' },
                                     body: JSON.stringify({ username: username.trim(), password }),
+                                    credentials: 'include', // Important: send/receive cookies
                                 });
 
                                 if (!res.ok) {
@@ -88,7 +91,10 @@ export default function Login() {
                                     return;
                                 }
 
-                                setToken(json.token);
+                                // Token is now in httpOnly cookie, no need to store it
+                                // IMPORTANT: clear cached /api/auth/me result (it may be cached as null from initial check)
+                                clearUserCache();
+                                // Just navigate to the redirect page
                                 navigate(redirectTo, { replace: true });
                             } finally {
                                 setIsLoading(false);
