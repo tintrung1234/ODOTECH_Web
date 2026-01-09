@@ -17,11 +17,37 @@ const devAssignmentsRoutes = require("./routes/devAssignmentsRoutes");
 const app = express();
 
 // CORS configuration to allow credentials (cookies)
-const corsOrigin = process.env.CORS_ORIGIN || "http://localhost:5173";
-app.use(cors({
-	origin: corsOrigin,
-	credentials: true
-}));
+const rawCorsOrigins = String(process.env.CORS_ORIGIN || "").trim();
+const allowList = rawCorsOrigins
+	.split(",")
+	.map((s) => s.trim())
+	.filter(Boolean);
+
+const isLocalhostOrigin = (origin) => {
+	if (!origin) return false;
+	return (
+		/^https?:\/\/localhost:\d+$/i.test(origin) ||
+		/^https?:\/\/127\.0\.0\.1:\d+$/i.test(origin)
+	);
+};
+
+app.use(
+	cors({
+		origin: (origin, callback) => {
+			// Allow non-browser requests (no Origin header)
+			if (!origin) return callback(null, true);
+
+			// Explicit allow-list via env (comma-separated)
+			if (allowList.length > 0) {
+				return callback(null, allowList.includes(origin));
+			}
+
+			// Dev default: allow any localhost/127.0.0.1 port
+			return callback(null, isLocalhostOrigin(origin));
+		},
+		credentials: true,
+	})
+);
 
 app.use(cookieParser());
 app.use(express.json());

@@ -3,6 +3,24 @@ const jwt = require("jsonwebtoken");
 
 const authService = require("../services/authService");
 
+function getAuthCookieOptions(expiresIn) {
+  const isProd = process.env.NODE_ENV === "production";
+  const maxAge = expiresIn === "7d" ? 7 * 24 * 60 * 60 * 1000 : 24 * 60 * 60 * 1000;
+
+  // NOTE:
+  // - For cross-site frontend/backend (common on Render), cookies must be SameSite=None and Secure.
+  // - For local dev over http, SameSite=None would be rejected because it requires Secure.
+  const sameSite = isProd ? "none" : "strict";
+  const secure = isProd;
+
+  return {
+    httpOnly: true,
+    secure,
+    sameSite,
+    maxAge,
+  };
+}
+
 function toString(value, fallback = "") {
   if (value === undefined || value === null) return fallback;
   return String(value);
@@ -57,13 +75,7 @@ async function login(req, res, next) {
     );
 
     // Set httpOnly cookie
-    const maxAge = expiresIn === "7d" ? 7 * 24 * 60 * 60 * 1000 : 24 * 60 * 60 * 1000;
-    res.cookie("token", token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "strict",
-      maxAge: maxAge
-    });
+    res.cookie("token", token, getAuthCookieOptions(expiresIn));
 
     res.json({
       token,
@@ -111,13 +123,7 @@ async function register(req, res, next) {
     );
 
     // Set httpOnly cookie
-    const maxAge = expiresIn === "7d" ? 7 * 24 * 60 * 60 * 1000 : 24 * 60 * 60 * 1000;
-    res.cookie("token", token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "strict",
-      maxAge: maxAge
-    });
+    res.cookie("token", token, getAuthCookieOptions(expiresIn));
 
     res.status(201).json({
       token,
@@ -145,10 +151,13 @@ async function me(req, res) {
 
 async function logout(req, res) {
   // Clear the httpOnly cookie
+  // Must match cookie attributes (especially SameSite/Secure) to clear reliably.
+  const expiresIn = process.env.JWT_EXPIRES_IN || "7d";
+  const opts = getAuthCookieOptions(expiresIn);
   res.clearCookie("token", {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "strict"
+    httpOnly: opts.httpOnly,
+    secure: opts.secure,
+    sameSite: opts.sameSite,
   });
   res.json({ message: "Logged out successfully" });
 }
