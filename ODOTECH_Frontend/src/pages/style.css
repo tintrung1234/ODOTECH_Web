@@ -1,0 +1,463 @@
+html {
+	width: 100%;
+	height: 100%
+}
+
+body {
+	background-color: transparent;
+	position: relative;
+	width: 100%;
+	height: 100%;
+	font-size: 16px;
+	font-family: 'Source Sans Pro', sans-serif;
+	font-weight: 400;
+	-webkit-font-smoothing: antialiased;
+	margin: 0;
+	padding: 0
+}
+
+:root {
+	/* Luxury palette: green + yellow + gray */
+	--odotech-bg-1: #0b0f0d; /* graphite */
+	--odotech-bg-2: #0b2a1b; /* deep green */
+	--odotech-primary: #0f6b3f; /* emerald */
+	--odotech-accent: #e7d84a; /* yellow */
+	--odotech-accent-2: #b9ad32; /* darker yellow */
+	--odotech-surface: #fbfbfb;
+	--odotech-surface-2: #f3f4f6; /* light gray */
+	--odotech-text: #111827; /* slate */
+	--odotech-muted: #6b7280; /* gray */
+	--odotech-border: rgba(17, 24, 39, 0.14);
+	--odotech-border-strong: rgba(17, 24, 39, 0.22);
+}
+
+.login-container {
+	display: flex;
+	width: 100%;
+	height: 100vh;
+	position: relative;
+	overflow: hidden;
+	background:
+		radial-gradient(900px 500px at 18% 22%, rgba(231, 216, 74, 0.22), transparent 60%),
+		radial-gradient(900px 520px at 82% 78%, rgba(15, 107, 63, 0.40), transparent 60%),
+		linear-gradient(135deg, var(--odotech-bg-1) 0%, var(--odotech-bg-2) 100%);
+}
+
+.login-container::before {
+	content: '';
+	position: absolute;
+	inset: 0;
+	background: radial-gradient(1000px 650px at 50% 15%, rgba(255, 255, 255, 0.05), transparent 60%);
+	opacity: 0.55;
+	pointer-events: none;
+}
+
+.login-container > * {
+	position: relative;
+	z-index: 1;
+}
+
+.login-left {
+	flex: 1;
+	display: flex;
+	flex-direction: column;
+	align-items: flex-start;
+	justify-content: center;
+	padding: 56px;
+	position: relative
+}
+
+.login-left::before {
+	content: '';
+	position: absolute;
+	left: 56px;
+	top: 56px;
+	bottom: 56px;
+	width: 2px;
+	background: linear-gradient(180deg, rgba(231, 216, 74, 0.70), rgba(231, 216, 74, 0.03));
+	opacity: 0.55;
+}
+
+.logo-section,
+.login-info {
+	padding-left: 22px;
+}
+
+.login-info {
+	max-width: 520px;
+	color: rgba(255, 255, 255, 0.92);
+	text-align: left;
+	line-height: 1.65;
+	font-size: 1.05em;
+}
+
+.login-right {
+	flex: 1;
+	display: flex;
+	align-items: stretch;
+	justify-content: stretch;
+	padding: 0;
+	background: #f3f4f6;
+	border-left: 1px solid rgba(17, 24, 39, 0.10);
+	box-shadow: none
+}
+
+form {
+	position: relative;
+	display: block;
+	width: 100%;
+	max-width: none;
+	height: 100%;
+	min-height: 100vh;
+	background-color: var(--odotech-surface);
+	margin: 0;
+	padding: 3em 3.25em;
+	box-sizing: border-box;
+	border: none;
+	border-radius: 0;
+	box-shadow: none;
+	border: none;
+	font-family: 'Source Sans Pro', sans-serif
+}
+
+form::before {
+	content: none;
+}
+
+form .svgContainer {
+	position: relative;
+	width: 200px;
+	height: 200px;
+	margin: 0 auto 1.5em;
+	border-radius: 50%;
+	background: none;
+	border: solid 3px rgba(5, 23, 14, 0.25);
+	overflow: hidden;
+	pointer-events: none
+}
+
+form .svgContainer div {
+	position: relative;
+	width: 100%;
+	height: 0;
+	overflow: hidden;
+	padding-bottom: 100%
+}
+
+form .svgContainer .mySVG {
+	position: absolute;
+	left: 0;
+	top: 0;
+	width: 100%;
+	height: 100%;
+	pointer-events: none
+}
+
+form .inputGroup {
+	margin: 0 0 1.5em;
+	padding: 0;
+	position: relative
+}
+
+form .inputGroup:last-of-type {
+	margin-bottom: 0
+}
+
+form label {
+	margin: 0 0 8px;
+	display: block;
+	font-size: 1.1em;
+	color: var(--odotech-text);
+	font-weight: 700;
+	font-family: inherit
+}
+
+form input[type='email'],
+form input[type='text'],
+form input[type='password'] {
+	display: block;
+	margin: 0;
+	padding: 0 1em 0;
+	background-color: var(--odotech-surface-2);
+	border: solid 2px var(--odotech-border);
+	border-radius: 8px;
+	-webkit-appearance: none;
+	appearance: none;
+	box-sizing: border-box;
+	width: 100%;
+	height: 55px;
+	font-size: 1.3em;
+	color: var(--odotech-text);
+	font-weight: 600;
+	font-family: inherit;
+	transition: box-shadow .2s linear, border-color .25s ease-out
+}
+
+form input[type='email']:focus,
+form input[type='text']:focus,
+form input[type='password']:focus {
+	outline: none;
+	box-shadow: 0 10px 22px rgba(15, 107, 63, 0.12);
+	border: solid 2px rgba(15, 107, 63, 0.40)
+}
+
+form input[type='email'],
+form input[type='text'] {
+	padding: 12px 1em 0
+}
+
+form button {
+	display: block;
+	margin: 0;
+	padding: .65em 1em .85em;
+	position: relative;
+	overflow: hidden;
+	background: linear-gradient(135deg, var(--odotech-primary) 0%, rgba(231, 216, 74, 0.92) 100%);
+	border: none;
+	border-radius: 8px;
+	box-sizing: border-box;
+	box-shadow: 0 10px 22px rgba(17, 24, 39, 0.12);
+	width: 100%;
+	height: 55px;
+	font-size: 1.4em;
+	color: #fff;
+	font-weight: 700;
+	font-family: inherit;
+	transition: all .3s ease;
+	cursor: pointer
+}
+
+form button::before {
+	content: none;
+}
+
+form button:hover::before {
+	left: 90%;
+}
+
+form button:hover {
+	transform: translateY(-2px);
+	box-shadow: 0 14px 28px rgba(17, 24, 39, 0.14)
+}
+
+form button:active {
+	transform: translateY(0);
+	box-shadow: 0 10px 22px rgba(15, 107, 63, 0.18)
+}
+
+form button:disabled {
+	opacity: 0.6;
+	cursor: not-allowed;
+	transform: none
+}
+
+/* Override generic form button styling for the password eye toggle */
+form button.password-toggle {
+	background: transparent;
+	box-shadow: none;
+	height: 40px;
+	padding: 0;
+	color: var(--odotech-muted);
+}
+
+form button.password-toggle::before {
+	content: none;
+}
+
+form button.password-toggle:hover {
+	background: rgba(17, 24, 39, 0.06);
+	color: var(--odotech-text);
+	transform: translateY(0);
+	box-shadow: none;
+}
+
+form button.password-toggle:active {
+	transform: translateY(0);
+	box-shadow: none;
+}
+
+form .inputGroup1 .helper {
+	position: absolute;
+	z-index: 1;
+	font-family: inherit
+}
+
+form .inputGroup1 .helper1 {
+	top: 0;
+	left: 0;
+	transform: translate(1.4em, 2.4em) scale(1);
+	transform-origin: 0 0;
+	color: var(--odotech-muted);
+	font-size: 1.15em;
+	font-weight: 400;
+	opacity: .65;
+	pointer-events: none;
+	transition: transform .2s ease-out, opacity .2s linear
+}
+
+form .inputGroup1.focusWithText .helper {
+	transform: translate(1.4em, 1.8em) scale(.7);
+	opacity: 1
+}
+
+.logo-section {
+	text-align: left;
+	margin-bottom: 28px;
+	display: flex;
+	flex-direction: column;
+	gap: 10px
+}
+
+.odotech-logo {
+	width: 72px;
+	height: 72px;
+	object-fit: contain;
+	filter: drop-shadow(0 14px 26px rgba(0, 0, 0, 0.45));
+}
+
+.logo-section h1 {
+	font-size: 3.2em;
+	font-weight: 900;
+	color: #fff;
+	margin: 0;
+	text-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+	letter-spacing: 3px
+}
+
+.logo-section p {
+	font-size: 1.3em;
+	color: rgba(255, 255, 255, 0.95);
+	margin: 0;
+	font-weight: 500
+}
+
+.character-container {
+	width: 300px;
+	height: 300px;
+	background: #fff;
+	border-radius: 50%;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
+	border: 5px solid rgba(255, 255, 255, 0.3)
+}
+
+.form-header {
+	text-align: center;
+	margin-bottom: 2em
+}
+
+.form-header h2 {
+	font-size: 2em;
+	margin: 0 0 8px;
+	font-weight: 800;
+	background: linear-gradient(135deg, var(--odotech-primary) 0%, var(--odotech-accent) 100%);
+	-webkit-background-clip: text;
+	background-clip: text;
+	color: transparent;
+	letter-spacing: 0.02em;
+}
+
+.form-header p {
+	font-size: 1.05em;
+	color: var(--odotech-muted);
+	margin: 0;
+	font-weight: 400
+}
+
+@media (max-width: 968px) {
+	.login-container {
+		flex-direction: column
+	}
+
+	.login-left {
+		min-height: 40vh;
+		padding: 34px 22px;
+		align-items: center;
+		text-align: center
+	}
+
+	.login-left::before {
+		display: none
+	}
+
+	.logo-section,
+	.login-info {
+		padding-left: 0
+	}
+
+	.logo-section {
+		text-align: center;
+		align-items: center
+	}
+
+	.login-info {
+		text-align: center
+	}
+
+	.login-right {
+		min-height: 60vh
+	}
+
+	.logo-section h1 {
+		font-size: 2.4em
+	}
+
+	.character-container {
+		width: 200px;
+		height: 200px
+	}
+
+	form {
+		min-height: auto;
+		padding: 2em 1.25em
+	}
+}
+
+form .passwordWrap {
+	position: relative;
+}
+
+form .passwordWrap input {
+	padding-right: 3.25em;
+}
+
+form .password-toggle {
+	position: absolute;
+	right: 10px;
+	top: 50%;
+	transform: translateY(-50%);
+	width: 40px;
+	height: 40px;
+	border-radius: 10px;
+	border: 1px solid transparent;
+	background: transparent;
+	color: var(--odotech-muted);
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	cursor: pointer;
+}
+
+form .password-toggle:hover {
+	background: rgba(17, 24, 39, 0.06);
+	color: var(--odotech-text);
+}
+
+form .password-toggle:focus-visible {
+	outline: none;
+	border-color: rgba(15, 107, 63, 0.40);
+	box-shadow: 0 0 0 3px rgba(15, 107, 63, 0.12);
+}
+
+form .password-toggle:disabled {
+	opacity: 0.55;
+	cursor: not-allowed;
+	background: transparent;
+}
+
+form .password-toggle svg {
+	width: 20px;
+	height: 20px;
+}
