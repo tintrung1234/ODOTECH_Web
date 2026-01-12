@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import type { ProjectData } from './interface/type';
-import type { Account } from '../projectsDasboard/interface/type';
+import type { Account } from '../../interface/type';
 import { formatCurrency, calculateDaysDiff } from '../../utils/formatDate';
 import SalesChartsSection from './SalesChartsSection';
 import RenewalPackagesModal from './RenewalPackagesModal';
@@ -8,16 +8,24 @@ import './style.css';
 import {
   Building2,
   CircleDollarSign,
+  Clock,
   Filter,
   LayoutList,
   PieChart,
   Plus,
   Search,
   Users,
+  Wallet,
   AlertCircle,
   MoreVertical,
   Calendar
 } from 'lucide-react';
+
+function getProjectTotalValue(p: ProjectData): number {
+  // Prefer contract_value (from Projects API) but fall back to phi_dich_vu for older/partial data.
+  const base = p.contract_value ?? p.phi_dich_vu ?? 0;
+  return Number(base || 0) + Number(p.phat_sinh || 0);
+}
 
 interface Props {
   projects: ProjectData[];
@@ -73,10 +81,17 @@ export default function Dashboard({
     const totalProjects = projects.length;
     const closedProjects = projects.filter(p => p.trang_thai_chot === 'DaKy').length;
     const workingProjects = projects.filter(p => p.trang_thai_chot === 'DangCham').length;
+    const unpaidProjects = projects.filter((p) => p.trang_thai_thu_tien !== 'Du').length;
+    const overdueFollowups = projects.filter((p) => {
+      const diff = calculateDaysDiff(p.ngay_cham_cuoi);
+      return Number.isFinite(diff) && diff > 7;
+    }).length;
     return {
       total: totalProjects,
       closed: closedProjects,
       working: workingProjects,
+      unpaid: unpaidProjects,
+      overdue: overdueFollowups,
     };
   }, [projects]);
 
@@ -98,7 +113,7 @@ export default function Dashboard({
           <h1 className="text-3xl font-bold tracking-tight text-gray-900">Quản lý Sale</h1>
           <p className="text-gray-500 mt-1 flex items-center gap-2">
             <LayoutList size={16} />
-            Tổng quan hoạt động kinh doanh và dự án
+            Tổng quan hoạt động kinh Doanh
           </p>
         </div>
         <div className="flex items-center gap-3">
@@ -123,7 +138,7 @@ export default function Dashboard({
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-4">
         <div className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100">
           <div className="flex items-center justify-between mb-2">
             <h3 className="text-sm font-medium text-gray-500">Doanh số tổng (Dự kiến)</h3>
@@ -162,6 +177,26 @@ export default function Dashboard({
             </span>
           </div>
           <div className="text-2xl font-bold text-gray-900">{stats.working}</div>
+        </div>
+
+        <div className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100">
+          <div className="flex items-center justify-between mb-2">
+            <h3 className="text-sm font-medium text-gray-500">Chưa Thu Đủ</h3>
+            <span className="p-2 bg-indigo-50 text-indigo-600 rounded-lg">
+              <Wallet size={20} />
+            </span>
+          </div>
+          <div className="text-2xl font-bold text-gray-900">{stats.unpaid}</div>
+        </div>
+
+        <div className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100">
+          <div className="flex items-center justify-between mb-2">
+            <h3 className="text-sm font-medium text-gray-500">Quá Hạn Chăm (&gt;7 ngày)</h3>
+            <span className="p-2 bg-red-50 text-red-600 rounded-lg">
+              <Clock size={20} />
+            </span>
+          </div>
+          <div className="text-2xl font-bold text-gray-900">{stats.overdue}</div>
         </div>
       </div>
 
@@ -346,7 +381,7 @@ export default function Dashboard({
                           </span>
                         </td>
                         <td className="py-4 px-6 text-right font-medium text-gray-900 tabular-nums">
-                          {formatCurrency(Number(p.contract_value ?? 0) + Number(p.phat_sinh ?? 0))}
+                          {formatCurrency(getProjectTotalValue(p))}
                         </td>
                         <td className="py-4 px-6">
                           <div className="flex items-center gap-2">
@@ -398,6 +433,7 @@ export default function Dashboard({
       <RenewalPackagesModal
         open={isRenewalModalOpen}
         projects={projects}
+        accounts={accounts}
         onClose={() => setIsRenewalModalOpen(false)}
       />
     </div>

@@ -12,7 +12,11 @@ import {
     Building2,
     TrendingUp,
     DollarSign,
+    UserPlus,
+    UserCog,
+    RefreshCw,
 } from 'lucide-react';
+import AccountModal from './CreateAccountModal';
 
 interface Props {
     customer: Customer;
@@ -25,14 +29,38 @@ export default function CustomerDetail({ customer, onBack, onSave, readOnly = fa
     const [editedCustomer, setEditedCustomer] = useState<Customer>(customer);
     const [projects, setProjects] = useState<CustomerProject[]>([]);
     const [loadingProjects, setLoadingProjects] = useState(false);
+    const [accountInfo, setAccountInfo] = useState<{ id: number; username: string } | null>(null);
+    const [loadingAccount, setLoadingAccount] = useState(false);
+    const [showAccountModal, setShowAccountModal] = useState(false);
 
     const apiBaseUrl = import.meta.env.VITE_API_URL?.trim().replace(/\/$/, '') || 'http://localhost:5000';
 
     useEffect(() => {
         setEditedCustomer(customer);
         loadProjects();
+        loadAccountInfo();
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [customer]);
+
+    const loadAccountInfo = async () => {
+        setLoadingAccount(true);
+        try {
+            const idParam = customer.id && customer.id > 0 ? customer.id : customer.ma_kh;
+            const res = await fetch(`${apiBaseUrl}/api/customers/${idParam}/account`, {
+                credentials: 'include',
+            });
+            if (res.ok) {
+                const data = await res.json();
+                setAccountInfo(data);
+            } else {
+                setAccountInfo(null);
+            }
+        } catch (error) {
+            console.error('Failed to load account info:', error);
+        } finally {
+            setLoadingAccount(false);
+        }
+    };
 
     const loadProjects = async () => {
         setLoadingProjects(true);
@@ -42,7 +70,7 @@ export default function CustomerDetail({ customer, onBack, onSave, readOnly = fa
             });
             if (res.ok) {
                 const data = await res.json();
-                setProjects(data.items || []);
+                setProjects(data.projects || []);
             }
         } catch (error) {
             console.error('Failed to load projects:', error);
@@ -57,6 +85,28 @@ export default function CustomerDetail({ customer, onBack, onSave, readOnly = fa
 
     const handleChange = (field: keyof Customer, value: string) => {
         setEditedCustomer(prev => ({ ...prev, [field]: value }));
+    };
+
+    const handleSaveAccount = async ({ username, password }: { username: string; password?: string }) => {
+        const idParam = customer.id && customer.id > 0 ? customer.id : customer.ma_kh;
+
+        const method = accountInfo ? 'PUT' : 'POST';
+        const url = `${apiBaseUrl}/api/customers/${idParam}/account`;
+
+        const res = await fetch(url, {
+            method,
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({ username, password }),
+        });
+
+        if (!res.ok) {
+            const data = await res.json().catch(() => ({}));
+            throw new Error(data.message || 'Thao tác thất bại');
+        }
+
+        alert(accountInfo ? 'Cập nhật tài khoản thành công!' : 'Tạo tài khoản thành công!');
+        loadAccountInfo();
     };
 
     return (
@@ -81,177 +131,213 @@ export default function CustomerDetail({ customer, onBack, onSave, readOnly = fa
                         </button>
                     )}
                 </div>
-
-                {/* Main Content */}
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                    {/* Left Column - Customer Info */}
-                    <div className="lg:col-span-2 space-y-6">
-                        {/* Basic Info Card */}
-                        <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
-                            <h2 className="text-xl font-bold text-gray-900 mb-6 flex items-center gap-2">
-                                <User size={20} className="text-blue-600" />
-                                Thông tin khách hàng
-                            </h2>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">Mã khách hàng</label>
-                                    <input
-                                        type="text"
-                                        value={editedCustomer.ma_kh}
-                                        disabled
-                                        className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-gray-500 cursor-not-allowed"
-                                    />
-                                </div>
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">Tên khách hàng</label>
-                                    <input
-                                        type="text"
-                                        value={editedCustomer.ten_khach}
-                                        onChange={(e) => handleChange('ten_khach', e.target.value)}
-                                        disabled={readOnly}
-                                        className="w-full px-4 py-2.5 bg-white border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 disabled:bg-gray-50 disabled:text-gray-500"
-                                    />
-                                </div>
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-1">
-                                        <Phone size={14} />
-                                        Số điện thoại
-                                    </label>
-                                    <input
-                                        type="text"
-                                        value={editedCustomer.sdt}
-                                        onChange={(e) => handleChange('sdt', e.target.value)}
-                                        disabled={readOnly}
-                                        className="w-full px-4 py-2.5 bg-white border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 disabled:bg-gray-50 disabled:text-gray-500"
-                                    />
-                                </div>
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-1">
-                                        <MessageCircle size={14} />
-                                        Zalo / Facebook
-                                    </label>
-                                    <input
-                                        type="text"
-                                        value={editedCustomer.zalo_fb}
-                                        onChange={(e) => handleChange('zalo_fb', e.target.value)}
-                                        disabled={readOnly}
-                                        className="w-full px-4 py-2.5 bg-white border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 disabled:bg-gray-50 disabled:text-gray-500"
-                                    />
-                                </div>
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-1">
-                                        <Globe size={14} />
-                                        Website
-                                    </label>
-                                    <input
-                                        type="text"
-                                        value={editedCustomer.website}
-                                        onChange={(e) => handleChange('website', e.target.value)}
-                                        disabled={readOnly}
-                                        className="w-full px-4 py-2.5 bg-white border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 disabled:bg-gray-50 disabled:text-gray-500"
-                                    />
-                                </div>
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">Nguồn khách</label>
-                                    <input
-                                        type="text"
-                                        value={editedCustomer.nguon_khach}
-                                        onChange={(e) => handleChange('nguon_khach', e.target.value)}
-                                        disabled={readOnly}
-                                        className="w-full px-4 py-2.5 bg-white border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 disabled:bg-gray-50 disabled:text-gray-500"
-                                    />
-                                </div>
+                {!readOnly && (
+                    <div className="flex items-center gap-3 mb-4">
+                        {loadingAccount ? (
+                            <div className="text-gray-500 text-sm">Đang tải TK...</div>
+                        ) : accountInfo ? (
+                            <div className="flex items-center gap-2 bg-green-50 text-green-700 border border-green-200 px-4 py-2.5 rounded-xl text-sm font-medium">
+                                <UserCog size={16} />
+                                <span>{accountInfo.username}</span>
+                                <button
+                                    onClick={() => setShowAccountModal(true)}
+                                    className="ml-2 hover:bg-green-100 p-1 rounded transition-colors"
+                                    title="Chỉnh sửa tài khoản"
+                                >
+                                    <RefreshCw size={14} />
+                                </button>
                             </div>
-                        </div>
-
+                        ) : (
+                            <button
+                                onClick={() => setShowAccountModal(true)}
+                                className="flex items-center gap-2 bg-white hover:bg-gray-50 text-blue-600 border border-blue-200 px-4 py-2.5 rounded-xl font-medium shadow-sm transition-all"
+                            >
+                                <UserPlus size={18} />
+                                Tạo tài khoản
+                            </button>
+                        )}
                     </div>
+                )}
+            </div>
 
-                    {/* Right Column - Stats */}
-                    <div className="space-y-6">
-                        {/* Stats Cards */}
-                        <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
-                            <h2 className="text-lg font-bold text-gray-900 mb-4">Thống kê</h2>
-                            <div className="space-y-4">
-                                <div className="flex items-center justify-between p-4 bg-blue-50 rounded-lg">
-                                    <div className="flex items-center gap-3">
-                                        <div className="p-2 bg-blue-100 rounded-lg">
-                                            <Building2 size={20} className="text-blue-600" />
-                                        </div>
-                                        <div>
-                                            <p className="text-sm text-gray-600">Tổng dự án</p>
-                                            <p className="text-2xl font-bold text-gray-900">{customer.total_projects || 0}</p>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div className="flex items-center justify-between p-4 bg-green-50 rounded-lg">
-                                    <div className="flex items-center gap-3">
-                                        <div className="p-2 bg-green-100 rounded-lg">
-                                            <DollarSign size={20} className="text-green-600" />
-                                        </div>
-                                        <div>
-                                            <p className="text-sm text-gray-600">Tổng doanh thu</p>
-                                            <p className="text-xl font-bold text-gray-900">{formatCurrency(customer.total_revenue || 0)}</p>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div className="flex items-center justify-between p-4 bg-purple-50 rounded-lg">
-                                    <div className="flex items-center gap-3">
-                                        <div className="p-2 bg-purple-100 rounded-lg">
-                                            <TrendingUp size={20} className="text-purple-600" />
-                                        </div>
-                                        <div>
-                                            <p className="text-sm text-gray-600">Ngày tạo</p>
-                                            <p className="text-sm font-medium text-gray-900">{customer.ngay_tao || '-'}</p>
-                                        </div>
-                                    </div>
-                                </div>
+            {/* Main Content */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 max-w-7xl mx-auto">
+                {/* Left Column - Customer Info */}
+                <div className="lg:col-span-2 space-y-6">
+                    {/* Basic Info Card */}
+                    <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
+                        <h2 className="text-xl font-bold text-gray-900 mb-6 flex items-center gap-2">
+                            <User size={20} className="text-blue-600" />
+                            Thông tin khách hàng
+                        </h2>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">Mã khách hàng</label>
+                                <input
+                                    type="text"
+                                    value={editedCustomer.ma_kh}
+                                    disabled
+                                    className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-gray-500 cursor-not-allowed"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">Tên khách hàng</label>
+                                <input
+                                    type="text"
+                                    value={editedCustomer.ten_khach}
+                                    onChange={(e) => handleChange('ten_khach', e.target.value)}
+                                    disabled={readOnly}
+                                    className="w-full px-4 py-2.5 bg-white border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 disabled:bg-gray-50 disabled:text-gray-500"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-1">
+                                    <Phone size={14} />
+                                    Số điện thoại
+                                </label>
+                                <input
+                                    type="text"
+                                    value={editedCustomer.sdt}
+                                    onChange={(e) => handleChange('sdt', e.target.value)}
+                                    disabled={readOnly}
+                                    className="w-full px-4 py-2.5 bg-white border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 disabled:bg-gray-50 disabled:text-gray-500"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-1">
+                                    <MessageCircle size={14} />
+                                    Zalo / Facebook
+                                </label>
+                                <input
+                                    type="text"
+                                    value={editedCustomer.zalo_fb}
+                                    onChange={(e) => handleChange('zalo_fb', e.target.value)}
+                                    disabled={readOnly}
+                                    className="w-full px-4 py-2.5 bg-white border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 disabled:bg-gray-50 disabled:text-gray-500"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-1">
+                                    <Globe size={14} />
+                                    Website
+                                </label>
+                                <input
+                                    type="text"
+                                    value={editedCustomer.website}
+                                    onChange={(e) => handleChange('website', e.target.value)}
+                                    disabled={readOnly}
+                                    className="w-full px-4 py-2.5 bg-white border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 disabled:bg-gray-50 disabled:text-gray-500"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">Nguồn khách</label>
+                                <input
+                                    type="text"
+                                    value={editedCustomer.nguon_khach}
+                                    onChange={(e) => handleChange('nguon_khach', e.target.value)}
+                                    disabled={readOnly}
+                                    className="w-full px-4 py-2.5 bg-white border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 disabled:bg-gray-50 disabled:text-gray-500"
+                                />
                             </div>
                         </div>
                     </div>
+
                 </div>
 
-                {/* Projects List - Full Width */}
-                <div className="w-full bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
-                    <h2 className="text-xl font-bold text-gray-900 mb-6 flex items-center gap-2">
-                        <Building2 size={20} className="text-purple-600" />
-                        Danh sách dự án ({projects.length})
-                    </h2>
-                    {loadingProjects ? (
-                        <div className="text-center py-8 text-gray-500">Đang tải...</div>
-                    ) : projects.length === 0 ? (
-                        <div className="text-center py-8 text-gray-400 italic">Chưa có dự án nào</div>
-                    ) : (
-                        <div className="space-y-3">
-                            {projects.map((project) => (
-                                <div key={project.id} className="border border-gray-200 rounded-lg p-4 hover:bg-gray-50 transition-colors">
-                                    <div className="flex items-start justify-between">
-                                        <div className="flex-1">
-                                            <h3 className="font-semibold text-gray-900">{project.ma_du_an}</h3>
-                                            <p className="text-sm text-gray-500 mt-1">{project.website || 'Chưa có website'}</p>
-                                            <div className="flex items-center gap-3 mt-2">
-                                                <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${project.trang_thai_chot === 'DaKy'
-                                                    ? 'bg-green-50 text-green-700'
-                                                    : project.trang_thai_chot === 'Huy'
-                                                        ? 'bg-red-50 text-red-700'
-                                                        : 'bg-yellow-50 text-yellow-700'
-                                                    }`}>
-                                                    {project.trang_thai_chot === 'DaKy' ? 'Đã ký' : project.trang_thai_chot === 'Huy' ? 'Đã huỷ' : 'Đang chăm'}
-                                                </span>
-                                                <span className="text-xs text-gray-500">{project.ngay_tao}</span>
-                                            </div>
-                                        </div>
-                                        <div className="text-right">
-                                            <p className="font-semibold text-gray-900">{formatCurrency(project.phi_dich_vu + project.phat_sinh)}</p>
-                                        </div>
+                {/* Right Column - Stats */}
+                <div className="space-y-6">
+                    {/* Stats Cards */}
+                    <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
+                        <h2 className="text-lg font-bold text-gray-900 mb-4">Thống kê</h2>
+                        <div className="space-y-4">
+                            <div className="flex items-center justify-between p-4 bg-blue-50 rounded-lg">
+                                <div className="flex items-center gap-3">
+                                    <div className="p-2 bg-blue-100 rounded-lg">
+                                        <Building2 size={20} className="text-blue-600" />
+                                    </div>
+                                    <div>
+                                        <p className="text-sm text-gray-600">Tổng dự án</p>
+                                        <p className="text-2xl font-bold text-gray-900">{customer.total_projects || 0}</p>
                                     </div>
                                 </div>
-                            ))}
+                            </div>
+
+                            <div className="flex items-center justify-between p-4 bg-green-50 rounded-lg">
+                                <div className="flex items-center gap-3">
+                                    <div className="p-2 bg-green-100 rounded-lg">
+                                        <DollarSign size={20} className="text-green-600" />
+                                    </div>
+                                    <div>
+                                        <p className="text-sm text-gray-600">Tổng doanh thu</p>
+                                        <p className="text-xl font-bold text-gray-900">{formatCurrency(customer.total_revenue || 0)}</p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="flex items-center justify-between p-4 bg-purple-50 rounded-lg">
+                                <div className="flex items-center gap-3">
+                                    <div className="p-2 bg-purple-100 rounded-lg">
+                                        <TrendingUp size={20} className="text-purple-600" />
+                                    </div>
+                                    <div>
+                                        <p className="text-sm text-gray-600">Ngày tạo</p>
+                                        <p className="text-sm font-medium text-gray-900">{customer.ngay_tao || '-'}</p>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
-                    )}
+                    </div>
                 </div>
             </div>
+
+            {/* Projects List - Full Width */}
+            <div className="max-w-7xl mx-auto mt-3 bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
+                <h2 className="text-xl font-bold text-gray-900 mb-6 flex items-center gap-2">
+                    <Building2 size={20} className="text-purple-600" />
+                    Danh sách dự án ({projects.length})
+                </h2>
+                {loadingProjects ? (
+                    <div className="text-center py-8 text-gray-500">Đang tải...</div>
+                ) : projects.length === 0 ? (
+                    <div className="text-center py-8 text-gray-400 italic">Chưa có dự án nào</div>
+                ) : (
+                    <div className="space-y-3">
+                        {projects.map((project) => (
+                            <div key={project.id} className="border border-gray-200 rounded-lg p-4 hover:bg-gray-50 transition-colors">
+                                <div className="flex items-start justify-between">
+                                    <div className="flex-1">
+                                        <h3 className="font-semibold text-gray-900">{project.ma_du_an}</h3>
+                                        <p className="text-sm text-gray-500 mt-1">{project.website || 'Chưa có website'}</p>
+                                        <div className="flex items-center gap-3 mt-2">
+                                            <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${project.trang_thai_chot === 'DaKy'
+                                                ? 'bg-green-50 text-green-700'
+                                                : project.trang_thai_chot === 'Huy'
+                                                    ? 'bg-red-50 text-red-700'
+                                                    : 'bg-yellow-50 text-yellow-700'
+                                                }`}>
+                                                {project.trang_thai_chot === 'DaKy' ? 'Đã ký' : project.trang_thai_chot === 'Huy' ? 'Đã huỷ' : 'Đang chăm'}
+                                            </span>
+                                            <span className="text-xs text-gray-500">{project.ngay_tao}</span>
+                                        </div>
+                                    </div>
+                                    <div className="text-right">
+                                        <p className="font-semibold text-gray-900">{formatCurrency(project.phi_dich_vu + project.phat_sinh)}</p>
+                                    </div>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                )}
+            </div>
+            {showAccountModal && (
+                <AccountModal
+                    isOpen={showAccountModal}
+                    onClose={() => setShowAccountModal(false)}
+                    onSave={handleSaveAccount}
+                    defaultUsername={accountInfo ? accountInfo.username : (customer.phone || customer.ma_kh)}
+                    isEdit={!!accountInfo}
+                />
+            )}
         </div>
     );
 }

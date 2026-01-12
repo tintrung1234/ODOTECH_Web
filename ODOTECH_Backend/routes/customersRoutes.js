@@ -1,13 +1,19 @@
-const express = require("express");
+﻿const express = require("express");
 
 const authMiddleware = require("../middlewares/authMiddleware");
-const { validate, queryIntOptional, queryStringOptional, bodyStringOptional } = require("../middlewares/validate");
+const { validate, queryIntOptional, queryStringOptional, bodyStringOptional, bodyRequiredString } = require("../middlewares/validate");
 
 const {
     listCustomers,
     getCustomerById,
     getCustomerProjects,
     updateCustomer,
+    createCustomer,
+    deleteCustomer,
+    getCustomerStats,
+    createCustomerAccount,
+    getCustomerAccount,
+    updateCustomerAccount,
 } = require("../controllers/customersController");
 
 const router = express.Router();
@@ -18,22 +24,7 @@ router.get("/health", (req, res) => {
 
 router.use(authMiddleware);
 
-function parseCustomersListQuery(req, res, next) {
-    const toInt = (val, def) => {
-        const n = Number(val);
-        return Number.isFinite(n) ? Math.floor(n) : def;
-    };
-
-    req.listQuery = {
-        limit: Math.min(Math.max(toInt(req.query.limit, 50), 1), 200),
-        offset: Math.max(toInt(req.query.offset, 0), 0),
-        q: typeof req.query.q === "string" ? req.query.q.trim() : "",
-        nguon_khach: typeof req.query.nguon_khach === "string" ? req.query.nguon_khach.trim() : "",
-        sale_id: typeof req.query.sale_id === "string" ? req.query.sale_id.trim() : "",
-    };
-    next();
-}
-
+// GET /api/customers - List customers
 router.get(
     "/",
     validate([
@@ -43,24 +34,77 @@ router.get(
         queryStringOptional("nguon_khach", { maxLen: 100, message: "Invalid nguon_khach" }),
         queryStringOptional("sale_id", { maxLen: 100, message: "Invalid sale_id" }),
     ]),
-    parseCustomersListQuery,
     listCustomers
 );
 
+// GET /api/customers/stats - Get customer statistics
+router.get("/stats", getCustomerStats);
+
+// GET /api/customers/:id - Get customer by ID
 router.get("/:id", getCustomerById);
 
+// GET /api/customers/:id/projects - Get customer projects
 router.get("/:id/projects", getCustomerProjects);
 
+// POST /api/customers - Create new customer
+router.post(
+    "/",
+    validate([
+        bodyRequiredString("ma_kh", { maxLen: 50, message: "ma_kh is required" }),
+        bodyRequiredString("name", { maxLen: 255, message: "name is required" }),
+        bodyStringOptional("phone", { maxLen: 50, message: "Invalid phone" }),
+        bodyStringOptional("email", { maxLen: 255, message: "Invalid email" }),
+        bodyStringOptional("zalo_fb", { maxLen: 255, message: "Invalid zalo_fb" }),
+        bodyStringOptional("company", { maxLen: 255, message: "Invalid company" }),
+        bodyStringOptional("nguon_khach", { maxLen: 100, message: "Invalid nguon_khach" }),
+        bodyStringOptional("nhu_cau", { maxLen: 5000, message: "Invalid nhu_cau" }),
+        bodyStringOptional("san_pham_dv", { maxLen: 5000, message: "Invalid san_pham_dv" }),
+        bodyStringOptional("website", { maxLen: 255, message: "Invalid website" }),
+    ]),
+    createCustomer
+);
+
+// POST /api/customers/:id/account - Create customer account
+router.post(
+    "/:id/account",
+    validate([
+        bodyRequiredString("username", { maxLen: 50, message: "username is required" }),
+        bodyRequiredString("password", { minLen: 6, message: "password must be at least 6 characters" }),
+    ]),
+    createCustomerAccount
+);
+
+// GET /api/customers/:id/account - Get customer account info
+router.get("/:id/account", getCustomerAccount);
+
+// PUT /api/customers/:id/account - Update customer account info
+router.put(
+    "/:id/account",
+    validate([
+        bodyStringOptional("username", { maxLen: 50, message: "Invalid username" }),
+        bodyStringOptional("password", { minLen: 6, message: "Password must be at least 6 characters" }),
+    ]),
+    updateCustomerAccount
+);
+
+// PUT /api/customers/:id - Update customer
 router.put(
     "/:id",
     validate([
-        bodyStringOptional("ten_khach", { maxLen: 500, message: "Invalid ten_khach" }),
-        bodyStringOptional("sdt", { maxLen: 50, message: "Invalid sdt" }),
-        bodyStringOptional("zalo_fb", { maxLen: 200, message: "Invalid zalo_fb" }),
+        bodyRequiredString("name", { maxLen: 255, message: "name is required" }),
+        bodyStringOptional("phone", { maxLen: 50, message: "Invalid phone" }),
+        bodyStringOptional("email", { maxLen: 255, message: "Invalid email" }),
+        bodyStringOptional("zalo_fb", { maxLen: 255, message: "Invalid zalo_fb" }),
+        bodyStringOptional("company", { maxLen: 255, message: "Invalid company" }),
         bodyStringOptional("nguon_khach", { maxLen: 100, message: "Invalid nguon_khach" }),
-        bodyStringOptional("website", { maxLen: 500, message: "Invalid website" }),
+        bodyStringOptional("nhu_cau", { maxLen: 5000, message: "Invalid nhu_cau" }),
+        bodyStringOptional("san_pham_dv", { maxLen: 5000, message: "Invalid san_pham_dv" }),
+        bodyStringOptional("website", { maxLen: 255, message: "Invalid website" }),
     ]),
     updateCustomer
 );
+
+// DELETE /api/customers/:id - Delete customer (admin only)
+router.delete("/:id", deleteCustomer);
 
 module.exports = router;

@@ -3,7 +3,8 @@ import { useNavigate } from 'react-router-dom';
 
 import ConfirmDeleteModal from './ConfirmDeleteModal';
 import LeaveRequestsModal from './LeaveRequestsModal';
-import type { Account, LeaveRequest } from '../projectsDasboard/interface/type';
+import { type Account, type LeaveRequest, ROLE_OPTIONS, POSITION_OPTIONS, STATUS_OPTIONS } from '../../interface/type';
+import { formatDate, formatDateTime } from '../../utils/formatDate';
 
 interface AccountTableProps {
   accounts: Account[];
@@ -13,6 +14,7 @@ interface AccountTableProps {
   onDeleteAccount: (id: number) => void | Promise<void>;
   onUpdateLeaveRequest: (updated: LeaveRequest) => void | Promise<void>;
   readOnly?: boolean;
+
   onSelectAccount?: (account: Account) => void;
 }
 
@@ -84,17 +86,7 @@ export default function AccountTable({
     );
   });
 
-  const formatDateVi = (value: string) => {
-    if (!value) return '-';
-    const date = new Date(value);
-    return Number.isNaN(date.getTime()) ? '-' : date.toLocaleDateString('vi-VN');
-  };
 
-  const formatDateTimeVi = (value: string) => {
-    if (!value) return '-';
-    const date = new Date(value);
-    return Number.isNaN(date.getTime()) ? '-' : date.toLocaleString('vi-VN');
-  };
 
   const columnsCount = 17;
 
@@ -320,7 +312,7 @@ export default function AccountTable({
                     {(() => {
                       const isActiveRow = selectedId === account.id && Boolean(draft);
                       const row = isActiveRow && draft ? draft : account;
-                        const canEditRow = !readOnly && isActiveRow && Boolean(draft);
+                      const canEditRow = !readOnly && isActiveRow && Boolean(draft);
 
                       const inputBase = 'h-9 w-full px-2 border border-gray-300 rounded bg-white outline-none focus:border-gray-600';
 
@@ -402,14 +394,20 @@ export default function AccountTable({
 
                           <td className={`${cellBase} text-gray-800`}>
                             {canEditRow && draft ? (
-                              <input
+                              <select
                                 value={draft.role_system}
                                 onChange={(e) => setDraft({ ...draft, role_system: e.target.value })}
                                 className={inputBase}
                                 onClick={(e) => e.stopPropagation()}
-                              />
+                              >
+                                {ROLE_OPTIONS.map((opt) => (
+                                  <option key={opt.value} value={opt.value}>
+                                    {opt.label}
+                                  </option>
+                                ))}
+                              </select>
                             ) : (
-                              row.role_system
+                              ROLE_OPTIONS.find(r => r.value === row.role_system)?.label || row.role_system
                             )}
                           </td>
 
@@ -432,14 +430,21 @@ export default function AccountTable({
 
                           <td className={`${cellBase} text-gray-800`}>
                             {canEditRow && draft ? (
-                              <input
+                              <select
                                 value={draft.position}
                                 onChange={(e) => setDraft({ ...draft, position: e.target.value })}
                                 className={inputBase}
                                 onClick={(e) => e.stopPropagation()}
-                              />
+                              >
+                                <option value="">-- Chọn --</option>
+                                {POSITION_OPTIONS.map((opt) => (
+                                  <option key={opt.value} value={opt.value}>
+                                    {opt.label}
+                                  </option>
+                                ))}
+                              </select>
                             ) : (
-                              row.position
+                              POSITION_OPTIONS.find(p => p.value === row.position)?.label || row.position
                             )}
                           </td>
 
@@ -487,26 +492,32 @@ export default function AccountTable({
                                 onClick={(e) => e.stopPropagation()}
                               />
                             ) : (
-                              formatDateVi(row.join_date)
+                              formatDate(row.join_date)
                             )}
                           </td>
 
                           <td className={`${cellBase} text-gray-800`}>
                             {canEditRow && draft ? (
-                              <input
+                              <select
                                 value={draft.status}
                                 onChange={(e) => setDraft({ ...draft, status: e.target.value })}
                                 className={inputBase}
                                 onClick={(e) => e.stopPropagation()}
-                              />
+                              >
+                                {STATUS_OPTIONS.map((opt) => (
+                                  <option key={opt.value} value={opt.value}>
+                                    {opt.label}
+                                  </option>
+                                ))}
+                              </select>
                             ) : (
-                              row.status
+                              STATUS_OPTIONS.find(s => s.value === row.status)?.label || row.status
                             )}
                           </td>
 
-                          <td className={`${cellBase} text-sm text-gray-600`}>{formatDateTimeVi(row.last_login_at)}</td>
-                          <td className={`${cellBase} text-sm text-gray-600`}>{formatDateTimeVi(row.created_at)}</td>
-                          <td className={`${cellBase} text-sm text-gray-600`}>{formatDateTimeVi(row.updated_at)}</td>
+                          <td className={`${cellBase} text-sm text-gray-600`}>{formatDateTime(row.last_login_at)}</td>
+                          <td className={`${cellBase} text-sm text-gray-600`}>{formatDateTime(row.created_at)}</td>
+                          <td className={`${cellBase} text-sm text-gray-600`}>{formatDateTime(row.updated_at)}</td>
 
                           <td className={`${cellBase} text-right`}>
                             {!readOnly ? (

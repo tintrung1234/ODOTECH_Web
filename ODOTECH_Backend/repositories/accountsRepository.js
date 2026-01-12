@@ -83,9 +83,10 @@ async function createAccount(input) {
         join_date,
         status,
         password_hash,
-        last_login_at
+        last_login_at,
+        competency_framework
       ) VALUES (
-        $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13
+        $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14
       )
       RETURNING *
     `,
@@ -103,6 +104,7 @@ async function createAccount(input) {
       input.status,
       input.password_hash,
       accountModel.toDbTimestamp(input.last_login_at),
+      input.competency_framework,
     ]
   );
 
@@ -127,6 +129,7 @@ async function updateAccount(accountId, input) {
         status = $12,
         password_hash = $13,
         last_login_at = $14,
+        competency_framework = $15,
         updated_at = NOW()
       WHERE id = $1
       RETURNING *
@@ -146,7 +149,24 @@ async function updateAccount(accountId, input) {
       input.status,
       input.password_hash,
       accountModel.toDbTimestamp(input.last_login_at),
+      input.competency_framework,
     ]
+  );
+
+  const row = result.rows[0];
+  return row ? accountModel.mapAccountRow(row) : null;
+}
+
+async function updateAccountEmail(accountId, email) {
+  const result = await pool.query(
+    `
+      UPDATE accounts
+      SET email = $2,
+          updated_at = NOW()
+      WHERE id = $1
+      RETURNING *
+    `,
+    [accountId, email]
   );
 
   const row = result.rows[0];
@@ -220,6 +240,7 @@ module.exports = {
   getAccountById,
   createAccount,
   updateAccount,
+  updateAccountEmail,
   deleteAccount,
   getAccountStats,
 };

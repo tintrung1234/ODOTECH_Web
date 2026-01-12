@@ -1,6 +1,6 @@
 import { useMemo, useRef } from 'react';
 
-import type { Account } from './interface/type';
+import type { Account } from '../../interface/type';
 
 type AccountTokenFn = (a: Account) => string;
 

@@ -1,4 +1,5 @@
-import type { ProjectPriority, ProjectStatus, ProjectMgmtPriority, ProjectMgmtStatus } from '../components/projectsDasboard/interface/type';
+import type { ProjectPriority, ProjectStatus, ProjectMgmtPriority, ProjectMgmtStatus } from '../interface/type';
+import { formatDate } from './formatDate';
 
 export function statusLabel(status: ProjectStatus | ProjectMgmtStatus) {
   // New project management statuses (VN)
@@ -66,11 +67,12 @@ export function parseIsoDate(iso: string) {
   return Number.isFinite(date.getTime()) ? date : null;
 }
 
-export function formatIsoDateVi(iso: string) {
-  const date = parseIsoDate(iso);
-  if (!date) return '-';
-  return date.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' });
-}
+export const formatProjectDate = (isoString?: string | null) => {
+  if (!isoString) return '-';
+  const date = new Date(isoString);
+  if (isNaN(date.getTime())) return '-';
+  return formatDate(date);
+};
 
 export function computeExpectedProgressPercent(startIso: string, endIso: string, today: Date) {
   const start = parseIsoDate(startIso);

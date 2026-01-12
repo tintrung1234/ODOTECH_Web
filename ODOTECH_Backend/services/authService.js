@@ -20,9 +20,9 @@ async function getAccountForAuthByUsername(username) {
   return authRepository.getAccountForAuthByUsername(username);
 }
 
-async function registerAccount({ username, password_hash, role_system = "employee", status = "active" }) {
+async function registerAccount({ username, password_hash, role_system = "employee", status = "active", email: providedEmail }) {
   const name = String(username || "").trim();
-  const email = buildPlaceholderEmail(username);
+  const email = providedEmail ? providedEmail.trim() : buildPlaceholderEmail(username);
 
   return authRepository.registerAccount({
     username,
@@ -34,8 +34,13 @@ async function registerAccount({ username, password_hash, role_system = "employe
   });
 }
 
+async function updateAccount(id, updates) {
+  return authRepository.updateAccount(id, updates);
+}
+
 module.exports = {
   getAccountForAuthByEmail,
   getAccountForAuthByUsername,
   registerAccount,
+  updateAccount,
 };

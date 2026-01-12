@@ -69,6 +69,7 @@ export type CanonicalRole =
   | 'dev'
   | 'dev_manager'
   | 'head_tech'
+  | 'customer'
   | 'unknown';
 
 export function normalizeRole(value: string | undefined | null): CanonicalRole {
@@ -86,6 +87,7 @@ export function normalizeRole(value: string | undefined | null): CanonicalRole {
   if (['dev', 'developer'].includes(compact)) return 'dev';
   if (['quanlydev', 'devmanager', 'dev_manager'].includes(compact)) return 'dev_manager';
   if (['truongphongkythuat', 'headtech', 'head_tech'].includes(compact)) return 'head_tech';
+  if (['khachhang', 'customer'].includes(compact)) return 'customer';
 
   return compact ? 'unknown' : 'unknown';
 }

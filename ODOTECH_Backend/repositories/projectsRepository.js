@@ -182,8 +182,8 @@ async function createProject(input) {
         source,
         progress_percent,
         assignee,
-        tech_user,
-        customer_sender
+        tech_user_id,
+        customer_sender_id
       ) VALUES (
         $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26
       )
@@ -214,8 +214,8 @@ async function createProject(input) {
       input.source,
       input.progress_percent,
       input.assignee,
-      input.tech_user,
-      input.customer_sender,
+      input.tech_user_id,
+      input.customer_sender_id,
     ]
   );
 
@@ -251,8 +251,8 @@ async function updateProject(projectId, input) {
         source = $23,
         progress_percent = $24,
         assignee = $25,
-        tech_user = $26,
-        customer_sender = $27,
+        tech_user_id = $26,
+        customer_sender_id = $27,
         updated_at = NOW()
       WHERE id = $1
       RETURNING *
@@ -283,8 +283,8 @@ async function updateProject(projectId, input) {
       input.source,
       input.progress_percent,
       input.assignee,
-      input.tech_user,
-      input.customer_sender,
+      input.tech_user_id,
+      input.customer_sender_id,
     ]
   );
 

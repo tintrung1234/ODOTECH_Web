@@ -65,8 +65,8 @@ function mapProjectRow(row) {
     source: row.source ?? "",
     progress_percent: Number(row.progress_percent ?? 0),
     assignee: row.assignee ?? "",
-    tech_user: row.tech_user ?? "",
-    customer_sender: row.customer_sender ?? "",
+    tech_user_id: row.tech_user_id === null || row.tech_user_id === undefined ? null : Number(row.tech_user_id),
+    customer_sender_id: row.customer_sender_id === null || row.customer_sender_id === undefined ? null : Number(row.customer_sender_id),
 
     created_at: formatTimestamp(row.created_at),
     updated_at: formatTimestamp(row.updated_at),

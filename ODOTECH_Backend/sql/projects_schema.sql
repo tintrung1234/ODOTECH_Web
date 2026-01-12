@@ -40,8 +40,8 @@ CREATE TABLE IF NOT EXISTS projects (
   source TEXT,
   progress_percent NUMERIC(5, 2) NOT NULL DEFAULT 0,
   assignee TEXT,
-  tech_user TEXT,
-  customer_sender TEXT,
+  tech_user_id BIGINT,
+  customer_sender_id BIGINT,
 
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
@@ -52,8 +52,8 @@ ALTER TABLE projects ADD COLUMN IF NOT EXISTS requirements TEXT;
 ALTER TABLE projects ADD COLUMN IF NOT EXISTS source TEXT;
 ALTER TABLE projects ADD COLUMN IF NOT EXISTS progress_percent NUMERIC(5, 2) NOT NULL DEFAULT 0;
 ALTER TABLE projects ADD COLUMN IF NOT EXISTS assignee TEXT;
-ALTER TABLE projects ADD COLUMN IF NOT EXISTS tech_user TEXT;
-ALTER TABLE projects ADD COLUMN IF NOT EXISTS customer_sender TEXT;
+ALTER TABLE projects ADD COLUMN IF NOT EXISTS tech_user_id BIGINT;
+ALTER TABLE projects ADD COLUMN IF NOT EXISTS customer_sender_id BIGINT;
 
 CREATE INDEX IF NOT EXISTS idx_projects_project_code ON projects(project_code);
 CREATE INDEX IF NOT EXISTS idx_projects_name ON projects(name);

@@ -12,7 +12,7 @@ import {
   CheckCircle2
 } from 'lucide-react';
 
-import type { Account, ProjectManagementItem } from './interface/type';
+import type { Account, ProjectManagementItem } from '../../interface/type';
 import type { CanonicalRole } from '../../utils/auth';
 
 export default function ProjectsDashboard({
@@ -110,9 +110,11 @@ export default function ProjectsDashboard({
       if (sale) parts.push(`Sale: ${sale}`);
 
       const assignee = String(p.assignee ?? '').trim();
-      const techUser = String(p.tech_user ?? '').trim();
+      const techUser = displayAccount(p.tech_user_id);
+      const customerSender = displayAccount(p.customer_sender_id);
       if (assignee) parts.push(`Người làm: ${assignee}`);
-      if (techUser) parts.push(`User kỹ thuật: ${techUser}`);
+      if (techUser) parts.push(`Kỹ thuật viên: ${techUser}`);
+      if (customerSender) parts.push(`Người gửi KH: ${customerSender}`);
 
       return parts.join(' | ');
     },

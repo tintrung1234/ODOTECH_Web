@@ -1,8 +1,12 @@
 export type Customer = {
     id: number;
     ma_kh: string;
-    ten_khach: string;
-    sdt: string;
+    ten_khach?: string; // Legacy
+    name: string;      // New
+    sdt?: string;      // Legacy
+    phone: string;     // New
+    email?: string;    // New
+    company?: string;  // New
     zalo_fb: string;
     nguon_khach: string;
     nhu_cau: string;
@@ -10,7 +14,9 @@ export type Customer = {
     website: string;
     sale_id: string | number | null;
     pm_id: string | number | null;
-    ngay_tao: string;
+    ngay_tao?: string; // Legacy
+    created_at: string; // New
+    updated_at?: string; // New
     total_projects?: number;
     total_revenue?: number;
 };

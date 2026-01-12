@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 
-import type { Account } from '../components/projectsDasboard/interface/type';
+import type { Account } from '../interface/type';
 import { getTokenUser } from '../utils/auth';
 
 function toNumber(value: unknown): number {

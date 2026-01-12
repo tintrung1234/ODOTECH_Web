@@ -1,7 +1,7 @@
 import { NavLink } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 
-import logo from '../../assets/img/logo.png';
+import logo from '/logo-full.png';
 import { sidebarItems } from '../../routes/appRoutes';
 import { getTokenUser, normalizeRole } from '../../utils/auth';
 
@@ -14,6 +14,14 @@ export default function Sidebar() {
     });
   }, []);
   const visibleItems = sidebarItems.filter((item) => {
+    // If role is customer, ONLY show customer portal
+    if (role === 'customer') {
+      return item.to === '/customer-portal';
+    }
+
+    // For other roles, hide customer portal
+    if (item.to === '/customer-portal') return false;
+
     // Hide sales from dev roles
     if (item.to === '/sales') {
       return !(role === 'dev' || role === 'dev_manager' || role === 'head_tech');

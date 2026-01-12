@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import { useId, type ReactNode } from 'react';
 import { TrendingUp, TrendingDown, Minus } from 'lucide-react';
 
 type StatCardColor = 'green' | 'purple' | 'orange' | 'blue' | 'red' | 'gray';
@@ -265,6 +265,7 @@ export default function StatCard({
   chartData
 }: StatCardProps) {
   const classes = colorClass(color);
+  const tooltipId = useId();
 
   const displayValue =
     typeof value === 'number'
@@ -276,8 +277,9 @@ export default function StatCard({
 
   return (
     <div
-      className={`relative rounded-xl bg-white border border-gray-100 shadow-sm p-5 hover:shadow-md transition-shadow cursor-default ${hasTooltip ? 'group' : ''} ${classes.border}`}
+      className={`relative rounded-xl bg-white border border-gray-100 shadow-sm p-5 hover:shadow-md transition-shadow cursor-default ${hasTooltip ? 'group focus:outline-none focus:ring-2 focus:ring-blue-200' : ''} ${classes.border}`}
       tabIndex={hasTooltip ? 0 : undefined}
+      aria-describedby={hasTooltip ? tooltipId : undefined}
     >
       <div className="flex items-start justify-between">
         <div className="flex-1">
@@ -322,9 +324,13 @@ export default function StatCard({
 
       {hasTooltip && (
         <div
+          id={tooltipId}
           role="tooltip"
-          className="absolute left-0 right-0 top-full mt-2 rounded-lg border border-gray-100 bg-white shadow-xl p-3 opacity-0 invisible transition-all duration-200 group-hover:opacity-100 group-hover:visible group-focus-within:opacity-100 group-focus-within:visible z-50 max-h-72 overflow-auto"
+          className="absolute top-full left-0 mt-2 w-[320px] max-w-[min(360px,calc(100vw-24px))] rounded-xl border border-gray-200 bg-white shadow-xl p-3 opacity-0 invisible translate-y-1 scale-[0.98] transition-all duration-150 ease-out group-hover:opacity-100 group-hover:visible group-hover:translate-y-0 group-hover:scale-100 group-focus-within:opacity-100 group-focus-within:visible group-focus-within:translate-y-0 group-focus-within:scale-100 z-50 max-h-72 overflow-auto pointer-events-none group-hover:pointer-events-auto group-focus-within:pointer-events-auto"
         >
+          {/* Arrow */}
+          <div className="absolute -top-1.5 left-6 h-3 w-3 rotate-45 bg-white border border-gray-200 border-r-0 border-b-0" />
+
           {(tooltipTitle && tooltipTitle.trim()) && (
             <div className="text-xs font-bold text-gray-800 mb-2 pb-1 border-b border-gray-100">{tooltipTitle}</div>
           )}

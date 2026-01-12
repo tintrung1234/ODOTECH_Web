@@ -3,7 +3,7 @@ import Dashboard from '../components/salesDasboard/Dashboard';
 import ProjectDetail from '../components/salesDasboard/ProjectDetail';
 import type { ProjectData } from '../components/salesDasboard/interface/type';
 import type { StaffId } from '../components/salesDasboard/interface/type';
-import type { Account } from '../components/projectsDasboard/interface/type';
+import type { Account } from '../interface/type';
 import { getTokenUser, normalizeRole } from '../utils/auth';
 
 type ToastType = 'success' | 'error';
@@ -405,6 +405,11 @@ export default function Sales() {
   const visibleProjects = useMemo(() => {
     let list = projects;
 
+    const getProjectTotalValue = (p: ProjectData): number => {
+      const base = p.contract_value ?? p.phi_dich_vu ?? 0;
+      return Number(base || 0) + Number(p.phat_sinh || 0);
+    };
+
     // Sale manager / head sales / admin / support: filter by sale tab if selected.
     if (selectedSaleTab) {
       const selectedAccount = accounts.find((a) => String(a.id) === selectedSaleTab);
@@ -435,7 +440,7 @@ export default function Sales() {
     const maxTotal = typeof filters.max_total === 'number' ? filters.max_total : null;
     if (minTotal !== null || maxTotal !== null) {
       list = list.filter((p) => {
-        const total = Number(p.contract_value ?? 0) + Number(p.phat_sinh ?? 0);
+        const total = getProjectTotalValue(p);
         if (minTotal !== null && total < minTotal) return false;
         if (maxTotal !== null && total > maxTotal) return false;
         return true;
@@ -486,7 +491,10 @@ export default function Sales() {
   }, [saleTabs, selectedSaleTab]);
 
   const totalAmount = useMemo(() => {
-    return visibleProjects.reduce((sum, p) => sum + Number(p.contract_value ?? 0) + Number(p.phat_sinh ?? 0), 0);
+    return visibleProjects.reduce((sum, p) => {
+      const base = p.contract_value ?? p.phi_dich_vu ?? 0;
+      return sum + Number(base || 0) + Number(p.phat_sinh ?? 0);
+    }, 0);
   }, [visibleProjects]);
 
   if (!canView) {
@@ -503,8 +511,8 @@ export default function Sales() {
         >
           <div
             className={`rounded border px-4 py-3 shadow-md ${toast.type === 'success'
-                ? 'bg-green-50 text-green-700 border-green-200'
-                : 'bg-red-50 text-red-700 border-red-200'
+              ? 'bg-green-50 text-green-700 border-green-200'
+              : 'bg-red-50 text-red-700 border-red-200'
               }`}
           >
             {toast.message}

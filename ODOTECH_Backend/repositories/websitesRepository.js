@@ -5,35 +5,35 @@ const { mapWebsiteRow } = require("../models/website");
  * List websites with pagination and filters
  */
 async function listWebsites({ limit = 50, offset = 0, search = "", status = "", sale_manager_id = null }) {
-    const params = [];
-    const where = [];
-    let paramIndex = 1;
+  const params = [];
+  const where = [];
+  let paramIndex = 1;
 
-    if (search) {
-        where.push(`(
+  if (search) {
+    where.push(`(
       w.name ILIKE $${paramIndex} OR 
       w.url ILIKE $${paramIndex} OR 
       w.project_code ILIKE $${paramIndex}
     )`);
-        params.push(`%${search}%`);
-        paramIndex++;
-    }
+    params.push(`%${search}%`);
+    paramIndex++;
+  }
 
-    if (status) {
-        where.push(`w.status = $${paramIndex}`);
-        params.push(status);
-        paramIndex++;
-    }
+  if (status) {
+    where.push(`w.status = $${paramIndex}`);
+    params.push(status);
+    paramIndex++;
+  }
 
-    if (sale_manager_id) {
-        where.push(`w.sale_manager_id = $${paramIndex}`);
-        params.push(sale_manager_id);
-        paramIndex++;
-    }
+  if (sale_manager_id) {
+    where.push(`w.sale_manager_id = $${paramIndex}`);
+    params.push(sale_manager_id);
+    paramIndex++;
+  }
 
-    const whereClause = where.length > 0 ? `WHERE ${where.join(" AND ")}` : "";
+  const whereClause = where.length > 0 ? `WHERE ${where.join(" AND ")}` : "";
 
-    const query = `
+  const query = `
     SELECT 
       w.*,
       m.name as manager_name,
@@ -46,17 +46,17 @@ async function listWebsites({ limit = 50, offset = 0, search = "", status = "", 
     LIMIT $${paramIndex} OFFSET $${paramIndex + 1}
   `;
 
-    params.push(limit, offset);
+  params.push(limit, offset);
 
-    const result = await pool.query(query, params);
-    return result.rows.map(mapWebsiteRow);
+  const result = await pool.query(query, params);
+  return result.rows.map(mapWebsiteRow);
 }
 
 /**
  * Get website by ID
  */
 async function getWebsiteById(id) {
-    const query = `
+  const query = `
     SELECT 
       w.*,
       m.name as manager_name,
@@ -67,15 +67,15 @@ async function getWebsiteById(id) {
     WHERE w.id = $1
   `;
 
-    const result = await pool.query(query, [id]);
-    return result.rows.length > 0 ? mapWebsiteRow(result.rows[0]) : null;
+  const result = await pool.query(query, [id]);
+  return result.rows.length > 0 ? mapWebsiteRow(result.rows[0]) : null;
 }
 
 /**
  * Create new website
  */
 async function createWebsite(data) {
-    const query = `
+  const query = `
     INSERT INTO websites (
       name, url, project_code, manager_id,
       hosting_package, hosting_provider,
@@ -92,44 +92,44 @@ async function createWebsite(data) {
     RETURNING *
   `;
 
-    const params = [
-        data.name,
-        data.url,
-        data.project_code || null,
-        data.manager_id || null,
-        data.hosting_package || null,
-        data.hosting_provider || null,
-        data.storage_used || 0,
-        data.storage_limit || 0,
-        data.storage_alert_threshold || 90,
-        data.admin_login_url || null,
-        data.admin_username || null,
-        data.admin_password || null, // should be encrypted before calling
-        data.hosting_login_url || null,
-        data.hosting_username || null,
-        data.hosting_password || null, // should be encrypted before calling
-        data.vps_login_url || null,
-        data.vps_username || null,
-        data.vps_password || null, // should be encrypted before calling
-        data.ssh_host || null,
-        data.ssh_port || 22,
-        data.ssh_username || null,
-        data.ssh_password || null, // should be encrypted before calling
-        data.ssh_key || null, // should be encrypted before calling
-        data.sale_manager_id || null,
-        data.status || "active",
-        data.notes || "",
-    ];
+  const params = [
+    data.name,
+    data.url,
+    data.project_code || null,
+    data.manager_id || null,
+    data.hosting_package || null,
+    data.hosting_provider || null,
+    data.storage_used || 0,
+    data.storage_limit || 0,
+    data.storage_alert_threshold || 90,
+    data.admin_login_url || null,
+    data.admin_username || null,
+    data.admin_password || null, // should be encrypted before calling
+    data.hosting_login_url || null,
+    data.hosting_username || null,
+    data.hosting_password || null, // should be encrypted before calling
+    data.vps_login_url || null,
+    data.vps_username || null,
+    data.vps_password || null, // should be encrypted before calling
+    data.ssh_host || null,
+    data.ssh_port || 22,
+    data.ssh_username || null,
+    data.ssh_password || null, // should be encrypted before calling
+    data.ssh_key || null, // should be encrypted before calling
+    data.sale_manager_id || null,
+    data.status || "active",
+    data.notes || "",
+  ];
 
-    const result = await pool.query(query, params);
-    return mapWebsiteRow(result.rows[0]);
+  const result = await pool.query(query, params);
+  return mapWebsiteRow(result.rows[0]);
 }
 
 /**
  * Update website
  */
 async function updateWebsite(id, data) {
-    const query = `
+  const query = `
     UPDATE websites SET
       name = $1,
       url = $2,
@@ -162,53 +162,53 @@ async function updateWebsite(id, data) {
     RETURNING *
   `;
 
-    const params = [
-        data.name,
-        data.url,
-        data.project_code || null,
-        data.manager_id || null,
-        data.hosting_package || null,
-        data.hosting_provider || null,
-        data.storage_used || 0,
-        data.storage_limit || 0,
-        data.storage_alert_threshold || 90,
-        data.admin_login_url || null,
-        data.admin_username || null,
-        data.admin_password || null,
-        data.hosting_login_url || null,
-        data.hosting_username || null,
-        data.hosting_password || null,
-        data.vps_login_url || null,
-        data.vps_username || null,
-        data.vps_password || null,
-        data.ssh_host || null,
-        data.ssh_port || 22,
-        data.ssh_username || null,
-        data.ssh_password || null,
-        data.ssh_key || null,
-        data.sale_manager_id || null,
-        data.status || "active",
-        data.notes || "",
-        id,
-    ];
+  const params = [
+    data.name,
+    data.url,
+    data.project_code || null,
+    data.manager_id || null,
+    data.hosting_package || null,
+    data.hosting_provider || null,
+    data.storage_used || 0,
+    data.storage_limit || 0,
+    data.storage_alert_threshold || 90,
+    data.admin_login_url || null,
+    data.admin_username || null,
+    data.admin_password || null,
+    data.hosting_login_url || null,
+    data.hosting_username || null,
+    data.hosting_password || null,
+    data.vps_login_url || null,
+    data.vps_username || null,
+    data.vps_password || null,
+    data.ssh_host || null,
+    data.ssh_port || 22,
+    data.ssh_username || null,
+    data.ssh_password || null,
+    data.ssh_key || null,
+    data.sale_manager_id || null,
+    data.status || "active",
+    data.notes || "",
+    id,
+  ];
 
-    const result = await pool.query(query, params);
-    return result.rows.length > 0 ? mapWebsiteRow(result.rows[0]) : null;
+  const result = await pool.query(query, params);
+  return result.rows.length > 0 ? mapWebsiteRow(result.rows[0]) : null;
 }
 
 /**
  * Delete website
  */
 async function deleteWebsite(id) {
-    const result = await pool.query("DELETE FROM websites WHERE id = $1 RETURNING id", [id]);
-    return result.rows.length > 0;
+  const result = await pool.query("DELETE FROM websites WHERE id = $1 RETURNING id", [id]);
+  return result.rows.length > 0;
 }
 
 /**
  * Get website statistics
  */
 async function getWebsiteStats() {
-    const query = `
+  const query = `
     SELECT 
       COUNT(*)::int as total,
       COUNT(*) FILTER (WHERE status = 'active')::int as active,
@@ -218,15 +218,15 @@ async function getWebsiteStats() {
     FROM websites
   `;
 
-    const result = await pool.query(query);
-    return result.rows[0];
+  const result = await pool.query(query);
+  return result.rows[0];
 }
 
 /**
  * Get websites with storage alerts
  */
 async function getStorageAlerts() {
-    const query = `
+  const query = `
     SELECT 
       w.*,
       m.name as manager_name,
@@ -239,16 +239,16 @@ async function getStorageAlerts() {
     ORDER BY (w.storage_used::float / w.storage_limit * 100) DESC
   `;
 
-    const result = await pool.query(query);
-    return result.rows.map(mapWebsiteRow);
+  const result = await pool.query(query);
+  return result.rows.map(mapWebsiteRow);
 }
 
 module.exports = {
-    listWebsites,
-    getWebsiteById,
-    createWebsite,
-    updateWebsite,
-    deleteWebsite,
-    getWebsiteStats,
-    getStorageAlerts,
+  listWebsites,
+  getWebsiteById,
+  createWebsite,
+  updateWebsite,
+  deleteWebsite,
+  getWebsiteStats,
+  getStorageAlerts,
 };
