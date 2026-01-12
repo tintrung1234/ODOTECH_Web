@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import type { Customer } from './interface/types';
-import type { Account } from '../projectsDasboard/interface/type';
+import type { Account } from '../../interface/type';
 import { formatCurrency } from '../../utils/formatDate';
 import {
     Users,
@@ -31,10 +31,7 @@ export default function CustomerDashboard({
     customers,
     onSelect,
     onFilter,
-    saleTabs,
     selectedSaleTab,
-    onSelectSaleTab,
-    accounts,
 }: Props) {
     const [q, setQ] = useState('');
     const [nguonKhach, setNguonKhach] = useState('');

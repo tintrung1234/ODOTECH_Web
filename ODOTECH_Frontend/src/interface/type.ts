@@ -1,3 +1,43 @@
+export interface CompetencyFramework {
+  frontend?: string[];
+  backend?: string[];
+  database?: string[];
+  others?: string[];
+}
+
+export const ROLE_OPTIONS = [
+  { value: 'admin', label: 'Admin (Quản trị hệ thống)' },
+  { value: 'support', label: 'Hỗ trợ tổng' },
+  { value: 'sale', label: 'Sale' },
+  { value: 'sales_manager', label: 'Quản lý Sale' },
+  { value: 'head_sales', label: 'Trưởng phòng Kinh doanh' },
+  { value: 'dev', label: 'Lập trình viên (Dev)' },
+  { value: 'dev_manager', label: 'Quản lý Dev' },
+  { value: 'head_tech', label: 'Trưởng phòng Kỹ thuật' },
+  { value: 'customer', label: 'Khách hàng' },
+];
+
+export const POSITION_OPTIONS = [
+  { value: 'Developer', label: 'Lập trình viên' },
+  { value: 'Tester', label: 'Kiểm thử' },
+  { value: 'Business Analyst', label: 'BA' },
+  { value: 'Project Manager', label: 'PM' },
+  { value: 'Designer', label: 'Thiết kế' },
+  { value: 'DevOps', label: 'DevOps' },
+  { value: 'HR', label: 'Nhân sự' },
+  { value: 'Accountant', label: 'Kế toán' },
+  { value: 'Director', label: 'Giám đốc' },
+  { value: 'Intern', label: 'Thực tập sinh' },
+  { value: 'Sale', label: 'Sale' },
+];
+
+export const STATUS_OPTIONS = [
+  { value: 'active', label: 'Chính thức' },
+  { value: 'probation', label: 'Thử việc' },
+  { value: 'inactive', label: 'Nghỉ việc' },
+  { value: 'collaborator', label: 'Cộng tác viên' },
+];
+
 export interface Account {
   id: number; // ID nhân sự
   username: string; // Tên đăng nhập
@@ -15,6 +55,7 @@ export interface Account {
   last_login_at: string; // ISO timestamp
   created_at: string; // ISO timestamp
   updated_at: string; // ISO timestamp
+  competency_framework?: CompetencyFramework;
 }
 
 export type LeaveStatus = 'pending' | 'approved' | 'rejected';

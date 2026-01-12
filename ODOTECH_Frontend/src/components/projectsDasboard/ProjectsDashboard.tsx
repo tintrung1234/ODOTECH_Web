@@ -12,7 +12,7 @@ import {
   CheckCircle2
 } from 'lucide-react';
 
-import type { Account, ProjectManagementItem } from './interface/type';
+import type { Account, ProjectManagementItem } from '../../interface/type';
 import type { CanonicalRole } from '../../utils/auth';
 
 export default function ProjectsDashboard({

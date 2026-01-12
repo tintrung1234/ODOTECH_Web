@@ -17,7 +17,7 @@ import type {
   ProjectMgmtPriority,
   ProjectMgmtStatus,
   ProjectType,
-} from './interface/type';
+} from '../../interface/type';
 import {
   statusLabel,
   priorityLabel,
@@ -27,12 +27,14 @@ import ProjectTasksPanel from './ProjectTasksPanel';
 import { normalizeRole } from '../../utils/auth';
 
 import { AccountIdPicker, AccountTextPicker } from './AccountPickers';
-import { useProjectTasks } from './helper/useProjectTasks';
+import { useProjectTasks } from '../../utils/useProjectTasks';
+import { formatDate, formatDateTime } from '../../utils/formatDate';
 import {
   PROJECT_STATUSES,
+  PROJECT_TYPES,
   accountValueToken,
   filterAccountsByRoles,
-} from './helper/projectsTableHelpers';
+} from '../../utils/projectsTableHelpers';
 
 // Utility for Avatar colors
 const getAvatarColor = (name: string) => {
@@ -357,15 +359,19 @@ export default function ProjectsTable({
 
                       {/* Project Type */}
                       <td className={cellBase}>
-                        <input
-                          type="text"
+                        <select
                           value={item.project_type || ''}
                           onChange={(e) => canEditRow && onUpdate(item.id, { project_type: e.target.value as ProjectType })}
                           disabled={!canEditRow}
-                          className={`${inputBase} text-gray-700`}
-                          placeholder="Loại dự án..."
+                          className={`${inputBase} text-gray-700 cursor-pointer`}
                           onClick={(e) => e.stopPropagation()}
-                        />
+                        >
+                          {PROJECT_TYPES.map((t) => (
+                            <option key={t} value={t}>
+                              {t || '---'}
+                            </option>
+                          ))}
+                        </select>
                       </td>
 
                       {/* Client */}
@@ -535,38 +541,50 @@ export default function ProjectsTable({
                       <td className={cellBase}>
                         <div className="flex items-center gap-1.5 text-gray-600 w-full h-full">
                           <Clock size={14} className="shrink-0" />
-                          <input
-                            type="date"
-                            value={item.start_date}
-                            onChange={(e) => canEditRow && onUpdate(item.id, { start_date: e.target.value })}
-                            onClick={(e) => e.stopPropagation()}
-                            className="bg-transparent border-none p-0 text-xs w-full h-full text-gray-600 focus:ring-0 cursor-pointer"
-                          />
+                          {canEditRow ? (
+                            <input
+                              type="date"
+                              value={item.start_date}
+                              onChange={(e) => canEditRow && onUpdate(item.id, { start_date: e.target.value })}
+                              onClick={(e) => e.stopPropagation()}
+                              className="bg-transparent border-none p-0 text-xs w-full h-full text-gray-600 focus:ring-0 cursor-pointer"
+                            />
+                          ) : (
+                            <span className="text-xs text-gray-600 truncate">{formatDate(item.start_date)}</span>
+                          )}
                         </div>
                       </td>
                       <td className={cellBase}>
                         <div className="flex items-center gap-1.5 text-gray-600 w-full h-full">
                           <Calendar size={14} className={`shrink-0 ${item.deadline < new Date().toISOString().split('T')[0] ? 'text-red-500' : ''}`} />
-                          <input
-                            type="date"
-                            value={item.deadline}
-                            onChange={(e) => canEditRow && onUpdate(item.id, { deadline: e.target.value })}
-                            onClick={(e) => e.stopPropagation()}
-                            className={`bg-transparent border-none p-0 text-xs w-full h-full focus:ring-0 cursor-pointer ${item.deadline < new Date().toISOString().split('T')[0] ? 'text-red-600 font-medium' : 'text-gray-600'}`}
-                          />
+                          {canEditRow ? (
+                            <input
+                              type="date"
+                              value={item.deadline}
+                              onChange={(e) => canEditRow && onUpdate(item.id, { deadline: e.target.value })}
+                              onClick={(e) => e.stopPropagation()}
+                              className={`bg-transparent border-none p-0 text-xs w-full h-full focus:ring-0 cursor-pointer ${item.deadline < new Date().toISOString().split('T')[0] ? 'text-red-600 font-medium' : 'text-gray-600'}`}
+                            />
+                          ) : (
+                            <span className={`text-xs truncate ${item.deadline < new Date().toISOString().split('T')[0] ? 'text-red-600 font-medium' : 'text-gray-600'}`}>{formatDate(item.deadline)}</span>
+                          )}
                         </div>
                       </td>
                       <td className={cellBase}>
                         <div className="flex items-center gap-1.5 text-gray-600 w-full h-full">
                           <Calendar size={14} className="shrink-0" />
-                          <input
-                            type="datetime-local"
-                            value={item.completed_at ? new Date(item.completed_at).toISOString().slice(0, 16) : ''}
-                            onChange={(e) => canEditRow && onUpdate(item.id, { completed_at: e.target.value ? new Date(e.target.value).toISOString() : '' })}
-                            onClick={(e) => e.stopPropagation()}
-                            disabled={!canEditRow}
-                            className="bg-transparent border-none p-0 text-xs w-full h-full text-gray-600 focus:ring-0 cursor-pointer"
-                          />
+                          {canEditRow ? (
+                            <input
+                              type="datetime-local"
+                              value={item.completed_at ? new Date(item.completed_at).toISOString().slice(0, 16) : ''}
+                              onChange={(e) => canEditRow && onUpdate(item.id, { completed_at: e.target.value ? new Date(e.target.value).toISOString() : '' })}
+                              onClick={(e) => e.stopPropagation()}
+                              disabled={!canEditRow}
+                              className="bg-transparent border-none p-0 text-xs w-full h-full text-gray-600 focus:ring-0 cursor-pointer"
+                            />
+                          ) : (
+                            <span className="text-xs text-gray-600 truncate">{formatDateTime(item.completed_at)}</span>
+                          )}
                         </div>
                       </td>
                       <td className={`${cellBase} text-right font-mono`}>

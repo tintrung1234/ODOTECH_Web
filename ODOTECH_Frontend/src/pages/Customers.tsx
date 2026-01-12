@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import CustomerDashboard from '../components/customersDashboard/CustomerDashboard';
 import CustomerDetail from '../components/customersDashboard/CustomerDetail';
 import type { Customer } from '../components/customersDashboard/interface/types';
-import type { Account } from '../components/projectsDasboard/interface/type';
+import type { Account } from '../interface/type';
 import { getTokenUser, normalizeRole, type CanonicalRole } from '../utils/auth';
 
 type ToastType = 'success' | 'error';

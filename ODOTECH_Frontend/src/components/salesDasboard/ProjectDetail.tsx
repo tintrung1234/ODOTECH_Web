@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import type { ProjectData, Payment, StaffId } from './interface/type';
-import { formatCurrency, getWeeksDiff } from '../../utils/formatDate';
-import type { Account } from '../projectsDasboard/interface/type';
+import { formatCurrency, getWeeksDiff, formatDate } from '../../utils/formatDate';
+import type { Account } from '../../interface/type';
 import { normalizeRole } from '../../utils/auth';
 import {
   ArrowLeft,
@@ -334,11 +334,11 @@ const TabDeploy = ({ data, handleChange, handleCheckboxChange }: {
           <div className="flex-1 w-full md:w-auto grid grid-cols-2 gap-4">
             <div>
               <div className="text-xs text-slate-400 font-semibold uppercase mb-1">Ngày Bàn Giao</div>
-              <div className="font-mono font-medium text-slate-700">{toIsoDateYmd(data.ngay_ban_giao) || '--/--/----'}</div>
+              <div className="font-mono font-medium text-slate-700">{formatDate(data.ngay_ban_giao)}</div>
             </div>
             <div>
               <div className="text-xs text-slate-400 font-semibold uppercase mb-1">Hạn Hợp Đồng</div>
-              <div className="font-mono font-medium text-slate-700">{toIsoDateYmd(data.ngay_tat_toan) || '--/--/----'}</div>
+              <div className="font-mono font-medium text-slate-700">{formatDate(data.ngay_tat_toan)}</div>
             </div>
           </div>
         </div>

@@ -42,6 +42,7 @@ function mapAccountRow(row) {
     last_login_at: formatTimestamp(row.last_login_at),
     created_at: formatTimestamp(row.created_at),
     updated_at: formatTimestamp(row.updated_at),
+    competency_framework: row.competency_framework || {},
   };
 }
 

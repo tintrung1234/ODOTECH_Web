@@ -16,6 +16,10 @@ async function updateAccount(accountId, input) {
   return accountsRepository.updateAccount(accountId, input);
 }
 
+async function updateAccountEmail(accountId, email) {
+  return accountsRepository.updateAccountEmail(accountId, email);
+}
+
 async function deleteAccount(accountId) {
   return accountsRepository.deleteAccount(accountId);
 }
@@ -29,6 +33,7 @@ module.exports = {
   getAccountById,
   createAccount,
   updateAccount,
+  updateAccountEmail,
   deleteAccount,
   getAccountStats,
 };

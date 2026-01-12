@@ -6,9 +6,9 @@ import {
   Trash2,
 } from 'lucide-react';
 
-import type { Account, ProjectManagementItem, ProjectTask, TaskPriority, TaskStatus } from './interface/type';
+import type { Account, ProjectManagementItem, ProjectTask, TaskPriority, TaskStatus } from '../../interface/type';
 import { AccountTextPicker } from './AccountPickers';
-import { filterAccountsByRoles } from './helper/projectsTableHelpers';
+import { filterAccountsByRoles } from '../../utils/projectsTableHelpers';
 import { normalizeRole } from '../../utils/auth';
 
 

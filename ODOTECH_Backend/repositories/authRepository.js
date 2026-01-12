@@ -42,8 +42,46 @@ async function registerAccount({ username, name, email, role_system, status, pas
   return authAccountModel.mapRegisteredAccountRow(result.rows[0]);
 }
 
+async function updateAccount(id, updates) {
+  const fields = [];
+  const params = [];
+  let paramIndex = 1;
+
+  if (updates.username) {
+    fields.push(`username = $${paramIndex}`);
+    params.push(updates.username);
+    paramIndex++;
+  }
+
+  if (updates.password_hash) {
+    fields.push(`password_hash = $${paramIndex}`);
+    params.push(updates.password_hash);
+    paramIndex++;
+  }
+
+  if (updates.status) {
+    fields.push(`status = $${paramIndex}`);
+    params.push(updates.status);
+    paramIndex++;
+  }
+
+  if (fields.length === 0) return null;
+
+  params.push(id);
+  const query = `
+    UPDATE accounts
+    SET ${fields.join(", ")}
+    WHERE id = $${paramIndex}
+    RETURNING id, username, name, email, role_system, status
+  `;
+
+  const result = await pool.query(query, params);
+  return result.rows.length > 0 ? authAccountModel.mapAuthAccountRow(result.rows[0]) : null;
+}
+
 module.exports = {
   getAccountForAuthByEmail,
   getAccountForAuthByUsername,
   registerAccount,
+  updateAccount,
 };

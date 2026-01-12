@@ -14,6 +14,14 @@ export default function Sidebar() {
     });
   }, []);
   const visibleItems = sidebarItems.filter((item) => {
+    // If role is customer, ONLY show customer portal
+    if (role === 'customer') {
+      return item.to === '/customer-portal';
+    }
+
+    // For other roles, hide customer portal
+    if (item.to === '/customer-portal') return false;
+
     // Hide sales from dev roles
     if (item.to === '/sales') {
       return !(role === 'dev' || role === 'dev_manager' || role === 'head_tech');

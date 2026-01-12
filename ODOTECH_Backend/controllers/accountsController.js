@@ -48,13 +48,14 @@ function normalizeAccountInput(body, { requireBasics }) {
       status: toString(body?.status || "active").trim(),
       password_hash: toString(body?.password_hash).trim(),
       last_login_at: toString(body?.last_login_at).trim(),
+      competency_framework: body?.competency_framework || {},
     },
   };
 }
 
 async function listAccounts(req, res, next) {
   try {
-    const limit = Math.min(Math.max(toInt(req.query.limit, 50), 1), 200);
+    const limit = Math.min(Math.max(toInt(req.query.limit, 50), 1), 1000);
     const offset = Math.max(toInt(req.query.offset, 0), 0);
     const q = typeof req.query.q === "string" ? req.query.q.trim() : "";
     const status = typeof req.query.status === "string" ? req.query.status.trim() : "";

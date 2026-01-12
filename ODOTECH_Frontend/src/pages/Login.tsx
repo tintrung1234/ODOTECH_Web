@@ -1,7 +1,7 @@
 import React, { useEffect, useLayoutEffect, useRef, useState, useMemo } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import gsap from 'gsap';
-import { clearUserCache, getTokenUser } from '../utils/auth';
+import { clearUserCache, getTokenUser, normalizeRole } from '../utils/auth';
 import logoUrl from '/logo.png';
 import './style.css';
 
@@ -55,7 +55,14 @@ export default function Login() {
         // If already logged in, don't stay on /login.
         (async () => {
             const user = await getTokenUser();
-            if (user) navigate('/accounts', { replace: true });
+            if (user) {
+                const role = normalizeRole(user.role);
+                if (role === 'customer') {
+                    navigate('/customer-portal', { replace: true });
+                } else {
+                    navigate('/accounts', { replace: true });
+                }
+            }
         })();
     }, [navigate]);
 
@@ -356,7 +363,16 @@ export default function Login() {
             }
 
             clearUserCache();
-            navigate(redirectTo, { replace: true });
+
+            // Determine redirect
+            const loggedInUser = (json as any).user;
+            const role = normalizeRole(loggedInUser?.role_system || loggedInUser?.role);
+
+            if (role === 'customer') {
+                navigate('/customer-portal', { replace: true });
+            } else {
+                navigate(redirectTo, { replace: true });
+            }
         } finally {
             setIsLoading(false);
         }

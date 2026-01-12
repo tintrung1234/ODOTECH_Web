@@ -1,5 +1,5 @@
-import type { ProjectMgmtStatus, ProjectType } from './interface/type';
-import { PROJECT_STATUSES, PROJECT_TYPES } from './helper/projectsTableHelpers';
+import type { ProjectMgmtStatus, ProjectType } from '../../interface/type';
+import { PROJECT_STATUSES, PROJECT_TYPES } from '../../utils/projectsTableHelpers';
 
 export default function ProjectsToolbar({
   searchTerm,

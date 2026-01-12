@@ -13,6 +13,7 @@ const customersRoutes = require("./routes/customersRoutes");
 const websitesRoutes = require("./routes/websitesRoutes");
 const virusLogsRoutes = require("./routes/virusLogsRoutes");
 const devAssignmentsRoutes = require("./routes/devAssignmentsRoutes");
+const customerPortalRoutes = require("./routes/customerPortalRoutes");
 
 const app = express();
 
@@ -66,6 +67,7 @@ app.use("/api/customers", customersRoutes);
 app.use("/api/websites", websitesRoutes);
 app.use("/api/virus-logs", virusLogsRoutes);
 app.use("/api/dev-assignments", devAssignmentsRoutes);
+app.use("/api/customer-portal", customerPortalRoutes);
 
 app.use((req, res) => {
 	res.status(404).json({ message: "Not found" });

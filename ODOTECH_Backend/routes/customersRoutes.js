@@ -11,6 +11,9 @@ const {
     createCustomer,
     deleteCustomer,
     getCustomerStats,
+    createCustomerAccount,
+    getCustomerAccount,
+    updateCustomerAccount,
 } = require("../controllers/customersController");
 
 const router = express.Router();
@@ -59,6 +62,29 @@ router.post(
         bodyStringOptional("website", { maxLen: 255, message: "Invalid website" }),
     ]),
     createCustomer
+);
+
+// POST /api/customers/:id/account - Create customer account
+router.post(
+    "/:id/account",
+    validate([
+        bodyRequiredString("username", { maxLen: 50, message: "username is required" }),
+        bodyRequiredString("password", { minLen: 6, message: "password must be at least 6 characters" }),
+    ]),
+    createCustomerAccount
+);
+
+// GET /api/customers/:id/account - Get customer account info
+router.get("/:id/account", getCustomerAccount);
+
+// PUT /api/customers/:id/account - Update customer account info
+router.put(
+    "/:id/account",
+    validate([
+        bodyStringOptional("username", { maxLen: 50, message: "Invalid username" }),
+        bodyStringOptional("password", { minLen: 6, message: "Password must be at least 6 characters" }),
+    ]),
+    updateCustomerAccount
 );
 
 // PUT /api/customers/:id - Update customer

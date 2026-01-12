@@ -1,5 +1,5 @@
 import { formatDate } from '../utils/formatDate';
-import type { LeaveStatus } from '../components/projectsDasboard/interface/type';
+import type { LeaveStatus } from '../interface/type';
 
 export function normalizeLeaveStatus(status: LeaveStatus | string) {
   return String(status).trim().toLowerCase();

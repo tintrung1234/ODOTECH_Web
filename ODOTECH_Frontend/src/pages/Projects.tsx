@@ -10,7 +10,7 @@ import type {
   ProjectManagementItem,
   ProjectMgmtStatus,
   ProjectType,
-} from '../components/projectsDasboard/interface/type';
+} from '../interface/type';
 import { getTokenUser, normalizeRole } from '../utils/auth';
 
 type ListTab = 'all' | 'done';

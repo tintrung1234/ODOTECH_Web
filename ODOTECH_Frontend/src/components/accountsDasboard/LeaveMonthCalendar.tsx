@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 
-import type { LeaveRequest } from '../projectsDasboard/interface/type';
+import type { LeaveRequest } from '../../interface/type';
 import { isRejected, todayIsoDate } from '../../utils/leaveHelpers';
 
 function pad2(value: number) {
@@ -191,9 +191,8 @@ export default function LeaveMonthCalendar({
             const isSelected = selectedIsoDate === cell.iso;
             const isSelectable = Boolean(onSelectIsoDate) && (!onlyMarkedSelectable || isMarked);
 
-            const baseClassName = `h-10 w-full rounded-md border flex flex-col items-center justify-center ${
-              isSelected ? 'bg-teal-50 border-teal-300' : 'bg-white border-gray-200'
-            }`;
+            const baseClassName = `h-10 w-full rounded-md border flex flex-col items-center justify-center ${isSelected ? 'bg-teal-50 border-teal-300' : 'bg-white border-gray-200'
+              }`;
 
             if (!isSelectable) {
               return (

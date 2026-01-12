@@ -217,6 +217,103 @@ async function getCustomerStats(req, res, next) {
     }
 }
 
+
+/**
+ * Create customer account
+ */
+async function createCustomerAccount(req, res, next) {
+    try {
+        const auth = requireUser(req);
+        if (auth.error) return res.status(auth.error.status).json({ message: auth.error.message });
+        if (!canEditCustomers(auth.role)) return res.status(403).json({ message: "Insufficient permissions" });
+
+        const { id } = req.params;
+        const { username, password } = req.body;
+
+        if (!username || !password) {
+            return res.status(400).json({ message: "Username and password are required" });
+        }
+
+        const account = await customersService.createCustomerAccount(id, { username, password });
+        res.status(201).json(account);
+    } catch (err) {
+        if (err.status) {
+            return res.status(err.status).json({ message: err.message });
+        }
+        next(err);
+    }
+}
+
+/**
+ * Get customer account info
+ */
+async function getCustomerAccount(req, res, next) {
+    try {
+        const auth = requireUser(req);
+        if (auth.error) return res.status(auth.error.status).json({ message: auth.error.message });
+        if (!canViewCustomers(auth.role)) return res.status(403).json({ message: "Insufficient permissions" });
+
+        const { id } = req.params;
+
+        let customerId;
+        const isNumeric = /^\d+$/.test(id);
+        const numericValue = isNumeric ? parseInt(id) : null;
+
+        if (isNumeric && numericValue < 1000000) {
+            customerId = numericValue;
+        } else {
+            const temp = await customersService.getCustomerByMaKh(id);
+            if (!temp) return res.status(404).json({ message: "Customer not found" });
+            customerId = temp.id;
+        }
+
+        const account = await customersService.getCustomerAccount(customerId);
+        // It's okay to return null if no account exists
+        res.json(account || null);
+    } catch (err) {
+        if (err.status) {
+            return res.status(err.status).json({ message: err.message });
+        }
+        next(err);
+    }
+}
+
+/**
+ * Update customer account
+ */
+async function updateCustomerAccount(req, res, next) {
+    try {
+        const auth = requireUser(req);
+        if (auth.error) return res.status(auth.error.status).json({ message: auth.error.message });
+        // Only sales_manager, head_sales, or admin can edit accounts (same as edit customer)
+        if (!canEditCustomers(auth.role)) return res.status(403).json({ message: "Insufficient permissions" });
+
+        const { id } = req.params;
+        const { username, password } = req.body;
+
+        // Resolve ID logic again
+        let customerId;
+        const isNumeric = /^\d+$/.test(id);
+        const numericValue = isNumeric ? parseInt(id) : null;
+
+        if (isNumeric && numericValue < 1000000) {
+            customerId = numericValue;
+        } else {
+            const temp = await customersService.getCustomerByMaKh(id);
+            if (!temp) return res.status(404).json({ message: "Customer not found" });
+            customerId = temp.id;
+        }
+
+        const updated = await customersService.updateCustomerAccount(customerId, { username, password });
+        res.json(updated);
+    } catch (err) {
+        if (err.status) {
+            return res.status(err.status).json({ message: err.message });
+        }
+        next(err);
+    }
+}
+
 module.exports = {
     listCustomers,
     getCustomerById,
@@ -225,4 +322,7 @@ module.exports = {
     createCustomer,
     deleteCustomer,
     getCustomerStats,
+    createCustomerAccount,
+    getCustomerAccount,
+    updateCustomerAccount,
 };

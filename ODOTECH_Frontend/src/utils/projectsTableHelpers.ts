@@ -1,5 +1,5 @@
 import type { Account, ProjectMgmtStatus, ProjectType } from '../interface/type';
-import type { CanonicalRole } from '../../../utils/auth';
+import type { CanonicalRole } from '../utils/auth';
 
 export const PROJECT_TYPES: ProjectType[] = ['', 'Khách', 'Nội bộ', 'Đào tạo'];
 

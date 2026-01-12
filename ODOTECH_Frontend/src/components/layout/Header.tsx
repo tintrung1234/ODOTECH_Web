@@ -1,4 +1,5 @@
-﻿import { useState, useRef, useEffect, useCallback } from 'react';
+﻿/* eslint-disable @typescript-eslint/no-explicit-any */
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { formatDate } from '../../utils/formatDate';
 import { useNavigate } from 'react-router-dom';
 import { logout, getTokenUser, normalizeRole } from '../../utils/auth';
@@ -14,8 +15,7 @@ import {
   Briefcase,
   Users,
   Globe,
-  Loader2,
-  Command
+  Loader2
 } from 'lucide-react';
 import { ImCtrl } from 'react-icons/im';
 
@@ -43,6 +43,7 @@ const formatRole = (role: CanonicalRole): string => {
     head_tech: 'Trưởng phòng kỹ thuật',
     support: 'Hỗ trợ',
     unknown: 'Người dùng',
+    customer: ''
   };
   return roleMap[role] || 'Người dùng';
 };
@@ -384,7 +385,7 @@ export default function Header({ userName }: HeaderProps) {
                       <div className="px-4 py-2 bg-gray-50 text-xs font-semibold text-gray-500 uppercase tracking-wide">
                         {getTypeLabel(type as SearchResult['type'])}
                       </div>
-                      {results.map((result, idx) => {
+                      {results.map((result) => {
                         const globalIndex = searchResults.indexOf(result);
                         return (
                           <button
