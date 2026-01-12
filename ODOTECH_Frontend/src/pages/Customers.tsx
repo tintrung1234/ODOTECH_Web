@@ -80,7 +80,13 @@ export default function Customers() {
             }
             const json = await res.json();
             const items = Array.isArray(json) ? json : (json.items ?? []);
-            setCustomers(items);
+            // Map new fields to legacy ones for UI compatibility
+            const mappedItems = items.map((c: any) => ({
+                ...c,
+                ten_khach: c.name || c.ten_khach,
+                sdt: c.phone || c.sdt
+            }));
+            setCustomers(mappedItems);
         } catch (e: unknown) {
             showToast('error', e instanceof Error ? e.message : 'Không tải được dữ liệu');
         } finally {
@@ -138,16 +144,25 @@ export default function Customers() {
         }
         setLoading(true);
         try {
-            const url = `${apiBaseUrl}/api/customers/${data.ma_kh}`;
+            // Use numeric ID if available, otherwise ma_kh
+            const idParam = data.id && data.id > 0 ? data.id : data.ma_kh;
+            const url = `${apiBaseUrl}/api/customers/${idParam}`;
+
             const res = await fetch(url, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 credentials: 'include',
                 body: JSON.stringify({
-                    ten_khach: data.ten_khach,
-                    sdt: data.sdt,
+                    // Map legacy fields to new schema
+                    // Prefer ten_khach/sdt because that's what the current UI edits
+                    name: data.ten_khach !== undefined ? data.ten_khach : data.name,
+                    phone: data.sdt !== undefined ? data.sdt : data.phone,
+                    email: data.email,
+                    company: data.company,
                     zalo_fb: data.zalo_fb,
                     nguon_khach: data.nguon_khach,
+                    nhu_cau: data.nhu_cau,
+                    san_pham_dv: data.san_pham_dv,
                     website: data.website,
                 }),
             });
@@ -156,8 +171,16 @@ export default function Customers() {
                 throw new Error(message);
             }
             const updated = (await res.json()) as Customer;
-            setSelectedCustomer(updated);
-            setCustomers((prev) => prev.map((c) => (c.ma_kh === updated.ma_kh ? updated : c)));
+
+            // Normalize updated customer data
+            const normalized: Customer = {
+                ...updated,
+                ten_khach: updated.name || updated.ten_khach,
+                sdt: updated.phone || updated.sdt
+            };
+
+            setSelectedCustomer(normalized);
+            setCustomers((prev) => prev.map((c) => (c.ma_kh === normalized.ma_kh ? normalized : c)));
             showToast('success', 'Cập nhật thành công');
         } catch (e: unknown) {
             const message = e instanceof Error ? e.message : 'Không lưu được dữ liệu';

@@ -151,8 +151,8 @@ export interface ProjectManagementItem {
   source?: string;
   progress_percent?: number;
   assignee?: string;
-  tech_user?: string;
-  customer_sender?: string;
+  tech_user_id?: number | null;
+  customer_sender_id?: number | null;
 
   created_at: string; // ISO timestamp
   updated_at: string; // ISO timestamp

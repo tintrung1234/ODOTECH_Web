@@ -16,6 +16,7 @@ import type {
   ProjectManagementItem,
   ProjectMgmtPriority,
   ProjectMgmtStatus,
+  ProjectType,
 } from './interface/type';
 import {
   statusLabel,
@@ -265,26 +266,43 @@ export default function ProjectsTable({
               <th className={`${headerBase} ${stickyRightDivider} w-24`} style={{ left: '2.5rem' }}>Mã dự án</th>
               <th className={`${headerBase} ${stickyRightDivider} w-64`} style={{ left: '8.5rem' }}>Tên dự án</th>
 
+              <th className={`${headerBase} w-32`}>Loại dự án</th>
+              <th className={`${headerBase} w-32`}>Khách hàng</th>
               <th className={`${headerBase} w-32`}>PM / Sale</th>
               <th className={`${headerBase} w-32`}>Trạng thái</th>
               <th className={`${headerBase} w-32 transition-colors hover:bg-gray-50`}>Ưu tiên</th>
               <th className={`${headerBase} w-36`}>Tiến độ</th>
 
+              <th className={`${headerBase} w-32 text-right`}>Ngân sách</th>
               <th className={`${headerBase} w-32 text-right`}>Doanh thu</th>
               <th className={`${headerBase} w-32 text-right`}>Khách trả</th>
               <th className={`${headerBase} w-32 text-right`}>Thực chi</th>
+              <th className={`${headerBase} w-32`}>TT thanh toán</th>
 
               <th className={`${headerBase} w-32`}>Bắt đầu</th>
               <th className={`${headerBase} w-32`}>Deadline</th>
+              <th className={`${headerBase} w-32`}>Hoàn thành</th>
+              <th className={`${headerBase} w-32 text-right`}>Tổng giờ</th>
+
+              <th className={`${headerBase} w-40`}>Công nghệ</th>
+              <th className={`${headerBase} w-40`}>Domain</th>
+              <th className={`${headerBase} w-40`}>Production URL</th>
 
               <th className={`${headerBase} w-40`}>Người làm</th>
+              <th className={`${headerBase} w-40`}>Kỹ thuật viên</th>
+              <th className={`${headerBase} w-40`}>Người gửi KH</th>
+
+              <th className={`${headerBase} w-48`}>Mô tả</th>
+              <th className={`${headerBase} w-48`}>Yêu cầu</th>
+              <th className={`${headerBase} w-32`}>Nguồn</th>
+
               <th className={`${headerBase} w-16 text-center`}>Actions</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
             {projects.length === 0 ? (
               <tr>
-                <td colSpan={14} className="py-12 text-center text-gray-500 italic">
+                <td colSpan={28} className="py-12 text-center text-gray-500 italic">
                   Không có dự án nào.
                 </td>
               </tr>
@@ -335,6 +353,44 @@ export default function ProjectsTable({
                           placeholder="Tên dự án..."
                           onClick={(e) => e.stopPropagation()}
                         />
+                      </td>
+
+                      {/* Project Type */}
+                      <td className={cellBase}>
+                        <input
+                          type="text"
+                          value={item.project_type || ''}
+                          onChange={(e) => canEditRow && onUpdate(item.id, { project_type: e.target.value as ProjectType })}
+                          disabled={!canEditRow}
+                          className={`${inputBase} text-gray-700`}
+                          placeholder="Loại dự án..."
+                          onClick={(e) => e.stopPropagation()}
+                        />
+                      </td>
+
+                      {/* Client */}
+                      <td className={cellBase}>
+                        <div className="relative w-full h-full flex items-center">
+                          <div className="relative z-0 pointer-events-none">
+                            {item.client_id && accountsById.has(item.client_id) ? (
+                              <Avatar name={accountsById.get(item.client_id)?.name} />
+                            ) : (
+                              <div className="w-6 h-6 rounded-full bg-gray-100 border border-gray-200 border-dashed flex items-center justify-center text-[10px] text-gray-400">KH</div>
+                            )}
+                          </div>
+                          {canEditRow && (
+                            <AccountIdPicker
+                              valueId={item.client_id}
+                              accountsById={accountsById}
+                              options={accounts}
+                              placeholder="Chọn KH"
+                              datalistId={`client-${item.id}`}
+                              onChangeId={(next) => canEditRow && onUpdate(item.id, { client_id: next })}
+                              tokenForAccount={accountValueToken}
+                              className="absolute inset-0 w-full h-full opacity-0 hover:opacity-100 focus:opacity-100 bg-white text-xs px-1 text-center cursor-pointer transition-opacity z-10"
+                            />
+                          )}
+                        </div>
                       </td>
 
                       {/* PM / Sale (Avatars) */}
@@ -452,6 +508,9 @@ export default function ProjectsTable({
 
                       {/* Finance Columns */}
                       <td className={`${cellBase} text-right font-mono`}>
+                        <span className="text-blue-600">{formatVnd(item.budget)}</span>
+                      </td>
+                      <td className={`${cellBase} text-right font-mono`}>
                         <span className="text-gray-700">{formatVnd(item.contract_value)}</span>
                       </td>
                       <td className={`${cellBase} text-right font-mono`}>
@@ -459,6 +518,17 @@ export default function ProjectsTable({
                       </td>
                       <td className={`${cellBase} text-right font-mono`}>
                         <span className="text-red-500 hover:text-red-700 cursor-help" title="Chi phí thực">{formatVnd(item.actual_cost)}</span>
+                      </td>
+                      <td className={cellBase}>
+                        <input
+                          type="text"
+                          value={item.payment_status || ''}
+                          onChange={(e) => canEditRow && onUpdate(item.id, { payment_status: e.target.value })}
+                          disabled={!canEditRow}
+                          className={`${inputBase} text-gray-700`}
+                          placeholder="TT thanh toán..."
+                          onClick={(e) => e.stopPropagation()}
+                        />
                       </td>
 
                       {/* Dates */}
@@ -486,6 +556,66 @@ export default function ProjectsTable({
                           />
                         </div>
                       </td>
+                      <td className={cellBase}>
+                        <div className="flex items-center gap-1.5 text-gray-600 w-full h-full">
+                          <Calendar size={14} className="shrink-0" />
+                          <input
+                            type="datetime-local"
+                            value={item.completed_at ? new Date(item.completed_at).toISOString().slice(0, 16) : ''}
+                            onChange={(e) => canEditRow && onUpdate(item.id, { completed_at: e.target.value ? new Date(e.target.value).toISOString() : '' })}
+                            onClick={(e) => e.stopPropagation()}
+                            disabled={!canEditRow}
+                            className="bg-transparent border-none p-0 text-xs w-full h-full text-gray-600 focus:ring-0 cursor-pointer"
+                          />
+                        </div>
+                      </td>
+                      <td className={`${cellBase} text-right font-mono`}>
+                        <input
+                          type="number"
+                          step="0.5"
+                          value={item.total_hours || ''}
+                          onChange={(e) => canEditRow && onUpdate(item.id, { total_hours: parseFloat(e.target.value) || 0 })}
+                          disabled={!canEditRow}
+                          className={`${inputBase} text-right text-gray-700`}
+                          placeholder="0"
+                          onClick={(e) => e.stopPropagation()}
+                        />
+                      </td>
+
+                      {/* Technology & URLs */}
+                      <td className={cellBase}>
+                        <input
+                          type="text"
+                          value={item.technology_stack || ''}
+                          onChange={(e) => canEditRow && onUpdate(item.id, { technology_stack: e.target.value })}
+                          disabled={!canEditRow}
+                          className={`${inputBase} text-gray-700`}
+                          placeholder="React, Node.js..."
+                          onClick={(e) => e.stopPropagation()}
+                        />
+                      </td>
+                      <td className={cellBase}>
+                        <input
+                          type="text"
+                          value={item.domain_url || ''}
+                          onChange={(e) => canEditRow && onUpdate(item.id, { domain_url: e.target.value })}
+                          disabled={!canEditRow}
+                          className={`${inputBase} text-blue-600 hover:underline`}
+                          placeholder="example.com"
+                          onClick={(e) => e.stopPropagation()}
+                        />
+                      </td>
+                      <td className={cellBase}>
+                        <input
+                          type="text"
+                          value={item.production_url || ''}
+                          onChange={(e) => canEditRow && onUpdate(item.id, { production_url: e.target.value })}
+                          disabled={!canEditRow}
+                          className={`${inputBase} text-blue-600 hover:underline`}
+                          placeholder="https://..."
+                          onClick={(e) => e.stopPropagation()}
+                        />
+                      </td>
 
                       {/* Assignees (Text for now, or TagInput) */}
                       <td className={cellBase}>
@@ -505,6 +635,86 @@ export default function ProjectsTable({
                             </div>
                           )}
                         </div>
+                      </td>
+                      <td className={cellBase}>
+                        <div className="relative w-full h-full flex items-center">
+                          <div className="relative z-0 pointer-events-none">
+                            {item.tech_user_id && accountsById.has(item.tech_user_id) ? (
+                              <Avatar name={accountsById.get(item.tech_user_id)?.name} />
+                            ) : (
+                              <div className="w-6 h-6 rounded-full bg-gray-100 border border-gray-200 border-dashed flex items-center justify-center text-[10px] text-gray-400">KTV</div>
+                            )}
+                          </div>
+                          {canEditRow && (
+                            <AccountIdPicker
+                              valueId={item.tech_user_id ?? null}
+                              accountsById={accountsById}
+                              options={devAccounts}
+                              placeholder="Chọn KTV"
+                              datalistId={`tech-user-${item.id}`}
+                              onChangeId={(next) => canEditRow && onUpdate(item.id, { tech_user_id: next })}
+                              tokenForAccount={accountValueToken}
+                              className="absolute inset-0 w-full h-full opacity-0 hover:opacity-100 focus:opacity-100 bg-white text-xs px-1 text-center cursor-pointer transition-opacity z-10"
+                            />
+                          )}
+                        </div>
+                      </td>
+                      <td className={cellBase}>
+                        <div className="relative w-full h-full flex items-center">
+                          <div className="relative z-0 pointer-events-none">
+                            {item.customer_sender_id && accountsById.has(item.customer_sender_id) ? (
+                              <Avatar name={accountsById.get(item.customer_sender_id)?.name} />
+                            ) : (
+                              <div className="w-6 h-6 rounded-full bg-gray-100 border border-gray-200 border-dashed flex items-center justify-center text-[10px] text-gray-400">NG</div>
+                            )}
+                          </div>
+                          {canEditRow && (
+                            <AccountIdPicker
+                              valueId={item.customer_sender_id ?? null}
+                              accountsById={accountsById}
+                              options={accounts}
+                              placeholder="Chọn người gửi"
+                              datalistId={`customer-sender-${item.id}`}
+                              onChangeId={(next) => canEditRow && onUpdate(item.id, { customer_sender_id: next })}
+                              tokenForAccount={accountValueToken}
+                              className="absolute inset-0 w-full h-full opacity-0 hover:opacity-100 focus:opacity-100 bg-white text-xs px-1 text-center cursor-pointer transition-opacity z-10"
+                            />
+                          )}
+                        </div>
+                      </td>
+
+                      {/* Description & Requirements */}
+                      <td className={cellBase}>
+                        <input
+                          type="text"
+                          value={item.description || ''}
+                          onChange={(e) => canEditRow && onUpdate(item.id, { description: e.target.value })}
+                          disabled={!canEditRow}
+                          className={`${inputBase} text-gray-700`}
+                          placeholder="Mô tả..."
+                          onClick={(e) => e.stopPropagation()}
+                        />
+                      </td>
+                      <td className={cellBase}>
+                        <textarea
+                          value={item.requirements || ''}
+                          onChange={(e) => canEditRow && onUpdate(item.id, { requirements: e.target.value })}
+                          disabled={!canEditRow}
+                          className={`${inputBase} text-gray-700`}
+                          placeholder="Yêu cầu..."
+                          onClick={(e) => e.stopPropagation()}
+                        />
+                      </td>
+                      <td className={cellBase}>
+                        <input
+                          type="text"
+                          value={item.source || ''}
+                          onChange={(e) => canEditRow && onUpdate(item.id, { source: e.target.value })}
+                          disabled={!canEditRow}
+                          className={`${inputBase} text-gray-700`}
+                          placeholder="Nguồn..."
+                          onClick={(e) => e.stopPropagation()}
+                        />
                       </td>
 
                       {/* Actions */}

@@ -10,25 +10,33 @@ function formatDate(value) {
     return String(value);
 }
 
+/**
+ * Map customer row from database to API response
+ */
 function mapCustomerRow(row) {
     return {
         id: Number(row.id),
         ma_kh: row.ma_kh ?? "",
-        ten_khach: row.ten_khach ?? "",
-        sdt: row.sdt ?? "",
+        name: row.name ?? row.ten_khach ?? "",
+        phone: row.phone ?? row.sdt ?? "",
+        email: row.email ?? "",
         zalo_fb: row.zalo_fb ?? "",
+        company: row.company ?? row.cong_ty ?? "",
         nguon_khach: row.nguon_khach ?? "",
         nhu_cau: row.nhu_cau ?? "",
         san_pham_dv: row.san_pham_dv ?? "",
         website: row.website ?? "",
         sale_id: row.sale_id ?? null,
-        pm_id: row.pm_id ?? null,
-        ngay_tao: formatDate(row.ngay_tao),
+        created_at: formatDate(row.created_at ?? row.ngay_tao),
+        updated_at: formatDate(row.updated_at),
         total_projects: Number(row.total_projects || 0),
         total_revenue: Number(row.total_revenue || 0),
     };
 }
 
+/**
+ * Map customer project row
+ */
 function mapCustomerProjectRow(row) {
     return {
         id: Number(row.id),
@@ -49,8 +57,37 @@ function mapCustomerProjectRow(row) {
     };
 }
 
+/**
+ * Validate customer data
+ */
+function validateCustomerData(data) {
+    const errors = [];
+
+    if (!data.ma_kh || typeof data.ma_kh !== 'string' || data.ma_kh.trim() === '') {
+        errors.push('ma_kh is required and must be a non-empty string');
+    }
+
+    if (!data.name || typeof data.name !== 'string' || data.name.trim() === '') {
+        errors.push('name is required and must be a non-empty string');
+    }
+
+    if (data.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(data.email)) {
+        errors.push('email must be a valid email address');
+    }
+
+    if (data.phone && !/^[0-9+\-\s()]+$/.test(data.phone)) {
+        errors.push('phone must contain only numbers and valid characters');
+    }
+
+    return {
+        isValid: errors.length === 0,
+        errors,
+    };
+}
+
 module.exports = {
     formatDate,
     mapCustomerRow,
     mapCustomerProjectRow,
+    validateCustomerData,
 };

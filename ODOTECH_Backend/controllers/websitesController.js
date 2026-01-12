@@ -94,7 +94,11 @@ async function createWebsite(req, res) {
         res.status(201).json(website);
     } catch (error) {
         console.error("Error creating website:", error);
-        res.status(500).json({ message: "Lỗi khi tạo website" });
+        res.status(500).json({
+            message: "Lỗi khi tạo website",
+            detail: error.message,
+            code: error.code
+        });
     }
 }
 
@@ -119,7 +123,11 @@ async function updateWebsite(req, res) {
         res.json(website);
     } catch (error) {
         console.error("Error updating website:", error);
-        res.status(500).json({ message: "Lỗi khi cập nhật website" });
+        res.status(500).json({
+            message: "Lỗi khi cập nhật website",
+            detail: error.message,
+            code: error.code
+        });
     }
 }
 

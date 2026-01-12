@@ -29,6 +29,7 @@ async function getContractValuesByCodes({ codes, scope }) {
 }
 
 async function updateActualCostByCode(projectCode, actualCost) {
+  console.log(projectCode, actualCost);
   return projectsRepository.updateActualCostByCode(projectCode, actualCost);
 }
 

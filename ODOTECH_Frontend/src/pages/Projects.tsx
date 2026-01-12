@@ -56,8 +56,8 @@ const createDraftProject = (): Omit<ProjectManagementItem, 'id' | 'created_at' |
     source: '',
     progress_percent: 0,
     assignee: '',
-    tech_user: '',
-    customer_sender: '',
+    tech_user_id: null,
+    customer_sender_id: null,
   };
 };
 
@@ -129,8 +129,15 @@ export default function Projects() {
       ? accountOrTokens
       : [String(accountOrTokens.id), (accountOrTokens.username || '').trim(), (accountOrTokens.name || '').trim()].filter(Boolean);
 
-    const hay = [p.tech_user ?? '', p.assignee ?? ''].join(',').toLowerCase();
-    return tokens.some((t) => t && hay.includes(String(t).toLowerCase()));
+    // Check assignee (text field) and tech_user_id/customer_sender_id (ID fields)
+    const assigneeText = String(p.assignee ?? '').toLowerCase();
+    const techUserId = String(p.tech_user_id ?? '');
+    const customerSenderId = String(p.customer_sender_id ?? '');
+
+    return tokens.some((t) => {
+      const token = String(t).toLowerCase();
+      return assigneeText.includes(token) || techUserId === t || customerSenderId === t;
+    });
   };
 
   const canViewProject = useCallback(
@@ -409,8 +416,8 @@ export default function Projects() {
     source: p.source ?? '',
     progress_percent: p.progress_percent ?? 0,
     assignee: p.assignee ?? '',
-    tech_user: p.tech_user ?? '',
-    customer_sender: p.customer_sender ?? '',
+    tech_user_id: p.tech_user_id ?? null,
+    customer_sender_id: p.customer_sender_id ?? null,
   });
 
   const scheduleSave = (id: number, nextProject: ProjectManagementItem) => {
@@ -460,8 +467,8 @@ export default function Projects() {
           >
             <div
               className={`rounded border px-4 py-3 shadow-md ${toast.type === 'success'
-                  ? 'bg-green-50 text-green-700 border-green-200'
-                  : 'bg-red-50 text-red-700 border-red-200'
+                ? 'bg-green-50 text-green-700 border-green-200'
+                : 'bg-red-50 text-red-700 border-red-200'
                 }`}
             >
               {toast.message}

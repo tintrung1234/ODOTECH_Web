@@ -1,7 +1,7 @@
 import { NavLink } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 
-import logo from '../../assets/img/logo.png';
+import logo from '/logo-full.png';
 import { sidebarItems } from '../../routes/appRoutes';
 import { getTokenUser, normalizeRole } from '../../utils/auth';
 

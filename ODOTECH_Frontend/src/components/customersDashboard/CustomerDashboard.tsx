@@ -119,43 +119,6 @@ export default function CustomerDashboard({
             <div className="flex flex-col lg:flex-row gap-6">
                 <div className="flex-1 space-y-6">
 
-                    {/* Sale Person Tabs Filter */}
-                    {saleTabs && saleTabs.length > 0 && (
-                        <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-hide">
-                            <button
-                                onClick={() => onSelectSaleTab?.('')}
-                                className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium whitespace-nowrap border transition-colors cursor-pointer ${!selectedSaleTab
-                                    ? 'bg-gray-800 text-white border-gray-800'
-                                    : 'bg-white text-gray-600 border-gray-200 hover:border-gray-300'
-                                    }`}
-                            >
-                                Tất cả Sale
-                            </button>
-                            {saleTabs.map((s) => {
-                                const raw = String(s ?? '').trim();
-                                const id = Number.parseInt(raw, 10);
-                                const acc = Number.isFinite(id)
-                                    ? accounts?.find((a) => Number(a.id) === id)
-                                    : undefined;
-                                const nameLabel = acc ? (String(acc.name || '').trim() || (Number.isFinite(id) ? `#${id}` : raw)) : raw;
-                                const isSelected = selectedSaleTab === raw;
-
-                                return (
-                                    <button
-                                        key={raw}
-                                        onClick={() => onSelectSaleTab?.(raw)}
-                                        className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium whitespace-nowrap border transition-colors cursor-pointer ${isSelected
-                                            ? 'bg-gray-800 text-white border-gray-800'
-                                            : 'bg-white text-gray-600 border-gray-200 hover:border-gray-300'
-                                            }`}
-                                    >
-                                        {nameLabel}
-                                    </button>
-                                );
-                            })}
-                        </div>
-                    )}
-
                     {/* Filter Bar */}
                     <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-200 flex flex-wrap items-center gap-3">
                         <div className="flex-1 min-w-[200px] relative">

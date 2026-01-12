@@ -70,8 +70,8 @@ function normalizeProjectInput(body, { requireBasics }) {
       source: toString(body?.source).trim(),
       progress_percent: toNumber(body?.progress_percent, 0),
       assignee: toString(body?.assignee).trim(),
-      tech_user: toString(body?.tech_user).trim(),
-      customer_sender: toString(body?.customer_sender).trim(),
+      tech_user_id: normalizeNullableId(body?.tech_user_id),
+      customer_sender_id: normalizeNullableId(body?.customer_sender_id),
 
       // created_at / updated_at are managed by DB
       created_at: undefined,
