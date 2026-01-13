@@ -82,8 +82,17 @@ const createEmptyProject = (): ProjectData => {
 
 export default function Sales() {
   const [role, setRole] = useState<ReturnType<typeof normalizeRole>>('unknown');
-  const canView = !(role === 'dev' || role === 'dev_manager' || role === 'head_tech');
-  const readOnly = role === 'support';
+  const canView = [
+    'sale',
+    'sales_manager',
+    'head_sales',
+    'support',
+    'admin',
+    'dev',
+    'dev_manager',
+    'head_tech',
+  ].includes(role);
+  const readOnly = role === 'support' || role === 'dev' || role === 'dev_manager' || role === 'head_tech';
 
   useEffect(() => {
     (async () => {
@@ -246,8 +255,9 @@ export default function Sales() {
   useEffect(() => {
     if (!canView) return;
     void loadProjects(filters);
+    // filters is intentionally omitted to avoid auto-fetch on every keystroke; handleFilter triggers fetch.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [apiBaseUrl]);
+  }, [apiBaseUrl, canView]);
 
   useEffect(() => {
     if (!canView) return;

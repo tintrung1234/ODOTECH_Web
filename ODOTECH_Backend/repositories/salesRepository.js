@@ -1,7 +1,7 @@
 const { pool } = require("../config/postgres");
 const salesModel = require("../models/sales");
 
-async function listProjects({ limit, offset, q, trang_thai_chot, trang_thai_thu_tien, sale_id }) {
+async function listProjects({ limit, offset, q, trang_thai_chot, trang_thai_thu_tien, sale_ids, ky_thuat_ids }) {
   const where = [];
   const params = [];
 
@@ -20,9 +20,22 @@ async function listProjects({ limit, offset, q, trang_thai_chot, trang_thai_thu_
     where.push(`sp.trang_thai_thu_tien = $${params.length}`);
   }
 
-  if (sale_id) {
-    params.push(sale_id);
-    where.push(`sp.sale_id = $${params.length}`);
+  const normalizedSaleIds = Array.isArray(sale_ids)
+    ? Array.from(new Set(sale_ids.map((v) => String(v ?? "").trim()).filter(Boolean)))
+    : [];
+
+  if (normalizedSaleIds.length > 0) {
+    params.push(normalizedSaleIds);
+    where.push(`sp.sale_id = ANY($${params.length}::text[])`);
+  }
+
+  const normalizedDevIds = Array.isArray(ky_thuat_ids)
+    ? Array.from(new Set(ky_thuat_ids.map((v) => String(v ?? "").trim()).filter(Boolean)))
+    : [];
+
+  if (normalizedDevIds.length > 0) {
+    params.push(normalizedDevIds);
+    where.push(`sp.ky_thuat_id = ANY($${params.length}::text[])`);
   }
 
   const whereSql = where.length ? `WHERE ${where.join(" AND ")}` : "";
@@ -60,7 +73,14 @@ async function listProjects({ limit, offset, q, trang_thai_chot, trang_thai_thu_
   };
 }
 
-async function getProjectById(projectId, { sale_id } = {}) {
+async function getProjectById(projectId, { sale_ids, ky_thuat_ids } = {}) {
+  const normalizedSaleIds = Array.isArray(sale_ids)
+    ? Array.from(new Set(sale_ids.map((v) => String(v ?? "").trim()).filter(Boolean)))
+    : [];
+  const normalizedDevIds = Array.isArray(ky_thuat_ids)
+    ? Array.from(new Set(ky_thuat_ids.map((v) => String(v ?? "").trim()).filter(Boolean)))
+    : [];
+
   const projectResult = await pool.query(
     `
       SELECT
@@ -71,10 +91,15 @@ async function getProjectById(projectId, { sale_id } = {}) {
       FROM sales_projects sp
       LEFT JOIN projects p ON p.project_code = sp.ma_du_an
       WHERE sp.id = $1
-        AND ($2::text IS NULL OR sp.sale_id = $2::text)
+        AND ($2::text[] IS NULL OR sp.sale_id = ANY($2::text[]))
+        AND ($3::text[] IS NULL OR sp.ky_thuat_id = ANY($3::text[]))
       LIMIT 1
     `,
-    [projectId, sale_id ?? null]
+    [
+      projectId,
+      normalizedSaleIds.length > 0 ? normalizedSaleIds : null,
+      normalizedDevIds.length > 0 ? normalizedDevIds : null,
+    ]
   );
 
   const projectRow = projectResult.rows[0];

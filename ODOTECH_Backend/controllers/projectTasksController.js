@@ -9,8 +9,7 @@ function canViewProject(role, uid, project, identityTokens) {
   if (role === "sale") return Number(project.sale_id) === uid;
   if (role === "sales_manager" || role === "dev_manager") return Number(project.pm_id) === uid;
   if (role === "dev") {
-    const hay = `${project.tech_user || ""},${project.assignee || ""}`.toLowerCase();
-    return identityTokens.some((t) => t && hay.includes(String(t).toLowerCase()));
+    return Number(project.tech_user_id) === uid;
   }
   return false;
 }

@@ -1,11 +1,11 @@
 const salesRepository = require("../repositories/salesRepository");
 
-async function listProjects({ limit, offset, q, trang_thai_chot, trang_thai_thu_tien, sale_id }) {
-  return salesRepository.listProjects({ limit, offset, q, trang_thai_chot, trang_thai_thu_tien, sale_id });
+async function listProjects({ limit, offset, q, trang_thai_chot, trang_thai_thu_tien, sale_ids, ky_thuat_ids }) {
+  return salesRepository.listProjects({ limit, offset, q, trang_thai_chot, trang_thai_thu_tien, sale_ids, ky_thuat_ids });
 }
 
-async function getProjectById(projectId, { sale_id } = {}) {
-  return salesRepository.getProjectById(projectId, { sale_id });
+async function getProjectById(projectId, { sale_ids, ky_thuat_ids } = {}) {
+  return salesRepository.getProjectById(projectId, { sale_ids, ky_thuat_ids });
 }
 
 async function createProject(input) {

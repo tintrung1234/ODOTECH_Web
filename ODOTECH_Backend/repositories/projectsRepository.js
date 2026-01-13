@@ -25,6 +25,11 @@ async function listProjects({ limit, offset, q, status, scope }) {
     where.push(`p.pm_id = $${params.length}`);
   }
 
+  if (scope && scope.techUserId !== undefined && scope.techUserId !== null) {
+    params.push(scope.techUserId);
+    where.push(`p.tech_user_id = $${params.length}`);
+  }
+
   if (scope && Array.isArray(scope.memberTokens) && scope.memberTokens.length > 0) {
     const tokens = scope.memberTokens
       .map((x) => String(x || '').trim())
@@ -33,13 +38,26 @@ async function listProjects({ limit, offset, q, status, scope }) {
 
     if (tokens.length > 0) {
       const sub = [];
+
+      // Match numeric tokens against tech_user_id.
+      const numericIds = tokens
+        .map((t) => (String(Number.parseInt(t, 10)) === t ? Number.parseInt(t, 10) : null))
+        .filter((n) => Number.isFinite(n))
+        .slice(0, 20);
+
+      if (numericIds.length > 0) {
+        params.push(numericIds);
+        const idx = params.length;
+        sub.push(`p.tech_user_id = ANY($${idx}::bigint[])`);
+      }
+
+      // Match text tokens against assignee.
       for (const t of tokens) {
         params.push(`%${t.toLowerCase()}%`);
         const idx = params.length;
-        sub.push(
-          `(LOWER(COALESCE(p.tech_user,'')) LIKE $${idx} OR LOWER(COALESCE(p.assignee,'')) LIKE $${idx})`
-        );
+        sub.push(`LOWER(COALESCE(p.assignee,'')) LIKE $${idx}`);
       }
+
       where.push(`(${sub.join(' OR ')})`);
     }
   }
@@ -331,6 +349,11 @@ async function getContractValuesByCodes({ codes, scope }) {
     where.push(`p.pm_id = $${params.length}`);
   }
 
+  if (scope && scope.techUserId !== undefined && scope.techUserId !== null) {
+    params.push(scope.techUserId);
+    where.push(`p.tech_user_id = $${params.length}`);
+  }
+
   if (scope && Array.isArray(scope.memberTokens) && scope.memberTokens.length > 0) {
     const tokens = scope.memberTokens
       .map((x) => String(x || '').trim())
@@ -339,13 +362,24 @@ async function getContractValuesByCodes({ codes, scope }) {
 
     if (tokens.length > 0) {
       const sub = [];
+
+      const numericIds = tokens
+        .map((t) => (String(Number.parseInt(t, 10)) === t ? Number.parseInt(t, 10) : null))
+        .filter((n) => Number.isFinite(n))
+        .slice(0, 20);
+
+      if (numericIds.length > 0) {
+        params.push(numericIds);
+        const idx = params.length;
+        sub.push(`p.tech_user_id = ANY($${idx}::bigint[])`);
+      }
+
       for (const t of tokens) {
         params.push(`%${t.toLowerCase()}%`);
         const idx = params.length;
-        sub.push(
-          `(LOWER(COALESCE(p.tech_user,'')) LIKE $${idx} OR LOWER(COALESCE(p.assignee,'')) LIKE $${idx})`
-        );
+        sub.push(`LOWER(COALESCE(p.assignee,'')) LIKE $${idx}`);
       }
+
       where.push(`(${sub.join(' OR ')})`);
     }
   }

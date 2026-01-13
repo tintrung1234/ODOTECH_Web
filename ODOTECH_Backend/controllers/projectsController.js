@@ -36,7 +36,7 @@ async function listProjects(req, res, next) {
     let scope = null;
     if (role === "sale") scope = { saleId: uid };
     else if (role === "sales_manager" || role === "dev_manager") scope = { pmId: uid };
-    else if (role === "dev") scope = { memberTokens: getIdentityTokens(req, uid) };
+    else if (role === "dev") scope = { techUserId: uid };
 
     const result = await projectsService.listProjects({ limit, offset, q, status, scope });
     res.json(result);
@@ -57,7 +57,7 @@ async function getContractValuesByCodes(req, res, next) {
     let scope = null;
     if (role === "sale") scope = { saleId: uid };
     else if (role === "sales_manager" || role === "dev_manager") scope = { pmId: uid };
-    else if (role === "dev") scope = { memberTokens: getIdentityTokens(req, uid) };
+    else if (role === "dev") scope = { techUserId: uid };
 
     const items = await projectsService.getContractValuesByCodes({ codes, scope });
     res.json({ items });
@@ -156,9 +156,7 @@ async function getProjectById(req, res, next) {
       return res.status(403).json({ message: "Forbidden" });
     }
     if (role === "dev") {
-      const tokens = getIdentityTokens(req, uid).map((t) => t.toLowerCase());
-      const hay = `${project.tech_user || ""},${project.assignee || ""}`.toLowerCase();
-      if (!tokens.some((t) => t && hay.includes(t))) return res.status(403).json({ message: "Forbidden" });
+      if (Number(project.tech_user_id) !== uid) return res.status(403).json({ message: "Forbidden" });
     }
 
     res.json(project);

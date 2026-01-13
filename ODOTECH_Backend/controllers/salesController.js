@@ -2,19 +2,20 @@ const salesService = require("../services/salesService");
 
 const { pool } = require("../config/postgres");
 
-const { requireUser } = require("../utils/authz");
+const { requireUser, getIdentityTokens } = require("../utils/authz");
 
 
 function canViewSales(role) {
-  return ["sale", "sales_manager", "head_sales", "support", "admin"].includes(role);
+  return ["sale", "sales_manager", "head_sales", "support", "admin", "dev", "dev_manager", "head_tech"].includes(role);
 }
 
 function canEditSales(role) {
   return ["sale", "sales_manager", "head_sales", "admin"].includes(role);
 }
 
-function getSaleScopeId(req) {
-  // sale_id in DB is TEXT; we scope by name/username when role is 'sale'.
+function getPreferredScopeId(req, uid) {
+  // Prefer uid for new writes; keep fallback to name/username for compatibility.
+  if (Number.isFinite(uid)) return String(uid);
   const name = typeof req.user?.name === "string" ? req.user.name.trim() : "";
   const username = typeof req.user?.username === "string" ? req.user.username.trim() : "";
   return name || username;
@@ -22,7 +23,7 @@ function getSaleScopeId(req) {
 
 async function listProjects(req, res, next) {
   try {
-    const auth = requireUser(req);
+    const auth = requireUser(req, { requireUid: true });
     if (auth.error) return res.status(auth.error.status).json({ message: auth.error.message });
     if (!canViewSales(auth.role)) return res.status(403).json({ message: "Insufficient permissions" });
 
@@ -34,9 +35,18 @@ async function listProjects(req, res, next) {
       trang_thai_thu_tien = "",
     } = req.listQuery || {};
 
-    const sale_id = auth.role === "sale" ? getSaleScopeId(req) : "";
+    const sale_ids = auth.role === "sale" ? getIdentityTokens(req, auth.uid) : null;
+    const ky_thuat_ids = auth.role === "dev" ? getIdentityTokens(req, auth.uid) : null;
 
-    const result = await salesService.listProjects({ limit, offset, q, trang_thai_chot, trang_thai_thu_tien, sale_id });
+    const result = await salesService.listProjects({
+      limit,
+      offset,
+      q,
+      trang_thai_chot,
+      trang_thai_thu_tien,
+      sale_ids,
+      ky_thuat_ids,
+    });
     res.json(result);
   } catch (err) {
     next(err);
@@ -45,15 +55,16 @@ async function listProjects(req, res, next) {
 
 async function getProjectById(req, res, next) {
   try {
-    const auth = requireUser(req);
+    const auth = requireUser(req, { requireUid: true });
     if (auth.error) return res.status(auth.error.status).json({ message: auth.error.message });
     if (!canViewSales(auth.role)) return res.status(403).json({ message: "Insufficient permissions" });
 
     const id = Number(req.params.id);
 
-    const sale_id = auth.role === "sale" ? getSaleScopeId(req) : null;
+    const sale_ids = auth.role === "sale" ? getIdentityTokens(req, auth.uid) : null;
+    const ky_thuat_ids = auth.role === "dev" ? getIdentityTokens(req, auth.uid) : null;
 
-    const project = await salesService.getProjectById(id, { sale_id });
+    const project = await salesService.getProjectById(id, { sale_ids, ky_thuat_ids });
     if (!project) {
       return res.status(404).json({ message: "Project not found" });
     }
@@ -66,7 +77,7 @@ async function getProjectById(req, res, next) {
 
 async function createProject(req, res, next) {
   try {
-    const auth = requireUser(req);
+    const auth = requireUser(req, { requireUid: true });
     if (auth.error) return res.status(auth.error.status).json({ message: auth.error.message });
     if (!canEditSales(auth.role)) return res.status(403).json({ message: "Insufficient permissions" });
 
@@ -74,7 +85,7 @@ async function createProject(req, res, next) {
 
     // Sale can only create projects under their own sale_id.
     if (auth.role === "sale") {
-      payload.sale_id = getSaleScopeId(req);
+      payload.sale_id = getPreferredScopeId(req, auth.uid);
     }
 
     const created = await salesService.createProject(payload);
@@ -86,7 +97,7 @@ async function createProject(req, res, next) {
 
 async function updateProject(req, res, next) {
   try {
-    const auth = requireUser(req);
+    const auth = requireUser(req, { requireUid: true });
     if (auth.error) return res.status(auth.error.status).json({ message: auth.error.message });
     if (!canEditSales(auth.role)) return res.status(403).json({ message: "Insufficient permissions" });
 
@@ -95,8 +106,8 @@ async function updateProject(req, res, next) {
     const payload = { ...req.salesInput };
 
     if (auth.role === "sale") {
-      const scope = getSaleScopeId(req);
-      const existing = await salesService.getProjectById(id, { sale_id: scope });
+      const sale_ids = getIdentityTokens(req, auth.uid);
+      const existing = await salesService.getProjectById(id, { sale_ids });
       if (!existing) return res.status(404).json({ message: "Project not found" });
 
       // Prevent changing ownership.
