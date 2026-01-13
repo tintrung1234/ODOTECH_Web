@@ -1,17 +1,17 @@
-# Build stage
+# 1 Build stage
 FROM node:20 AS builder
 WORKDIR /app
 COPY package*.json ./
-RUN npm install
+RUN npm install 
 COPY . .
 RUN npm run build
 
-# Serve stage
+# 2 Serve stage
 FROM nginx:alpine
 COPY --from=builder /app/dist /usr/share/nginx/html
 
-# Sửa nginx để listen port từ Cloud Run
-RUN sed -i 's/listen 80;/listen 8080;/' /etc/nginx/conf.d/default.conf
+# Copy nginx config dùng PORT env của Cloud Run
+COPY nginx.conf /etc/nginx/conf.d/default.conf
 
 EXPOSE 8080
 CMD ["nginx", "-g", "daemon off;"]
