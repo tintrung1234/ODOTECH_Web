@@ -4,13 +4,20 @@ const projectsService = require("../services/projectsService");
 const { requireUser, getIdentityTokens } = require("../utils/authz");
 
 async function canViewProject(role, uid, project, identityTokens) {
+  // Debug logging
+  // console.log(`[canViewProject] role=${role} uid=${uid} projectId=${project?.id}`);
   if (["admin", "support", "head_sales", "head_tech"].includes(role)) return true;
   if (!project) return false;
   if (role === "sale") return Number(project.sale_id) === uid;
   if (role === "sales_manager" || role === "dev_manager") return Number(project.pm_id) === uid;
   if (role === "dev") {
     if (Number(project.tech_user_id) === uid) return true;
-    return projectTasksService.isUserMainAssigneeOfProject(Number(project.id), uid);
+    try {
+      return await projectTasksService.isUserMainAssigneeOfProject(Number(project.id), uid);
+    } catch (e) {
+      console.error("Error in isUserMainAssigneeOfProject:", e);
+      return false;
+    }
   }
   return false;
 }
@@ -55,11 +62,20 @@ async function listProjectTasks(req, res, next) {
     const projectId = Number(req.params.id);
     const project = await projectsService.getProjectById(projectId);
     if (!project) return res.status(404).json({ message: "Project not found" });
-    if (!(await canViewProject(role, uid, project, identityTokens))) return res.status(403).json({ message: "Forbidden" });
+
+    // Add try-catch block for authorization check specifically
+    try {
+      const authorized = await canViewProject(role, uid, project, identityTokens);
+      if (!authorized) return res.status(403).json({ message: "Forbidden" });
+    } catch (authErr) {
+      console.error("Authorization check failed:", authErr);
+      throw authErr; // Re-throw to be caught by main catch
+    }
 
     const items = await projectTasksService.listTasksByProjectId(projectId);
     res.json({ items });
   } catch (err) {
+    console.error("Error in listProjectTasks:", err);
     next(err);
   }
 }

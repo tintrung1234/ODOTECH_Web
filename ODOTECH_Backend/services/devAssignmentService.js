@@ -1,5 +1,6 @@
 const devAssignmentsRepository = require("../repositories/devAssignmentsRepository");
 const virusLogsRepository = require("../repositories/virusLogsRepository");
+const notificationService = require("./notificationService");
 
 /**
  * Assign next dev in rotation to a virus log
@@ -14,6 +15,18 @@ async function assignNextDev(virusLogId) {
         assigned_dev_id: nextDev.dev_id,
         status: "pending",
     });
+
+    // Notify the assigned dev.
+    const targetId = notificationService.toNullableInt(assignment?.assigned_dev_id);
+    if (targetId) {
+        await notificationService.notifyUser({
+            userId: targetId,
+            type: "assignment",
+            title: "Bạn có phân công mới",
+            message: `Bạn vừa được phân công xử lý virus log #${virusLogId}.`,
+            data: { virus_log_id: virusLogId, assignment_id: assignment?.id },
+        });
+    }
 
     // Update virus log status
     await virusLogsRepository.updateVirusLogStatus(virusLogId, "assigned");
@@ -80,6 +93,17 @@ async function checkExpiredDelegations() {
             assigned_dev_id: nextDev.dev_id,
             status: "pending",
         });
+
+        const targetId = notificationService.toNullableInt(newAssignment?.assigned_dev_id);
+        if (targetId) {
+            await notificationService.notifyUser({
+                userId: targetId,
+                type: "assignment",
+                title: "Phân công được chuyển cho bạn",
+                message: `Bạn vừa được phân công (do ủy quyền hết hạn) xử lý virus log #${assignment.virus_log_id}.`,
+                data: { virus_log_id: assignment.virus_log_id, assignment_id: newAssignment?.id },
+            });
+        }
 
         results.push(newAssignment);
     }

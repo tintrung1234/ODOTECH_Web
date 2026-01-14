@@ -67,7 +67,9 @@ app.use("/api/customers", customersRoutes);
 app.use("/api/websites", websitesRoutes);
 app.use("/api/virus-logs", virusLogsRoutes);
 app.use("/api/dev-assignments", devAssignmentsRoutes);
+app.use("/api/dev-assignments", devAssignmentsRoutes);
 app.use("/api/customer-portal", customerPortalRoutes);
+app.use("/api/notifications", require("./routes/notificationsRoutes"));
 
 app.use((req, res) => {
 	res.status(404).json({ message: "Not found" });

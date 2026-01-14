@@ -84,9 +84,9 @@ const ALLOWED_TASK_STATUSES = new Set(["Chưa làm", "Đang làm", "Đã xong"])
 
 function normalizeTaskInput(body, { requireTitle }) {
   const tieuDe = toString(body?.tieuDe).trim();
-  const nguoiPhuTrach = toString(body?.nguoiPhuTrach).trim();
-  const nguoiChinh = toString(body?.nguoiChinh).trim();
-  const nguoiHoTro = toString(body?.nguoiHoTro).trim();
+  const nguoiPhuTrach = normalizeNullableId(body?.nguoiPhuTrach);
+  const nguoiChinh = normalizeNullableId(body?.nguoiChinh);
+  const nguoiHoTro = normalizeNullableId(body?.nguoiHoTro);
   const batDau = normalizeDate(body?.batDau);
   const hanChot = normalizeDate(body?.hanChot);
   const trangThai = toString(body?.trangThai, "Chưa làm").trim() || "Chưa làm";
