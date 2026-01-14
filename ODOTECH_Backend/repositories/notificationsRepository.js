@@ -1,4 +1,6 @@
 const { pool } = require("../config/postgres");
+const { mapNotificationRow } = require("../models/notification");
+
 
 /**
  * Create a new notification
@@ -18,7 +20,7 @@ async function createNotification({ userId, type, title, message, data = {} }) {
     `,
         [userId, type, title, message, data]
     );
-    return result.rows[0];
+    return result.rows[0] ? mapNotificationRow(result.rows[0]) : null;
 }
 
 /**
@@ -49,7 +51,7 @@ async function listNotifications({ userId, limit = 20, offset = 0, isRead }) {
         params
     );
 
-    return result.rows;
+    return result.rows.map(mapNotificationRow);
 }
 
 /**
@@ -67,7 +69,7 @@ async function markAsRead(id, userId) {
     `,
         [id, userId]
     );
-    return result.rows[0];
+    return result.rows[0] ? mapNotificationRow(result.rows[0]) : null;
 }
 
 /**

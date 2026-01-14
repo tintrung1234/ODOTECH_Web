@@ -30,9 +30,9 @@ export default function Sidebar({ isCollapsed, setIsCollapsed }: { isCollapsed: 
   }, []);
 
   const visibleItems = sidebarItems.filter((item) => {
-    // If role is customer, ONLY show customer portal
+    // If role is customer, ONLY show customer portal and tickets
     if (role === 'customer') {
-      return item.to === '/customer-portal';
+      return item.to === '/customer-portal' || item.to === '/tickets';
     }
 
     // For other roles, hide customer portal

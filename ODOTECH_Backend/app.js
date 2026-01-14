@@ -70,6 +70,8 @@ app.use("/api/dev-assignments", devAssignmentsRoutes);
 app.use("/api/dev-assignments", devAssignmentsRoutes);
 app.use("/api/customer-portal", customerPortalRoutes);
 app.use("/api/notifications", require("./routes/notificationsRoutes"));
+app.use("/api/tickets", require("./routes/ticketsRoutes"));
+app.use("/api/ticket-categories", require("./routes/ticketCategoriesRoutes"));
 
 app.use((req, res) => {
 	res.status(404).json({ message: "Not found" });
