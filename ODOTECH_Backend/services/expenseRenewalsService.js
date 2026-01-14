@@ -1,6 +1,7 @@
 const { pool } = require("../config/postgres");
 const expenseRenewalsRepository = require("../repositories/expenseRenewalsRepository");
 const { calculateVietnameseTax } = require("../utils/taxCalculator");
+const notificationService = require("./notificationService");
 
 class ExpenseRenewalsService {
     async getItems(filters) {
@@ -76,6 +77,22 @@ class ExpenseRenewalsService {
             });
 
             await client.query("COMMIT");
+
+            // Notify recipient when they are assigned a new item (salary/expense/renewal).
+            const recipientId = notificationService.toNullableInt(result?.recipient_id || data?.recipient_id);
+            const category = String(result?.category || data?.category || "").trim();
+            if (recipientId) {
+                const label = String(result?.description || data?.description || "").trim() || `#${result?.id ?? ""}`;
+                const title = category === "salary" ? "Bạn có bản ghi lương mới" : "Bạn có khoản chi phí mới";
+                await notificationService.notifyUser({
+                    userId: recipientId,
+                    type: category === "salary" ? "salary" : "expense",
+                    title,
+                    message: `Bạn vừa được thêm vào: ${label}.`,
+                    data: { expense_renewal_id: result?.id, category },
+                });
+            }
+
             return result;
         } catch (error) {
             await client.query("ROLLBACK");
@@ -89,6 +106,8 @@ class ExpenseRenewalsService {
         const client = await pool.connect();
         try {
             await client.query("BEGIN");
+
+            const before = await expenseRenewalsRepository.findById(id);
 
             const taxData = this.prepareTaxData(data.category, data.gross_amount, data.amount);
 
@@ -112,6 +131,40 @@ class ExpenseRenewalsService {
             }
 
             await client.query("COMMIT");
+
+            // Notify recipient when assignment changes or salary changes.
+            if (result) {
+                const beforeRecipient = notificationService.toNullableInt(before?.recipient_id);
+                const afterRecipient = notificationService.toNullableInt(result?.recipient_id || data?.recipient_id);
+                const category = String(result?.category || data?.category || "").trim();
+
+                const label = String(result?.description || data?.description || "").trim() || `#${result?.id ?? ""}`;
+                if (afterRecipient && afterRecipient !== beforeRecipient) {
+                    const title = category === "salary" ? "Bạn được thêm vào bản ghi lương" : "Bạn được thêm vào khoản chi phí";
+                    await notificationService.notifyUser({
+                        userId: afterRecipient,
+                        type: category === "salary" ? "salary" : "expense",
+                        title,
+                        message: `Bạn vừa được gán vào: ${label}.`,
+                        data: { expense_renewal_id: result?.id, category },
+                    });
+                } else if (afterRecipient && category === "salary") {
+                    const beforeGross = before?.gross_amount === null || before?.gross_amount === undefined ? null : Number(before.gross_amount);
+                    const afterGross = result?.gross_amount === null || result?.gross_amount === undefined ? null : Number(result.gross_amount);
+                    const beforeNet = before?.net_amount === null || before?.net_amount === undefined ? null : Number(before.net_amount);
+                    const afterNet = result?.net_amount === null || result?.net_amount === undefined ? null : Number(result.net_amount);
+                    if (beforeGross !== afterGross || beforeNet !== afterNet) {
+                        await notificationService.notifyUser({
+                            userId: afterRecipient,
+                            type: "salary",
+                            title: "Lương của bạn vừa được cập nhật",
+                            message: `Bản ghi lương "${label}" vừa được cập nhật.`,
+                            data: { expense_renewal_id: result?.id, category },
+                        });
+                    }
+                }
+            }
+
             return result;
         } catch (error) {
             await client.query("ROLLBACK");
@@ -126,7 +179,20 @@ class ExpenseRenewalsService {
     }
 
     async markAsPaid(id, payment_date) {
-        return await expenseRenewalsRepository.markAsPaid(id, payment_date);
+        const updated = await expenseRenewalsRepository.markAsPaid(id, payment_date);
+        const recipientId = notificationService.toNullableInt(updated?.recipient_id);
+        if (recipientId) {
+            const category = String(updated?.category || "").trim();
+            const label = String(updated?.description || "").trim() || `#${updated?.id ?? ""}`;
+            await notificationService.notifyUser({
+                userId: recipientId,
+                type: category === "salary" ? "salary" : "expense",
+                title: category === "salary" ? "Lương đã được thanh toán" : "Khoản chi phí đã được thanh toán",
+                message: `"${label}" đã được đánh dấu đã thanh toán.`,
+                data: { expense_renewal_id: updated?.id, category },
+            });
+        }
+        return updated;
     }
 }
 

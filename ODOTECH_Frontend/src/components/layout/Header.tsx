@@ -75,6 +75,12 @@ const Avatar = ({ name }: { name: string }) => {
   );
 };
 
+import { getNotifications, getUnreadCount, markAsRead, markAllAsRead, type Notification } from '../../services/notificationService';
+
+// ... (rest of imports)
+
+// ...
+
 export default function Header({ userName, onToggleSidebar }: HeaderProps) {
   const navigate = useNavigate();
   const formattedDate = formatDate(new Date());
@@ -83,6 +89,38 @@ export default function Header({ userName, onToggleSidebar }: HeaderProps) {
 
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [unreadCount, setUnreadCount] = useState(0);
+
+  const fetchNotifs = useCallback(async () => {
+    const list = await getNotifications(20, 0);
+    setNotifications(list);
+    const count = await getUnreadCount();
+    setUnreadCount(count);
+  }, []);
+
+  useEffect(() => {
+    fetchNotifs();
+    // Poll every 60 seconds
+    const interval = setInterval(fetchNotifs, 60000);
+    return () => clearInterval(interval);
+  }, [fetchNotifs]);
+
+  const handleNotificationClick = async (notif: Notification) => {
+    if (!notif.is_read) {
+      await markAsRead(notif.id);
+      setUnreadCount(prev => Math.max(0, prev - 1));
+      setNotifications(prev => prev.map(n => n.id === notif.id ? { ...n, is_read: true } : n));
+    }
+    // Navigate based on type/data if needed
+    // if (notif.type === 'project') navigate(...)
+  };
+
+  const handleMarkAllRead = async () => {
+    await markAllAsRead();
+    setNotifications(prev => prev.map(n => ({ ...n, is_read: true })));
+    setUnreadCount(0);
+  };
 
   // Search states
   const [searchQuery, setSearchQuery] = useState('');
@@ -319,14 +357,7 @@ export default function Header({ userName, onToggleSidebar }: HeaderProps) {
     return acc;
   }, {} as Record<string, SearchResult[]>);
 
-  // Mock notifications
-  const notifications = [
-    { id: 1, title: 'Dự án mới được giao', message: 'Bạn được giao dự án "Website ABC"', time: '5 phút trước', unread: true },
-    { id: 2, title: 'Deadline sắp đến', message: 'Dự án "App XYZ" sẽ đến hạn trong 2 ngày', time: '1 giờ trước', unread: true },
-    { id: 3, title: 'Thanh toán hoàn tất', message: 'Khách hàng đã thanh toán đợt 2', time: '3 giờ trước', unread: false },
-  ];
-
-  const unreadCount = notifications.filter(n => n.unread).length;
+  // Mock notifications removed in favor of real data
 
   return (
     <header className="sticky top-0 z-50 bg-gradient-to-r from-slate-50 via-white to-slate-50 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900 border-b border-gray-200 dark:border-slate-700 shadow-sm backdrop-blur-sm transition-colors duration-300">
@@ -459,37 +490,48 @@ export default function Header({ userName, onToggleSidebar }: HeaderProps) {
                 <div className="absolute right-0 mt-2 w-80 bg-white dark:bg-slate-800 rounded-xl shadow-2xl border border-gray-100 dark:border-slate-700 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200 transition-colors">
                   <div className="p-4 border-b border-gray-100 dark:border-slate-700 flex items-center justify-between">
                     <h3 className="font-bold text-gray-900 dark:text-white">Thông báo</h3>
-                    <button
-                      onClick={() => setShowNotifications(false)}
-                      className="p-1 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-lg transition-colors"
-                    >
-                      <X size={16} className="text-gray-500 dark:text-gray-400" />
-                    </button>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={handleMarkAllRead}
+                        className="text-xs text-teal-600 dark:text-teal-400 hover:underline"
+                        disabled={unreadCount === 0}
+                      >
+                        Đọc tất cả
+                      </button>
+                      <button
+                        onClick={() => setShowNotifications(false)}
+                        className="p-1 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-lg transition-colors"
+                      >
+                        <X size={16} className="text-gray-500 dark:text-gray-400" />
+                      </button>
+                    </div>
                   </div>
                   <div className="max-h-96 overflow-y-auto">
-                    {notifications.map((notif) => (
-                      <div
-                        key={notif.id}
-                        className={`p-4 border-b border-gray-50 dark:border-slate-700 hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors cursor-pointer ${notif.unread ? 'bg-teal-50/30 dark:bg-teal-900/20' : ''
-                          }`}
-                      >
-                        <div className="flex items-start gap-3">
-                          {notif.unread && (
-                            <div className="w-2 h-2 bg-teal-500 rounded-full mt-1.5 shrink-0" />
-                          )}
-                          <div className="flex-1 min-w-0">
-                            <p className="text-sm font-semibold text-gray-900 dark:text-white truncate">{notif.title}</p>
-                            <p className="text-xs text-gray-600 dark:text-gray-400 mt-0.5 line-clamp-2">{notif.message}</p>
-                            <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">{notif.time}</p>
+                    {notifications.length === 0 ? (
+                      <p className="p-4 text-center text-sm text-gray-500">Không có thông báo mới</p>
+                    ) : (
+                      notifications.map((notif) => (
+                        <div
+                          key={notif.id}
+                          onClick={() => handleNotificationClick(notif)}
+                          className={`p-4 border-b border-gray-50 dark:border-slate-700 hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors cursor-pointer ${!notif.is_read ? 'bg-teal-50/30 dark:bg-teal-900/20' : ''
+                            }`}
+                        >
+                          <div className="flex items-start gap-3">
+                            {!notif.is_read && (
+                              <div className="w-2 h-2 bg-teal-500 rounded-full mt-1.5 shrink-0" />
+                            )}
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-semibold text-gray-900 dark:text-white truncate">{notif.title}</p>
+                              <p className="text-xs text-gray-600 dark:text-gray-400 mt-0.5 line-clamp-2">{notif.message}</p>
+                              <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">{new Date(notif.created_at).toLocaleString('vi-VN')}</p>
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    ))}
+                      ))
+                    )}
                   </div>
                   <div className="p-3 bg-gray-50 dark:bg-slate-900 text-center transition-colors">
-                    <button className="text-xs text-teal-600 dark:text-teal-400 hover:text-teal-700 dark:hover:text-teal-300 font-semibold">
-                      Xem tất cả thông báo
-                    </button>
                   </div>
                 </div>
               )}
