@@ -12,6 +12,21 @@ async function notifyUser({ userId, type, title, message, data = {} }) {
   return notificationsRepository.createNotification({ userId: uid, type, title, message, data });
 }
 
+async function notifyUsers({ userIds, type, title, message, data = {} }) {
+  const ids = Array.from(
+    new Set((Array.isArray(userIds) ? userIds : []).map((x) => toNullableInt(x)).filter(Boolean))
+  );
+  if (ids.length === 0) return [];
+
+  const results = await Promise.allSettled(
+    ids.map((userId) => notificationsRepository.createNotification({ userId, type, title, message, data }))
+  );
+
+  return results
+    .filter((r) => r.status === "fulfilled")
+    .map((r) => r.value);
+}
+
 /**
  * Notification service for multi-channel alerts
  * Currently supports console logging and database persistence
@@ -212,6 +227,7 @@ async function countUnread(userId) {
 module.exports = {
   toNullableInt,
   notifyUser,
+  notifyUsers,
   sendSecurityAlert,
   sendDelegationRequest,
   sendPasswordAccessAlert,

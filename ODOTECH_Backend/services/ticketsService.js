@@ -1,6 +1,7 @@
 const ticketsRepo = require("../repositories/ticketsRepository");
 const { generateTicketNumber, validateTicketData } = require("../models/ticket");
-const { notifyUser } = require("./notificationService");
+const { notifyUser, notifyUsers } = require("./notificationService");
+const accountsRepo = require("../repositories/accountsRepository");
 
 /**
  * Get all tickets with filters
@@ -58,6 +59,19 @@ async function createTicket(data, currentUserId) {
     };
 
     const ticket = await ticketsRepo.createTicket(ticketData);
+
+    // Notify all employees (non-customer accounts) that a new ticket was created.
+    // Exclude creator to avoid self-notifications, and exclude assignee to prevent duplicate notifications.
+    const creatorId = Number(ticket.created_by_id || currentUserId);
+    const excludeIds = [creatorId, ticket.assigned_to_id].filter((x) => Number.isFinite(Number(x)));
+    const employeeIds = await accountsRepo.listActiveNonCustomerAccountIds({ excludeIds });
+    await notifyUsers({
+        userIds: employeeIds,
+        type: 'ticket_created',
+        title: 'Ticket mới',
+        message: `Ticket ${ticket.ticket_number}: ${ticket.title}`,
+        data: { ticket_id: ticket.id, ticket_number: ticket.ticket_number },
+    });
 
     // Send notification to assigned user if ticket is assigned
     if (ticket.assigned_to_id) {

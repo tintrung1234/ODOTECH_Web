@@ -1,6 +1,13 @@
 const { pool } = require("../config/postgres");
 const accountModel = require("../models/account");
 
+function normalizeRoleKey(role) {
+  return String(role ?? "")
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, "");
+}
+
 async function listAccounts({ limit, offset, q, status, role_system }) {
   const where = [];
   const params = [];
@@ -235,6 +242,32 @@ async function getAccountStats() {
   };
 }
 
+async function listActiveNonCustomerAccountIds({ excludeIds = [] } = {}) {
+  const excluded = Array.from(
+    new Set((Array.isArray(excludeIds) ? excludeIds : []).map((x) => Number(x)).filter(Number.isFinite))
+  );
+
+  const params = [];
+  const where = ["status = 'active'", "regexp_replace(lower(coalesce(role_system, '')), '\\s+', '', 'g') <> 'customer'"];
+
+  if (excluded.length > 0) {
+    params.push(excluded);
+    where.push(`id <> ALL($${params.length}::int[])`);
+  }
+
+  const result = await pool.query(
+    `
+      SELECT id
+      FROM accounts
+      WHERE ${where.join(" AND ")}
+      ORDER BY id ASC
+    `,
+    params
+  );
+
+  return result.rows.map((r) => Number(r.id)).filter(Number.isFinite);
+}
+
 module.exports = {
   listAccounts,
   getAccountById,
@@ -243,4 +276,5 @@ module.exports = {
   updateAccountEmail,
   deleteAccount,
   getAccountStats,
+  listActiveNonCustomerAccountIds,
 };
