@@ -113,9 +113,9 @@ export type TaskPriority = 'low' | 'medium' | 'high' | 'urgent';
 export interface ProjectTask {
   id: number;
   tieuDe: string;
-  nguoiPhuTrach: string;
-  nguoiChinh?: string;
-  nguoiHoTro?: string;
+  nguoiPhuTrach: number | null;
+  nguoiChinh?: number | null;
+  nguoiHoTro?: number | null;
   batDau?: string; // ISO date
   hanChot: string; // ISO date
   trangThai: TaskStatus;

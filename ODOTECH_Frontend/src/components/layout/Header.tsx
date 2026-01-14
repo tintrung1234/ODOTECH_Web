@@ -15,12 +15,14 @@ import {
   Briefcase,
   Users,
   Globe,
-  Loader2
+  Loader2,
+  Menu
 } from 'lucide-react';
 import { ImCtrl } from 'react-icons/im';
 
 interface HeaderProps {
   userName: string;
+  onToggleSidebar?: () => void;
 }
 
 interface SearchResult {
@@ -73,7 +75,7 @@ const Avatar = ({ name }: { name: string }) => {
   );
 };
 
-export default function Header({ userName }: HeaderProps) {
+export default function Header({ userName, onToggleSidebar }: HeaderProps) {
   const navigate = useNavigate();
   const formattedDate = formatDate(new Date());
   const [userRole, setUserRole] = useState<CanonicalRole>('unknown');
@@ -327,21 +329,30 @@ export default function Header({ userName }: HeaderProps) {
   const unreadCount = notifications.filter(n => n.unread).length;
 
   return (
-    <header className="sticky top-0 z-50 bg-gradient-to-r from-slate-50 via-white to-slate-50 border-b border-gray-200 shadow-sm backdrop-blur-sm">
-      <div className="px-6 py-3">
+    <header className="sticky top-0 z-50 bg-gradient-to-r from-slate-50 via-white to-slate-50 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900 border-b border-gray-200 dark:border-slate-700 shadow-sm backdrop-blur-sm transition-colors duration-300">
+      <div className="px-8 py-3">
         <div className="flex items-center justify-between gap-4">
+          {/* Mobile Menu Button */}
+          <button
+            onClick={onToggleSidebar}
+            className="md:hidden p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-slate-700 text-gray-700 dark:text-gray-300 transition-colors"
+            aria-label="Toggle menu"
+          >
+            <Menu size={24} />
+          </button>
+
           {/* Logo Section */}
           <div className="flex items-center gap-3 shrink-0">
             <div className="hidden md:block">
-              <h1 className="text-lg font-bold text-gray-900 tracking-tight">ODOTECH</h1>
-              <p className="text-xs text-gray-500 -mt-0.5">Management System</p>
+              <h1 className="text-lg font-bold text-gray-900 dark:text-white tracking-tight">ODOTECH</h1>
+              <p className="text-xs text-gray-500 dark:text-gray-400 -mt-0.5">Management System</p>
             </div>
           </div>
 
           {/* Search Bar */}
           <div className="flex-1 max-w-xl" ref={searchRef}>
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-500" size={18} />
               <input
                 ref={searchInputRef}
                 type="text"
@@ -349,7 +360,7 @@ export default function Header({ userName }: HeaderProps) {
                 onChange={handleSearchChange}
                 onKeyDown={handleSearchKeyDown}
                 placeholder="Tìm kiếm dự án, khách hàng, website..."
-                className="w-full pl-10 pr-20 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent focus:bg-white transition-all"
+                className="w-full pl-10 pr-20 py-2.5 bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-600 rounded-xl text-sm text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent focus:bg-white dark:focus:bg-slate-700 transition-all"
               />
               <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
                 {isSearching && (
@@ -371,18 +382,18 @@ export default function Header({ userName }: HeaderProps) {
 
               {/* Search Results Dropdown */}
               {showSearchResults && (
-                <div className="absolute top-full left-0 right-0 mt-2 bg-white rounded-xl shadow-2xl border border-gray-100 max-h-96 overflow-y-auto animate-in fade-in slide-in-from-top-2 duration-200">
+                <div className="absolute top-full left-0 right-0 mt-2 bg-white dark:bg-slate-800 rounded-xl shadow-2xl border border-gray-100 dark:border-slate-700 max-h-96 overflow-y-auto animate-in fade-in slide-in-from-top-2 duration-200 transition-colors">
                   {searchResults.length === 0 && !isSearching && (
                     <div className="p-8 text-center">
-                      <Search className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-                      <p className="text-sm text-gray-500">Không tìm thấy kết quả</p>
-                      <p className="text-xs text-gray-400 mt-1">Thử tìm kiếm với từ khóa khác</p>
+                      <Search className="w-12 h-12 text-gray-300 dark:text-gray-600 mx-auto mb-3" />
+                      <p className="text-sm text-gray-500 dark:text-gray-400">Không tìm thấy kết quả</p>
+                      <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">Thử tìm kiếm với từ khóa khác</p>
                     </div>
                   )}
 
                   {Object.entries(groupedResults).map(([type, results]) => (
-                    <div key={type} className="border-b border-gray-100 last:border-0">
-                      <div className="px-4 py-2 bg-gray-50 text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                    <div key={type} className="border-b border-gray-100 dark:border-slate-700 last:border-0">
+                      <div className="px-4 py-2 bg-gray-50 dark:bg-slate-900 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">
                         {getTypeLabel(type as SearchResult['type'])}
                       </div>
                       {results.map((result) => {
@@ -391,7 +402,7 @@ export default function Header({ userName }: HeaderProps) {
                           <button
                             key={`${result.type}-${result.id}`}
                             onClick={() => handleResultClick(result)}
-                            className={`w-full px-4 py-3 flex items-start gap-3 hover:bg-gray-50 transition-colors text-left ${globalIndex === selectedIndex ? 'bg-teal-50' : ''
+                            className={`w-full px-4 py-3 flex items-start gap-3 hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors text-left ${globalIndex === selectedIndex ? 'bg-teal-50 dark:bg-teal-900/30' : ''
                               }`}
                           >
                             <div className={`mt-0.5 p-2 rounded-lg ${result.type === 'project' ? 'bg-blue-100 text-blue-600' :
@@ -401,12 +412,12 @@ export default function Header({ userName }: HeaderProps) {
                               {getResultIcon(result.type)}
                             </div>
                             <div className="flex-1 min-w-0">
-                              <p className="text-sm font-semibold text-gray-900 truncate">{result.title}</p>
+                              <p className="text-sm font-semibold text-gray-900 dark:text-white truncate">{result.title}</p>
                               {result.subtitle && (
-                                <p className="text-xs text-gray-500 truncate">{result.subtitle}</p>
+                                <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{result.subtitle}</p>
                               )}
                               {result.metadata && (
-                                <span className="inline-block mt-1 px-2 py-0.5 bg-gray-100 text-xs text-gray-600 rounded">
+                                <span className="inline-block mt-1 px-2 py-0.5 bg-gray-100 dark:bg-slate-700 text-xs text-gray-600 dark:text-gray-300 rounded">
                                   {result.metadata}
                                 </span>
                               )}
@@ -424,15 +435,15 @@ export default function Header({ userName }: HeaderProps) {
           {/* Right Section */}
           <div className="flex items-center gap-3">
             {/* Date Display */}
-            <div className="hidden lg:flex items-center gap-2 px-3 py-2 bg-gray-50 rounded-lg">
-              <div className="text-xs text-gray-500 font-medium">{formattedDate}</div>
+            <div className="hidden lg:flex items-center gap-2 px-3 py-2 bg-gray-50 dark:bg-slate-800 rounded-lg transition-colors duration-300">
+              <div className="text-xs text-gray-500 dark:text-gray-400 font-medium">{formattedDate}</div>
             </div>
 
             {/* Notifications */}
             <div className="relative" ref={notificationRef}>
               <button
                 onClick={() => setShowNotifications(!showNotifications)}
-                className="relative p-2.5 rounded-xl bg-gray-50 hover:bg-gray-100 text-gray-700 transition-all hover:scale-105 active:scale-95"
+                className="relative p-2.5 rounded-xl bg-gray-50 dark:bg-slate-800 hover:bg-gray-100 dark:hover:bg-slate-700 text-gray-700 dark:text-gray-300 transition-all hover:scale-105 active:scale-95"
                 aria-label="Thông báo"
               >
                 <Bell size={20} />
@@ -445,21 +456,21 @@ export default function Header({ userName }: HeaderProps) {
 
               {/* Notification Dropdown */}
               {showNotifications && (
-                <div className="absolute right-0 mt-2 w-80 bg-white rounded-xl shadow-2xl border border-gray-100 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
-                  <div className="p-4 border-b border-gray-100 flex items-center justify-between">
-                    <h3 className="font-bold text-gray-900">Thông báo</h3>
+                <div className="absolute right-0 mt-2 w-80 bg-white dark:bg-slate-800 rounded-xl shadow-2xl border border-gray-100 dark:border-slate-700 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200 transition-colors">
+                  <div className="p-4 border-b border-gray-100 dark:border-slate-700 flex items-center justify-between">
+                    <h3 className="font-bold text-gray-900 dark:text-white">Thông báo</h3>
                     <button
                       onClick={() => setShowNotifications(false)}
-                      className="p-1 hover:bg-gray-100 rounded-lg transition-colors"
+                      className="p-1 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-lg transition-colors"
                     >
-                      <X size={16} className="text-gray-500" />
+                      <X size={16} className="text-gray-500 dark:text-gray-400" />
                     </button>
                   </div>
                   <div className="max-h-96 overflow-y-auto">
                     {notifications.map((notif) => (
                       <div
                         key={notif.id}
-                        className={`p-4 border-b border-gray-50 hover:bg-gray-50 transition-colors cursor-pointer ${notif.unread ? 'bg-teal-50/30' : ''
+                        className={`p-4 border-b border-gray-50 dark:border-slate-700 hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors cursor-pointer ${notif.unread ? 'bg-teal-50/30 dark:bg-teal-900/20' : ''
                           }`}
                       >
                         <div className="flex items-start gap-3">
@@ -467,16 +478,16 @@ export default function Header({ userName }: HeaderProps) {
                             <div className="w-2 h-2 bg-teal-500 rounded-full mt-1.5 shrink-0" />
                           )}
                           <div className="flex-1 min-w-0">
-                            <p className="text-sm font-semibold text-gray-900 truncate">{notif.title}</p>
-                            <p className="text-xs text-gray-600 mt-0.5 line-clamp-2">{notif.message}</p>
-                            <p className="text-xs text-gray-400 mt-1">{notif.time}</p>
+                            <p className="text-sm font-semibold text-gray-900 dark:text-white truncate">{notif.title}</p>
+                            <p className="text-xs text-gray-600 dark:text-gray-400 mt-0.5 line-clamp-2">{notif.message}</p>
+                            <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">{notif.time}</p>
                           </div>
                         </div>
                       </div>
                     ))}
                   </div>
-                  <div className="p-3 bg-gray-50 text-center">
-                    <button className="text-xs text-teal-600 hover:text-teal-700 font-semibold">
+                  <div className="p-3 bg-gray-50 dark:bg-slate-900 text-center transition-colors">
+                    <button className="text-xs text-teal-600 dark:text-teal-400 hover:text-teal-700 dark:hover:text-teal-300 font-semibold">
                       Xem tất cả thông báo
                     </button>
                   </div>
@@ -488,12 +499,12 @@ export default function Header({ userName }: HeaderProps) {
             <div className="relative" ref={userMenuRef}>
               <button
                 onClick={() => setShowUserMenu(!showUserMenu)}
-                className="flex items-center gap-2.5 px-3 py-2 rounded-xl bg-gray-50 hover:bg-gray-100 transition-all hover:shadow-md group"
+                className="flex items-center gap-2.5 px-3 py-2 rounded-xl bg-gray-50 dark:bg-slate-800 hover:bg-gray-100 dark:hover:bg-slate-700 transition-all hover:shadow-md group"
               >
                 <Avatar name={userName} />
                 <div className="hidden md:block text-left">
-                  <p className="text-sm font-semibold text-gray-900 leading-tight">{userName}</p>
-                  <p className="text-xs text-gray-500">{formattedUserRole}</p>
+                  <p className="text-sm font-semibold text-gray-900 dark:text-white leading-tight">{userName}</p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">{formattedUserRole}</p>
                 </div>
                 <ChevronDown
                   size={16}
@@ -504,35 +515,35 @@ export default function Header({ userName }: HeaderProps) {
 
               {/* User Dropdown Menu */}
               {showUserMenu && (
-                <div className="absolute right-0 mt-2 w-56 bg-white rounded-xl shadow-2xl border border-gray-100 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
-                  <div className="p-4 border-b border-gray-100 bg-gradient-to-br from-teal-50 to-blue-50">
+                <div className="absolute right-0 mt-2 w-56 bg-white dark:bg-slate-800 rounded-xl shadow-2xl border border-gray-100 dark:border-slate-700 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200 transition-colors">
+                  <div className="p-4 border-b border-gray-100 dark:border-slate-700 bg-gradient-to-br from-teal-50 to-blue-50 dark:from-teal-900/30 dark:to-blue-900/30 transition-colors">
                     <div className="flex items-center gap-3">
                       <Avatar name={userName} />
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-bold text-gray-900 truncate">{userName}</p>
-                        <p className="text-xs text-gray-600">{formattedUserRole}</p>
+                        <p className="text-sm font-bold text-gray-900 dark:text-white truncate">{userName}</p>
+                        <p className="text-xs text-gray-600 dark:text-gray-400">{formattedUserRole}</p>
                       </div>
                     </div>
                   </div>
 
                   <div className="py-2">
-                    <button className="w-full px-4 py-2.5 flex items-center gap-3 hover:bg-gray-50 transition-colors text-left group">
-                      <User size={18} className="text-gray-400 group-hover:text-teal-600 transition-colors" />
-                      <span className="text-sm text-gray-700 group-hover:text-gray-900 font-medium">Hồ sơ cá nhân</span>
+                    <button className="w-full px-4 py-2.5 flex items-center gap-3 hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors text-left group">
+                      <User size={18} className="text-gray-400 dark:text-gray-500 group-hover:text-teal-600 dark:group-hover:text-teal-400 transition-colors" />
+                      <span className="text-sm text-gray-700 dark:text-gray-300 group-hover:text-gray-900 dark:group-hover:text-white font-medium">Hồ sơ cá nhân</span>
                     </button>
-                    <button className="w-full px-4 py-2.5 flex items-center gap-3 hover:bg-gray-50 transition-colors text-left group">
-                      <Settings size={18} className="text-gray-400 group-hover:text-teal-600 transition-colors" />
-                      <span className="text-sm text-gray-700 group-hover:text-gray-900 font-medium">Cài đặt</span>
+                    <button className="w-full px-4 py-2.5 flex items-center gap-3 hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors text-left group">
+                      <Settings size={18} className="text-gray-400 dark:text-gray-500 group-hover:text-teal-600 dark:group-hover:text-teal-400 transition-colors" />
+                      <span className="text-sm text-gray-700 dark:text-gray-300 group-hover:text-gray-900 dark:group-hover:text-white font-medium">Cài đặt</span>
                     </button>
                   </div>
 
-                  <div className="border-t border-gray-100 py-2">
+                  <div className="border-t border-gray-100 dark:border-slate-700 py-2 transition-colors">
                     <button
                       onClick={handleLogout}
-                      className="w-full px-4 py-2.5 flex items-center gap-3 hover:bg-red-50 transition-colors text-left group"
+                      className="w-full px-4 py-2.5 flex items-center gap-3 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors text-left group"
                     >
-                      <LogOut size={18} className="text-gray-400 group-hover:text-red-600 transition-colors" />
-                      <span className="text-sm text-gray-700 group-hover:text-red-600 font-medium">Đăng xuất</span>
+                      <LogOut size={18} className="text-gray-400 dark:text-gray-500 group-hover:text-red-600 dark:group-hover:text-red-400 transition-colors" />
+                      <span className="text-sm text-gray-700 dark:text-gray-300 group-hover:text-red-600 dark:group-hover:text-red-400 font-medium">Đăng xuất</span>
                     </button>
                   </div>
                 </div>

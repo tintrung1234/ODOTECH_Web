@@ -7,7 +7,7 @@ import {
 } from 'lucide-react';
 
 import type { Account, ProjectManagementItem, ProjectTask, TaskPriority, TaskStatus } from '../../interface/type';
-import { AccountTextPicker } from './AccountPickers';
+import { AccountIdPicker } from './AccountPickers';
 import { filterAccountsByRoles } from '../../utils/projectsTableHelpers';
 import { normalizeRole } from '../../utils/auth';
 
@@ -49,15 +49,16 @@ export default function ProjectTasksPanel({
 
   const devAccounts = useMemo(() => filterAccountsByRoles(accounts, normalizeRole, ['dev', 'dev_manager', 'head_tech']), [accounts]);
 
-  const displayPerson = useCallback((raw: string | null | undefined) => {
-    const trimmed = (raw ?? '').trim();
-    if (!trimmed) return '';
-    if (/^\d+$/.test(trimmed)) {
-      const a = accountsById.get(Number(trimmed));
-      if (a) return (a.name || a.username || trimmed).trim();
-    }
-    return trimmed;
+  const displayPerson = useCallback((id: number | null | undefined) => {
+    if (!id) return '';
+    const a = accountsById.get(id);
+    if (a) return (a.name || a.username || String(id)).trim();
+    return String(id);
   }, [accountsById]);
+
+  const tokenForAccount = useCallback((a: Account) => {
+    return `${a.name || a.username} #${a.id}`;
+  }, []);
 
   // People Picker Logic (Simplified for Cards)
   // For now, we'll use a simple native select or input logic for simplicity in cards, 
@@ -133,12 +134,14 @@ export default function ProjectTasksPanel({
 
           {/* Assignee Picker */}
           <div className="w-24 relative group/user ml-auto">
-            <AccountTextPicker
-              value={task.nguoiChinh ?? ''}
+            <AccountIdPicker
+              valueId={task.nguoiChinh ?? null}
+              accountsById={accountsById}
               options={devAccounts}
               placeholder="Người làm"
               datalistId={`task-${task.id}-assignee`}
-              onChange={(next) => onUpdateTask(task.id, { nguoiChinh: next })}
+              onChangeId={(next) => onUpdateTask(task.id, { nguoiChinh: next })}
+              tokenForAccount={tokenForAccount}
               className="bg-transparent border-none text-[10px] text-gray-600 p-0 text-right w-full focus:ring-0 placeholder-gray-300"
             />
           </div>
@@ -232,12 +235,14 @@ export default function ProjectTasksPanel({
                   value={draftTask.hanChot}
                   onChange={(e) => onDraftChange({ hanChot: e.target.value })}
                 />
-                <AccountTextPicker
-                  value={draftTask.nguoiChinh ?? ''}
+                <AccountIdPicker
+                  valueId={draftTask.nguoiChinh ?? null}
+                  accountsById={accountsById}
                   options={devAccounts}
                   placeholder="Người làm..."
                   datalistId={`draft-assignee-${expandedProject.id}`}
-                  onChange={(next) => onDraftChange({ nguoiChinh: next })}
+                  onChangeId={(next) => onDraftChange({ nguoiChinh: next })}
+                  tokenForAccount={tokenForAccount}
                   className="flex-1 text-xs border border-gray-200 rounded px-2 py-1 text-gray-600 focus:border-teal-500 outline-none"
                 />
               </div>

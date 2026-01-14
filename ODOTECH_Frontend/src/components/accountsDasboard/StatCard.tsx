@@ -113,7 +113,7 @@ const TrendChart = ({ current, previous }: { current: number; previous: number }
   return (
     <div className="mt-3 flex items-center gap-2">
       <div className={`flex items-center gap-1 px-2 py-1 rounded-md ${isNeutral ? 'bg-gray-100 text-gray-600' :
-          isPositive ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
+        isPositive ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
         }`}>
         {isNeutral ? <Minus size={14} /> : isPositive ? <TrendingUp size={14} /> : <TrendingDown size={14} />}
         <span className="text-xs font-bold">
@@ -326,10 +326,10 @@ export default function StatCard({
         <div
           id={tooltipId}
           role="tooltip"
-          className="absolute top-full left-0 mt-2 w-[320px] max-w-[min(360px,calc(100vw-24px))] rounded-xl border border-gray-200 bg-white shadow-xl p-3 opacity-0 invisible translate-y-1 scale-[0.98] transition-all duration-150 ease-out group-hover:opacity-100 group-hover:visible group-hover:translate-y-0 group-hover:scale-100 group-focus-within:opacity-100 group-focus-within:visible group-focus-within:translate-y-0 group-focus-within:scale-100 z-50 max-h-72 overflow-auto pointer-events-none group-hover:pointer-events-auto group-focus-within:pointer-events-auto"
+          className="absolute top-full left-1/2 -translate-x-1/2 mt-2 w-[280px] sm:w-[320px] max-w-[calc(100vw-32px)] rounded-xl border border-gray-200 bg-white shadow-xl p-3 opacity-0 invisible translate-y-1 scale-[0.98] transition-all duration-150 ease-out group-hover:opacity-100 group-hover:visible group-hover:translate-y-0 group-hover:scale-100 group-focus-within:opacity-100 group-focus-within:visible group-focus-within:translate-y-0 group-focus-within:scale-100 z-50 max-h-72 overflow-auto pointer-events-none group-hover:pointer-events-auto group-focus-within:pointer-events-auto"
         >
           {/* Arrow */}
-          <div className="absolute -top-1.5 left-6 h-3 w-3 rotate-45 bg-white border border-gray-200 border-r-0 border-b-0" />
+          <div className="absolute -top-1.5 left-1/2 -translate-x-1/2 h-3 w-3 rotate-45 bg-white border border-gray-200 border-r-0 border-b-0" />
 
           {(tooltipTitle && tooltipTitle.trim()) && (
             <div className="text-xs font-bold text-gray-800 mb-2 pb-1 border-b border-gray-100">{tooltipTitle}</div>

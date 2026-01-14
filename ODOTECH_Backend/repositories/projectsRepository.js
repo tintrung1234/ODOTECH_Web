@@ -25,6 +25,16 @@ async function listProjects({ limit, offset, q, status, scope }) {
     where.push(`p.pm_id = $${params.length}`);
   }
 
+  // Dev visibility: allow projects where dev is either the tech_user_id OR the main assignee (nguoi_chinh)
+  // in any project task.
+  if (scope && scope.devUserId !== undefined && scope.devUserId !== null) {
+    params.push(scope.devUserId);
+    const idx = params.length;
+    where.push(
+      `(p.tech_user_id = $${idx} OR EXISTS (SELECT 1 FROM project_tasks pt WHERE pt.project_id = p.id AND pt.nguoi_chinh = $${idx}))`
+    );
+  }
+
   if (scope && scope.techUserId !== undefined && scope.techUserId !== null) {
     params.push(scope.techUserId);
     where.push(`p.tech_user_id = $${params.length}`);
@@ -347,6 +357,14 @@ async function getContractValuesByCodes({ codes, scope }) {
   if (scope && scope.pmId !== undefined && scope.pmId !== null) {
     params.push(scope.pmId);
     where.push(`p.pm_id = $${params.length}`);
+  }
+
+  if (scope && scope.devUserId !== undefined && scope.devUserId !== null) {
+    params.push(scope.devUserId);
+    const idx = params.length;
+    where.push(
+      `(p.tech_user_id = $${idx} OR EXISTS (SELECT 1 FROM project_tasks pt WHERE pt.project_id = p.id AND pt.nguoi_chinh = $${idx}))`
+    );
   }
 
   if (scope && scope.techUserId !== undefined && scope.techUserId !== null) {
