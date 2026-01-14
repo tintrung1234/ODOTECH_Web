@@ -116,22 +116,24 @@ export default function Dashboard({
             Tổng quan hoạt động kinh Doanh
           </p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
           <button
             onClick={() => setIsRenewalModalOpen(true)}
             className="flex items-center gap-2 h-10 px-4 rounded-xl text-sm font-medium border border-gray-200 bg-white text-gray-700 hover:bg-gray-50 hover:border-gray-300 transition-all shadow-sm cursor-pointer"
           >
             <Calendar size={16} />
-            Gói gia hạn
+            <span className="hidden sm:inline">Gói gia hạn</span>
+            <span className="sm:hidden">Gia hạn</span>
           </button>
 
           {canCreate && (
             <button
               onClick={onCreate}
-              className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-xl font-medium shadow-md hover:shadow-lg transition-all active:scale-95 cursor-pointer"
+              className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 sm:px-5 py-2.5 rounded-xl font-medium shadow-md hover:shadow-lg transition-all active:scale-95 cursor-pointer"
             >
               <Plus size={18} />
-              Tạo Sale Mới
+              <span className="hidden sm:inline">Tạo Sale Mới</span>
+              <span className="sm:hidden">Tạo mới</span>
             </button>
           )}
         </div>
@@ -207,10 +209,10 @@ export default function Dashboard({
 
         <div className="flex-1 space-y-6">
           {/* View Tabs */}
-          <div className="bg-white p-1.5 rounded-xl border border-gray-200 inline-flex shadow-sm">
+          <div className="bg-white p-1.5 rounded-xl border border-gray-200 inline-flex shadow-sm overflow-x-auto max-w-full">
             <button
               onClick={() => onChangeListTab?.('full')}
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${listTab === 'full'
+              className={`px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-medium transition-all whitespace-nowrap ${listTab === 'full'
                 ? 'bg-gray-100 text-gray-900 shadow-sm'
                 : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'}`}
             >
@@ -218,19 +220,21 @@ export default function Dashboard({
             </button>
             <button
               onClick={() => onChangeListTab?.('doi_tien')}
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${listTab === 'doi_tien'
+              className={`px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-medium transition-all whitespace-nowrap ${listTab === 'doi_tien'
                 ? 'bg-gray-100 text-gray-900 shadow-sm'
                 : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'}`}
             >
-              Chưa thanh toán hết
+              <span className="hidden sm:inline">Chưa thanh toán hết</span>
+              <span className="sm:hidden">Chưa TT</span>
             </button>
             <button
               onClick={() => onChangeListTab?.('dang_trien_khai')}
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${listTab === 'dang_trien_khai'
+              className={`px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-medium transition-all whitespace-nowrap ${listTab === 'dang_trien_khai'
                 ? 'bg-gray-100 text-gray-900 shadow-sm'
                 : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'}`}
             >
-              Đang triển khai
+              <span className="hidden sm:inline">Đang triển khai</span>
+              <span className="sm:hidden">Triển khai</span>
             </button>
           </div>
 
@@ -283,8 +287,8 @@ export default function Dashboard({
           )}
 
           {/* Filter Bar */}
-          <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-200 flex flex-wrap items-center gap-3">
-            <div className="flex-1 min-w-[200px] relative">
+          <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-200 space-y-3">
+            <div className="w-full relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
               <input
                 className="w-full pl-10 pr-4 h-10 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm"
@@ -295,25 +299,25 @@ export default function Dashboard({
               />
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               <select
-                className="h-10 px-3 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-blue-500 cursor-pointer"
+                className="h-10 px-3 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-blue-500 cursor-pointer flex-1 sm:flex-none min-w-[140px]"
                 value={trangThaiChot}
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 onChange={(e) => setTrangThaiChot(e.target.value as any)}
               >
-                <option value="">Tất cả trạng thái</option>
+                <option value="">Tất cả TT</option>
                 <option value="DangCham">Đang chăm</option>
                 <option value="DaKy">Đã ký</option>
                 <option value="Huy">Huỷ</option>
               </select>
 
-              <div className="flex items-center border border-gray-200 rounded-lg bg-gray-50 px-2 h-10">
+              <div className="flex items-center border border-gray-200 rounded-lg bg-gray-50 px-2 h-10 flex-1 sm:flex-none">
                 <span className="text-gray-500 text-sm px-1">₫</span>
                 <input
                   type="number"
                   placeholder="Min"
-                  className="w-20 bg-transparent border-none text-sm focus:ring-0 p-1"
+                  className="w-16 sm:w-20 bg-transparent border-none text-sm focus:ring-0 p-1"
                   value={minTotal}
                   onChange={(e) => setMinTotal(e.target.value)}
                 />
@@ -321,7 +325,7 @@ export default function Dashboard({
                 <input
                   type="number"
                   placeholder="Max"
-                  className="w-20 bg-transparent border-none text-sm focus:ring-0 p-1 text-right"
+                  className="w-16 sm:w-20 bg-transparent border-none text-sm focus:ring-0 p-1 text-right"
                   value={maxTotal}
                   onChange={(e) => setMaxTotal(e.target.value)}
                 />
@@ -329,7 +333,7 @@ export default function Dashboard({
 
               <button
                 onClick={handleFilter}
-                className="h-10 w-10 flex items-center justify-center bg-gray-900 text-white rounded-lg hover:bg-gray-800 transition-colors shadow-sm"
+                className="h-10 w-10 flex items-center justify-center bg-gray-900 text-white rounded-lg hover:bg-gray-800 transition-colors shadow-sm shrink-0"
               >
                 <Filter size={18} />
               </button>
@@ -344,11 +348,11 @@ export default function Dashboard({
               <table className="w-full text-left">
                 <thead className="bg-gray-50/75 border-b border-gray-100">
                   <tr>
-                    <th className="py-4 px-6 text-xs font-semibold uppercase tracking-wider text-gray-500">Dự án / Khách hàng</th>
-                    <th className="py-4 px-6 text-xs font-semibold uppercase tracking-wider text-gray-500 text-center">Trạng thái</th>
-                    <th className="py-4 px-6 text-xs font-semibold uppercase tracking-wider text-gray-500 text-right">Tổng giá trị</th>
-                    <th className="py-4 px-6 text-xs font-semibold uppercase tracking-wider text-gray-500">Lần chăm cuối</th>
-                    <th className="py-4 px-6 text-xs font-semibold uppercase tracking-wider text-gray-500 w-[50px]"></th>
+                    <th className="py-3 sm:py-4 px-3 sm:px-6 text-xs font-semibold uppercase tracking-wider text-gray-500">Dự án / Khách hàng</th>
+                    <th className="py-3 sm:py-4 px-3 sm:px-6 text-xs font-semibold uppercase tracking-wider text-gray-500 text-center">Trạng thái</th>
+                    <th className="py-3 sm:py-4 px-3 sm:px-6 text-xs font-semibold uppercase tracking-wider text-gray-500 text-right hidden sm:table-cell">Tổng giá trị</th>
+                    <th className="py-3 sm:py-4 px-3 sm:px-6 text-xs font-semibold uppercase tracking-wider text-gray-500 hidden md:table-cell">Lần chăm cuối</th>
+                    <th className="py-3 sm:py-4 px-3 sm:px-6 text-xs font-semibold uppercase tracking-wider text-gray-500 w-[50px]"></th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100">
@@ -358,32 +362,46 @@ export default function Dashboard({
 
                     return (
                       <tr key={p.id} className="hover:bg-gray-50/50 transition-colors group">
-                        <td className="py-4 px-6">
+                        <td className="py-3 sm:py-4 px-3 sm:px-6">
                           <div className="flex flex-col">
-                            <span className="font-semibold text-gray-900 group-hover:text-blue-600 transition-colors cursor-pointer" onClick={() => onSelect(p)}>
+                            <span className="font-semibold text-sm sm:text-base text-gray-900 group-hover:text-blue-600 transition-colors cursor-pointer" onClick={() => onSelect(p)}>
                               {p.ma_du_an}
                             </span>
-                            <div className="flex items-center gap-1.5 text-sm text-gray-500 mt-1">
-                              <span className="truncate max-w-[200px]">{p.ten_khach}</span>
-                              {p.sdt && <span className="text-gray-300">•</span>}
+                            <div className="flex flex-col sm:flex-row sm:items-center gap-0.5 sm:gap-1.5 text-xs sm:text-sm text-gray-500 mt-1">
+                              <span className="truncate max-w-[150px] sm:max-w-[200px]">{p.ten_khach}</span>
+                              {p.sdt && <span className="hidden sm:inline text-gray-300">•</span>}
                               {p.sdt && <span className="font-mono text-xs">{p.sdt}</span>}
+                            </div>
+                            {/* Mobile-only: Show price and last contact */}
+                            <div className="sm:hidden mt-2 space-y-1">
+                              <div className="text-xs font-medium text-gray-900">
+                                {formatCurrency(getProjectTotalValue(p))}
+                              </div>
+                              {p.ngay_cham_cuoi && (
+                                <div className="flex items-center gap-1.5">
+                                  <span className={`text-xs ${isLate ? 'text-red-600 font-medium' : 'text-gray-500'}`}>
+                                    Chăm: {p.ngay_cham_cuoi}
+                                  </span>
+                                  {isLate && <AlertCircle size={12} className="text-red-500" />}
+                                </div>
+                              )}
                             </div>
                           </div>
                         </td>
-                        <td className="py-4 px-6 text-center">
-                          <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium border ${p.trang_thai_chot === 'DaKy'
+                        <td className="py-3 sm:py-4 px-3 sm:px-6 text-center">
+                          <span className={`inline-flex items-center px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-full text-[10px] sm:text-xs font-medium border ${p.trang_thai_chot === 'DaKy'
                             ? 'bg-green-50 text-green-700 border-green-200'
                             : p.trang_thai_chot === 'Huy'
                               ? 'bg-red-50 text-red-700 border-red-200'
                               : 'bg-yellow-50 text-yellow-700 border-yellow-200'
                             }`}>
-                            {p.trang_thai_chot === 'DaKy' ? 'Đã ký' : p.trang_thai_chot === 'Huy' ? 'Đã huỷ' : 'Đang chăm'}
+                            {p.trang_thai_chot === 'DaKy' ? 'Đã ký' : p.trang_thai_chot === 'Huy' ? 'Huỷ' : 'Chăm'}
                           </span>
                         </td>
-                        <td className="py-4 px-6 text-right font-medium text-gray-900 tabular-nums">
+                        <td className="py-3 sm:py-4 px-3 sm:px-6 text-right font-medium text-gray-900 tabular-nums hidden sm:table-cell">
                           {formatCurrency(getProjectTotalValue(p))}
                         </td>
-                        <td className="py-4 px-6">
+                        <td className="py-3 sm:py-4 px-3 sm:px-6 hidden md:table-cell">
                           <div className="flex items-center gap-2">
                             {p.ngay_cham_cuoi ? (
                               <>
@@ -404,13 +422,13 @@ export default function Dashboard({
                             )}
                           </div>
                         </td>
-                        <td className="py-4 px-6 text-right">
+                        <td className="py-3 sm:py-4 px-3 sm:px-6 text-right">
                           <button
                             onClick={() => onSelect(p)}
-                            className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all opacity-0 group-hover:opacity-100"
+                            className="p-1.5 sm:p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all sm:opacity-0 sm:group-hover:opacity-100"
                             title="Xem chi tiết"
                           >
-                            <MoreVertical size={18} />
+                            <MoreVertical size={16} className="sm:w-[18px] sm:h-[18px]" />
                           </button>
                         </td>
                       </tr>

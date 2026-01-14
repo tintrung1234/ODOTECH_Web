@@ -21,6 +21,7 @@ function pickDisplayName(value: unknown): string {
 
 export default function AppLayout({ children, userName }: AppLayoutProps) {
   const [tokenUser, setTokenUser] = useState<{ name?: string; username?: string; email?: string } | null>(null);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -46,11 +47,11 @@ export default function AppLayout({ children, userName }: AppLayoutProps) {
   }, [tokenUser?.email, tokenUser?.name, tokenUser?.username, userName]);
 
   return (
-    <div className="flex min-h-screen bg-gray-100">
-      <Sidebar />
+    <div className="flex min-h-screen bg-gray-100 dark:bg-slate-900 transition-colors duration-300">
+      <Sidebar isCollapsed={isSidebarCollapsed} setIsCollapsed={setIsSidebarCollapsed} />
 
       <div className="flex-1 min-w-0 flex flex-col">
-        <Header userName={displayName} />
+        <Header userName={displayName} onToggleSidebar={() => setIsSidebarCollapsed(!isSidebarCollapsed)} />
         {children}
       </div>
     </div>

@@ -1,16 +1,22 @@
-
-
 :root {
 	/* Luxury palette: green + yellow + gray */
-	--odotech-bg-1: #0b0f0d; /* graphite */
-	--odotech-bg-2: #0b2a1b; /* deep green */
-	--odotech-primary: #0f6b3f; /* emerald */
-	--odotech-accent: #e7d84a; /* yellow */
-	--odotech-accent-2: #b9ad32; /* darker yellow */
+	--odotech-bg-1: #0b0f0d;
+	/* graphite */
+	--odotech-bg-2: #0b2a1b;
+	/* deep green */
+	--odotech-primary: #0f6b3f;
+	/* emerald */
+	--odotech-accent: #e7d84a;
+	/* yellow */
+	--odotech-accent-2: #b9ad32;
+	/* darker yellow */
 	--odotech-surface: #fbfbfb;
-	--odotech-surface-2: #f3f4f6; /* light gray */
-	--odotech-text: #111827; /* slate */
-	--odotech-muted: #6b7280; /* gray */
+	--odotech-surface-2: #f3f4f6;
+	/* light gray */
+	--odotech-text: #111827;
+	/* slate */
+	--odotech-muted: #6b7280;
+	/* gray */
 	--odotech-border: rgba(17, 24, 39, 0.14);
 	--odotech-border-strong: rgba(17, 24, 39, 0.22);
 }
@@ -40,7 +46,7 @@
 	pointer-events: none;
 }
 
-.login-container > * {
+.login-container>* {
 	position: relative;
 	z-index: 1;
 }
@@ -353,52 +359,200 @@
 	font-weight: 400
 }
 
+/* Tablet and smaller */
+@media (max-width: 1024px) {
+	.login-left {
+		padding: 40px;
+	}
+
+	.logo-section h1 {
+		font-size: 2.8em;
+	}
+
+	.login-right form {
+		padding: 2.5em 2em;
+	}
+}
+
+/* Mobile landscape and smaller */
 @media (max-width: 968px) {
 	.login-container {
-		flex-direction: column
+		flex-direction: column;
+		height: auto;
+		min-height: 100vh;
 	}
 
 	.login-left {
-		min-height: 40vh;
-		padding: 34px 22px;
+		min-height: auto;
+		padding: 32px 24px;
 		align-items: center;
-		text-align: center
+		text-align: center;
 	}
 
 	.login-left::before {
-		display: none
+		display: none;
 	}
 
 	.logo-section,
 	.login-info {
-		padding-left: 0
+		padding-left: 0;
 	}
 
 	.logo-section {
 		text-align: center;
-		align-items: center
+		align-items: center;
+		margin-bottom: 20px;
 	}
 
-	.login-info {
-		text-align: center
-	}
-
-	.login-right {
-		min-height: 60vh
+	.odotech-logo {
+		width: 60px;
+		height: 60px;
 	}
 
 	.logo-section h1 {
-		font-size: 2.4em
+		font-size: 2.2em;
+		letter-spacing: 2px;
 	}
 
-	.character-container {
-		width: 200px;
-		height: 200px
+	.logo-section p {
+		font-size: 1.1em;
 	}
 
-	form {
+	.login-info {
+		text-align: center;
+		font-size: 1em;
+		max-width: 100%;
+	}
+
+	.login-right {
 		min-height: auto;
-		padding: 2em 1.25em
+		border-left: none;
+		border-top: 1px solid rgba(17, 24, 39, 0.10);
+	}
+
+	.login-right form {
+		min-height: auto;
+		padding: 2em 1.5em;
+	}
+
+	.login-right form .svgContainer {
+		width: 150px;
+		height: 150px;
+		margin: 0 auto 1.25em;
+	}
+
+	.form-header h2 {
+		font-size: 1.75em;
+	}
+
+	.form-header p {
+		font-size: 0.95em;
+	}
+
+	.login-right form label {
+		font-size: 1em;
+	}
+
+	.login-right form input[type='email'],
+	.login-right form input[type='text'],
+	.login-right form input[type='password'] {
+		height: 50px;
+		font-size: 1.1em;
+	}
+
+	.login-right form button {
+		height: 50px;
+		font-size: 1.2em;
+	}
+}
+
+/* Mobile portrait */
+@media (max-width: 640px) {
+	.login-left {
+		padding: 24px 20px;
+	}
+
+	.odotech-logo {
+		width: 50px;
+		height: 50px;
+	}
+
+	.logo-section h1 {
+		font-size: 1.8em;
+		letter-spacing: 1.5px;
+	}
+
+	.logo-section p {
+		font-size: 1em;
+	}
+
+	.login-info {
+		font-size: 0.95em;
+	}
+
+	.login-right form {
+		padding: 1.5em 1.25em;
+	}
+
+	.login-right form .svgContainer {
+		width: 120px;
+		height: 120px;
+		margin: 0 auto 1em;
+		border-width: 2px;
+	}
+
+	.form-header {
+		margin-bottom: 1.5em;
+	}
+
+	.form-header h2 {
+		font-size: 1.5em;
+	}
+
+	.form-header p {
+		font-size: 0.9em;
+	}
+
+	.login-right form .inputGroup {
+		margin: 0 0 1.25em;
+	}
+
+	.login-right form label {
+		font-size: 0.95em;
+		margin: 0 0 6px;
+	}
+
+	.login-right form input[type='email'],
+	.login-right form input[type='text'],
+	.login-right form input[type='password'] {
+		height: 48px;
+		font-size: 1em;
+		padding: 0 0.9em 0;
+	}
+
+	.login-right form input[type='email'],
+	.login-right form input[type='text'] {
+		padding: 10px 0.9em 0;
+	}
+
+	.login-right form button {
+		height: 48px;
+		font-size: 1.1em;
+	}
+
+	.login-right form .password-toggle {
+		width: 36px;
+		height: 36px;
+		right: 8px;
+	}
+
+	.login-right form .password-toggle svg {
+		width: 18px;
+		height: 18px;
+	}
+
+	.login-right form .passwordWrap input {
+		padding-right: 2.75em;
 	}
 }
 

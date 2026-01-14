@@ -9,9 +9,11 @@ import type {
   Account,
   ProjectManagementItem,
   ProjectMgmtStatus,
+  ProjectTask,
   ProjectType,
 } from '../interface/type';
 import { getTokenUser, normalizeRole } from '../utils/auth';
+import { useProjectTasks } from '../utils/useProjectTasks';
 
 type ListTab = 'all' | 'done';
 
@@ -104,6 +106,17 @@ export default function Projects() {
     return accounts.find((a) => a.id === uid) ?? null;
   }, [accounts, uid]);
 
+  const apiBaseUrl = useMemo(() => {
+    const envUrl = import.meta.env.VITE_API_URL as string | undefined;
+    return (envUrl && envUrl.trim()) ? envUrl.trim().replace(/\/$/, '') : 'http://localhost:5000';
+  }, []);
+
+  // Task management for dev role filtering
+  const {
+    tasksByProjectId,
+    loadTasks,
+  } = useProjectTasks({ apiBaseUrl });
+
   const currentIdentityTokens = useMemo(() => {
     const tokens = new Set<string>();
     if (Number.isFinite(uid)) tokens.add(String(uid));
@@ -124,7 +137,7 @@ export default function Projects() {
     );
   };
 
-  const projectHasMember = (p: ProjectManagementItem, accountOrTokens: Account | string[]) => {
+  const projectHasMember = (p: ProjectManagementItem, accountOrTokens: Account | string[], tasks?: ProjectTask[], checkUid?: number | null) => {
     const tokens = Array.isArray(accountOrTokens)
       ? accountOrTokens
       : [String(accountOrTokens.id), (accountOrTokens.username || '').trim(), (accountOrTokens.name || '').trim()].filter(Boolean);
@@ -134,10 +147,30 @@ export default function Projects() {
     const techUserId = String(p.tech_user_id ?? '');
     const customerSenderId = String(p.customer_sender_id ?? '');
 
-    return tokens.some((t) => {
+    const isProjectMember = tokens.some((t) => {
       const token = String(t).toLowerCase();
       return assigneeText.includes(token) || techUserId === t || customerSenderId === t;
     });
+
+    if (isProjectMember) return true;
+
+    // Check task assignments (using numeric IDs)
+    // We prioritize checkUid if provided, otherwise try to extract from tokens
+    if (tasks && tasks.length > 0) {
+      const targetId = checkUid !== undefined && checkUid !== null
+        ? checkUid
+        : Number(tokens[0]);
+
+      if (Number.isFinite(targetId)) {
+        return tasks.some(task =>
+          task.nguoiChinh === targetId ||
+          task.nguoiPhuTrach === targetId ||
+          task.nguoiHoTro === targetId
+        );
+      }
+    }
+
+    return false;
   };
 
   const canViewProject = useCallback(
@@ -147,10 +180,21 @@ export default function Projects() {
       if (role === 'sale') return p.sale_id === uid;
       if (role === 'sales_manager') return p.pm_id === uid;
       if (role === 'dev_manager') return p.pm_id === uid;
-      if (role === 'dev') return projectHasMember(p, currentIdentityTokens);
+      if (role === 'dev') {
+        const projectTasks = tasksByProjectId[p.id];
+
+        // If tasks haven't been loaded yet, optimistically show the project
+        // This prevents hiding projects before we know if the user has tasks
+        if (projectTasks === undefined) {
+          return true;
+        }
+
+        // Once tasks are loaded, check both project membership and task assignments
+        return projectHasMember(p, currentIdentityTokens, projectTasks, uid);
+      }
       return false;
     },
-    [currentIdentityTokens, role, uid]
+    [currentIdentityTokens, role, uid, tasksByProjectId]
   );
 
   const canEditProject = useCallback(
@@ -183,16 +227,22 @@ export default function Projects() {
       if (role === 'admin' || role === 'head_sales' || role === 'head_tech') return true;
       if (!Number.isFinite(uid)) return false;
       if (role === 'sales_manager' || role === 'dev_manager') return p.pm_id === uid;
-      if (role === 'dev') return projectHasMember(p, currentIdentityTokens);
+      if (role === 'dev') {
+        const projectTasks = tasksByProjectId[p.id];
+
+        // If tasks haven't been loaded yet, optimistically allow editing
+        if (projectTasks === undefined) {
+          return true;
+        }
+
+        return projectHasMember(p, currentIdentityTokens, projectTasks, uid);
+      }
       return false;
     },
-    [currentIdentityTokens, readOnly, role, uid]
+    [currentIdentityTokens, readOnly, role, uid, tasksByProjectId]
   );
 
-  const apiBaseUrl = useMemo(() => {
-    const envUrl = import.meta.env.VITE_API_URL as string | undefined;
-    return (envUrl && envUrl.trim()) ? envUrl.trim().replace(/\/$/, '') : 'http://localhost:5000';
-  }, []);
+
 
   const clearToastTimers = () => {
     if (toastTimersRef.current.show) window.clearTimeout(toastTimersRef.current.show);
@@ -266,6 +316,19 @@ export default function Projects() {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [apiBaseUrl]);
+
+  // Load tasks for dev users to enable task-based filtering
+  useEffect(() => {
+    if (role !== 'dev') return;
+    if (projects.length === 0) return;
+
+    // Load tasks for all projects that don't have tasks loaded yet
+    for (const project of projects) {
+      if (!tasksByProjectId[project.id]) {
+        void loadTasks(project.id);
+      }
+    }
+  }, [role, projects, tasksByProjectId, loadTasks]);
 
   const salesManagerTabs = useMemo(() => {
     if (!(role === 'head_sales' || role === 'admin' || role === 'support')) return [];
@@ -455,9 +518,9 @@ export default function Projects() {
   };
 
   return (
-    <main className="flex-1 min-w-0 px-6 py-3">
-      <div className="bg-white rounded-2xl p-6 shadow-sm">
-        <h1 className="text-3xl font-extrabold text-gray-900 mb-5">Quản lý dự án</h1>
+    <main className="flex-1 min-w-0 px-3 sm:px-6 py-3">
+      <div className="bg-white rounded-2xl p-4 sm:p-6 shadow-sm">
+        <h1 className="text-2xl sm:text-3xl font-extrabold text-gray-900 mb-4 sm:mb-5">Quản lý dự án</h1>
 
         {toast.message && (
           <div
@@ -483,20 +546,20 @@ export default function Projects() {
             <ProjectsDashboard projects={filteredProjects} role={role} today={today} accounts={accounts} />
 
             {(salesManagerTabs.length > 0 || saleTabs.length > 0 || devTabs.length > 0 || devManagerTabs.length > 0 || role === 'dev') && (
-              <div className="mt-4 flex flex-wrap items-center gap-3">
+              <div className="mt-4 flex flex-wrap items-center gap-2 sm:gap-3">
                 {role === 'dev' && (
                   <div className="flex items-center gap-2">
                     <button
                       type="button"
                       onClick={() => setListTab('all')}
-                      className={`h-9 px-3 rounded-lg border text-sm ${listTab === 'all' ? 'bg-teal-600 text-white border-teal-600' : 'bg-white text-gray-700 border-gray-300'}`}
+                      className={`h-9 px-3 rounded-lg border text-xs sm:text-sm ${listTab === 'all' ? 'bg-teal-600 text-white border-teal-600' : 'bg-white text-gray-700 border-gray-300'}`}
                     >
                       Tất cả
                     </button>
                     <button
                       type="button"
                       onClick={() => setListTab('done')}
-                      className={`h-9 px-3 rounded-lg border text-sm ${listTab === 'done' ? 'bg-teal-600 text-white border-teal-600' : 'bg-white text-gray-700 border-gray-300'}`}
+                      className={`h-9 px-3 rounded-lg border text-xs sm:text-sm ${listTab === 'done' ? 'bg-teal-600 text-white border-teal-600' : 'bg-white text-gray-700 border-gray-300'}`}
                     >
                       Đã done
                     </button>
@@ -507,10 +570,10 @@ export default function Projects() {
                   <select
                     value={selectedSalesManagerTab}
                     onChange={(e) => setSelectedSalesManagerTab(e.target.value)}
-                    className="h-9 px-3 border border-gray-300 rounded-lg bg-white text-sm text-gray-700 outline-none focus:border-gray-600"
+                    className="h-9 px-2 sm:px-3 border border-gray-300 rounded-lg bg-white text-xs sm:text-sm text-gray-700 outline-none focus:border-gray-600 min-w-[140px] flex-1 sm:flex-none"
                     aria-label="Tab Quản lý sale"
                   >
-                    <option value="">Tất cả quản lý sale</option>
+                    <option value="">Tất cả QL sale</option>
                     {salesManagerTabs.map((id) => {
                       const a = accounts.find((x) => String(x.id) === id);
                       const label = a ? (a.name || a.username || `#${a.id}`) : `#${id}`;
@@ -527,7 +590,7 @@ export default function Projects() {
                   <select
                     value={selectedSaleTab}
                     onChange={(e) => setSelectedSaleTab(e.target.value)}
-                    className="h-9 px-3 border border-gray-300 rounded-lg bg-white text-sm text-gray-700 outline-none focus:border-gray-600"
+                    className="h-9 px-2 sm:px-3 border border-gray-300 rounded-lg bg-white text-xs sm:text-sm text-gray-700 outline-none focus:border-gray-600 min-w-[120px] flex-1 sm:flex-none"
                     aria-label="Tab Sale"
                   >
                     <option value="">Tất cả sale</option>
@@ -547,10 +610,10 @@ export default function Projects() {
                   <select
                     value={selectedDevManagerTab}
                     onChange={(e) => setSelectedDevManagerTab(e.target.value)}
-                    className="h-9 px-3 border border-gray-300 rounded-lg bg-white text-sm text-gray-700 outline-none focus:border-gray-600"
+                    className="h-9 px-2 sm:px-3 border border-gray-300 rounded-lg bg-white text-xs sm:text-sm text-gray-700 outline-none focus:border-gray-600 min-w-[140px] flex-1 sm:flex-none"
                     aria-label="Tab Quản lý dev"
                   >
-                    <option value="">Tất cả quản lý dev</option>
+                    <option value="">Tất cả QL dev</option>
                     {devManagerTabs.map((id) => {
                       const a = accounts.find((x) => String(x.id) === id);
                       const label = a ? (a.name || a.username || `#${a.id}`) : `#${id}`;
@@ -567,7 +630,7 @@ export default function Projects() {
                   <select
                     value={selectedDevTab}
                     onChange={(e) => setSelectedDevTab(e.target.value)}
-                    className="h-9 px-3 border border-gray-300 rounded-lg bg-white text-sm text-gray-700 outline-none focus:border-gray-600"
+                    className="h-9 px-2 sm:px-3 border border-gray-300 rounded-lg bg-white text-xs sm:text-sm text-gray-700 outline-none focus:border-gray-600 min-w-[120px] flex-1 sm:flex-none"
                     aria-label="Tab Dev"
                   >
                     <option value="">Tất cả dev</option>

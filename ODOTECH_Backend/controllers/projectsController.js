@@ -1,4 +1,5 @@
 const projectsService = require("../services/projectsService");
+const projectTasksService = require("../services/projectTasksService");
 
 const { requireUser, getIdentityTokens } = require("../utils/authz");
 
@@ -36,7 +37,7 @@ async function listProjects(req, res, next) {
     let scope = null;
     if (role === "sale") scope = { saleId: uid };
     else if (role === "sales_manager" || role === "dev_manager") scope = { pmId: uid };
-    else if (role === "dev") scope = { techUserId: uid };
+    else if (role === "dev") scope = { devUserId: uid };
 
     const result = await projectsService.listProjects({ limit, offset, q, status, scope });
     res.json(result);
@@ -57,7 +58,7 @@ async function getContractValuesByCodes(req, res, next) {
     let scope = null;
     if (role === "sale") scope = { saleId: uid };
     else if (role === "sales_manager" || role === "dev_manager") scope = { pmId: uid };
-    else if (role === "dev") scope = { techUserId: uid };
+    else if (role === "dev") scope = { devUserId: uid };
 
     const items = await projectsService.getContractValuesByCodes({ codes, scope });
     res.json({ items });
@@ -156,7 +157,10 @@ async function getProjectById(req, res, next) {
       return res.status(403).json({ message: "Forbidden" });
     }
     if (role === "dev") {
-      if (Number(project.tech_user_id) !== uid) return res.status(403).json({ message: "Forbidden" });
+      if (Number(project.tech_user_id) !== uid) {
+        const ok = await projectTasksService.isUserMainAssigneeOfProject(id, uid);
+        if (!ok) return res.status(403).json({ message: "Forbidden" });
+      }
     }
 
     res.json(project);

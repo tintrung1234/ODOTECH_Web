@@ -20,10 +20,15 @@ async function deleteTask(projectId, taskId) {
   return projectTasksRepository.deleteTask(projectId, taskId);
 }
 
+async function isUserMainAssigneeOfProject(projectId, accountId) {
+  return projectTasksRepository.isUserMainAssigneeOfProject(projectId, accountId);
+}
+
 module.exports = {
   listTasksByProjectId,
   getTaskById,
   createTask,
   updateTask,
   deleteTask,
+  isUserMainAssigneeOfProject,
 };

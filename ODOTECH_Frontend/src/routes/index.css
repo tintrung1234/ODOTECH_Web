@@ -1,5 +1,9 @@
 @import "tailwindcss";
 
+@theme {
+  --dark-mode: class;
+}
+
 @layer base {
   *,
   *::before,

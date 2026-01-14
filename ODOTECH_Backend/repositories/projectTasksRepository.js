@@ -118,10 +118,25 @@ async function deleteTask(projectId, taskId) {
   return Boolean(result.rows[0]);
 }
 
+async function isUserMainAssigneeOfProject(projectId, accountId) {
+  const result = await pool.query(
+    `
+      SELECT 1
+      FROM project_tasks
+      WHERE project_id = $1 AND nguoi_chinh = $2
+      LIMIT 1
+    `,
+    [projectId, accountId]
+  );
+
+  return Boolean(result.rows[0]);
+}
+
 module.exports = {
   listTasksByProjectId,
   getTaskById,
   createTask,
   updateTask,
   deleteTask,
+  isUserMainAssigneeOfProject,
 };

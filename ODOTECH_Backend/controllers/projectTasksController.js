@@ -3,13 +3,14 @@ const projectsService = require("../services/projectsService");
 
 const { requireUser, getIdentityTokens } = require("../utils/authz");
 
-function canViewProject(role, uid, project, identityTokens) {
+async function canViewProject(role, uid, project, identityTokens) {
   if (["admin", "support", "head_sales", "head_tech"].includes(role)) return true;
   if (!project) return false;
   if (role === "sale") return Number(project.sale_id) === uid;
   if (role === "sales_manager" || role === "dev_manager") return Number(project.pm_id) === uid;
   if (role === "dev") {
-    return Number(project.tech_user_id) === uid;
+    if (Number(project.tech_user_id) === uid) return true;
+    return projectTasksService.isUserMainAssigneeOfProject(Number(project.id), uid);
   }
   return false;
 }
@@ -54,7 +55,7 @@ async function listProjectTasks(req, res, next) {
     const projectId = Number(req.params.id);
     const project = await projectsService.getProjectById(projectId);
     if (!project) return res.status(404).json({ message: "Project not found" });
-    if (!canViewProject(role, uid, project, identityTokens)) return res.status(403).json({ message: "Forbidden" });
+    if (!(await canViewProject(role, uid, project, identityTokens))) return res.status(403).json({ message: "Forbidden" });
 
     const items = await projectTasksService.listTasksByProjectId(projectId);
     res.json({ items });
@@ -93,7 +94,7 @@ async function updateProjectTask(req, res, next) {
 
     const project = await projectsService.getProjectById(projectId);
     if (!project) return res.status(404).json({ message: "Project not found" });
-    if (!canViewProject(role, uid, project, identityTokens)) return res.status(403).json({ message: "Forbidden" });
+    if (!(await canViewProject(role, uid, project, identityTokens))) return res.status(403).json({ message: "Forbidden" });
 
     const existingTask = await projectTasksService.getTaskById(projectId, taskId);
     if (!existingTask) return res.status(404).json({ message: "Task not found" });
@@ -120,7 +121,7 @@ async function deleteProjectTask(req, res, next) {
 
     const project = await projectsService.getProjectById(projectId);
     if (!project) return res.status(404).json({ message: "Project not found" });
-    if (!canViewProject(role, uid, project, identityTokens)) return res.status(403).json({ message: "Forbidden" });
+    if (!(await canViewProject(role, uid, project, identityTokens))) return res.status(403).json({ message: "Forbidden" });
     if (!canDeleteTask(role, uid, project)) return res.status(403).json({ message: "Forbidden" });
 
     const ok = await projectTasksService.deleteTask(projectId, taskId);
