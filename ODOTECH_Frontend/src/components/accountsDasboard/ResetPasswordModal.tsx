@@ -24,11 +24,27 @@ export default function ResetPasswordModal({ open, account, onClose, onGetStatus
   const [confirmPassword, setConfirmPassword] = useState('');
   const [temporaryPassword, setTemporaryPassword] = useState<string>('');
 
+  const passwordMismatch = useMemo(() => {
+    if (useGenerated) return false;
+    const p = password.trim();
+    const c = confirmPassword.trim();
+    if (!p && !c) return false;
+    return p !== c;
+  }, [confirmPassword, password, useGenerated]);
+
   const canSubmit = useMemo(() => {
     if (!account) return false;
     if (busy) return false;
+
+    if (useGenerated) return true;
+
+    const p = password.trim();
+    const c = confirmPassword.trim();
+    if (!p) return false;
+    if (!c) return false;
+    if (p !== c) return false;
     return true;
-  }, [account, busy]);
+  }, [account, busy, confirmPassword, password, useGenerated]);
 
   useEffect(() => {
     if (!open || !account) return;
@@ -148,8 +164,11 @@ export default function ResetPasswordModal({ open, account, onClose, onGetStatus
                         setTemporaryPassword('');
                       }}
                       className="w-full h-10 px-3 border border-gray-300 rounded-lg bg-white outline-none focus:border-gray-600"
-                      placeholder="(Tuỳ chọn)"
+                      placeholder="Nhập lại mật khẩu"
                     />
+                    {passwordMismatch ? (
+                      <div className="mt-1 text-xs text-red-600">Nhập lại mật khẩu phải trùng với mật khẩu.</div>
+                    ) : null}
                   </div>
                 </div>
               ) : null}
@@ -199,6 +218,20 @@ export default function ResetPasswordModal({ open, account, onClose, onGetStatus
               disabled={!canSubmit}
               onClick={() => {
                 if (!account) return;
+
+                if (!useGenerated) {
+                  const p = password.trim();
+                  const c = confirmPassword.trim();
+                  if (!p) {
+                    setErrorMessage('Vui lòng nhập mật khẩu mới.');
+                    return;
+                  }
+                  if (p !== c) {
+                    setErrorMessage('Nhập lại mật khẩu phải trùng với mật khẩu.');
+                    return;
+                  }
+                }
+
                 setBusy(true);
                 setErrorMessage('');
 
