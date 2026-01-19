@@ -21,6 +21,13 @@ import {
   User
 } from 'lucide-react';
 import './style.css';
+import {
+  PaymentProgressChart,
+  PaymentTimelineChart,
+  CostBreakdownChart,
+  DeploymentTimelineChart,
+  RenewalServicesChart
+} from './ProjectDetailCharts';
 
 // Utility Types & Functions
 type QldaStatus = 'not_started' | 'in_progress' | 'on_hold' | 'completed' | 'late';
@@ -233,6 +240,13 @@ const TabFinance = ({ data, handleChange, handlePaymentChange }: {
         </div>
       </div>
 
+      {/* Charts Section */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <PaymentProgressChart data={data} />
+        <PaymentTimelineChart data={data} />
+        <CostBreakdownChart data={data} />
+      </div>
+
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 h-fit">
           <SectionHeader icon={DollarSign} title="Chi tiết phí" colorClass="text-emerald-600 bg-emerald-600" />
@@ -351,6 +365,12 @@ const TabDeploy = ({ data, handleChange, handleCheckboxChange }: {
             <textarea className="input-field h-10 resize-none overflow-hidden" name="ly_do_lau" value={data.ly_do_lau} onChange={handleChange} placeholder="..." />
           </InputGroup>
         </div>
+      </div>
+
+      {/* Charts Section */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <DeploymentTimelineChart data={data} />
+        <RenewalServicesChart data={data} />
       </div>
 
       <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
@@ -744,36 +764,6 @@ export default function ProjectDetail({ project, onBack, onSave, readOnly = fals
           </div>
         </div>
       </div>
-
-      <style>{`
-        .input-field {
-          width: 100%;
-          padding: 0.625rem 0.875rem;
-          background-color: #f8fafc;
-          border: 1px solid #e2e8f0;
-          border-radius: 0.5rem;
-          font-size: 0.875rem;
-          color: #1e293b;
-          transition: all 0.2s;
-          outline: none;
-        }
-        .input-field:focus {
-          background-color: #fff;
-          border-color: #6366f1;
-          box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
-        }
-        .input-field:disabled {
-          background-color: #f1f5f9;
-          color: #94a3b8;
-          cursor: not-allowed;
-        }
-        
-        /* Custom Scrollbar for better aesthetics */
-        ::-webkit-scrollbar { width: 6px; height: 6px; }
-        ::-webkit-scrollbar-track { background: transparent; }
-        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
-        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
-      `}</style>
     </div>
   );
 }

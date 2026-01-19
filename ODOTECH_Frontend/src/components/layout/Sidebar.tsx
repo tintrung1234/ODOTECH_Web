@@ -39,8 +39,8 @@ export default function Sidebar({ isCollapsed, setIsCollapsed }: { isCollapsed: 
     if (item.to === '/customer-portal') return false;
 
     // Sales page is used by Sales + Dev roles; keep it visible.
-    // Hide websites from sales roles
-    if (item.to === '/websites') {
+    // Hide websites and servers from sales roles
+    if (item.to === '/websites' || item.to === '/servers') {
       return !(role === 'sale' || role === 'sales_manager' || role === 'head_sales');
     }
     return true;

@@ -14,41 +14,46 @@ const websitesRoutes = require("./routes/websitesRoutes");
 const virusLogsRoutes = require("./routes/virusLogsRoutes");
 const devAssignmentsRoutes = require("./routes/devAssignmentsRoutes");
 const customerPortalRoutes = require("./routes/customerPortalRoutes");
+const serversRoutes = require("./routes/serversRoutes");
+const coursesRoutes = require("./routes/coursesRoutes");
+const testsRoutes = require("./routes/testsRoutes");
 
 const app = express();
 
-// CORS configuration to allow credentials (cookies)
+app.get("/", (req, res) => {
+	res.status(200).send("API is running");
+});
+
+
+// ================= CORS CONFIG =================
 const rawCorsOrigins = String(process.env.CORS_ORIGIN || "").trim();
+
 const allowList = rawCorsOrigins
 	.split(",")
 	.map((s) => s.trim())
 	.filter(Boolean);
 
+// fallback nếu env chưa set
+if (allowList.length === 0) {
+	allowList.push(
+		"http://103.57.220.131:8080",
+		"http://localhost:8080"
+	);
+}
+
 const isLocalhostOrigin = (origin) => {
-	if (!origin) return false;
+	if (!origin) return true; // allow curl / server request
 	return (
 		/^https?:\/\/localhost:\d+$/i.test(origin) ||
 		/^https?:\/\/127\.0\.0\.1:\d+$/i.test(origin)
 	);
 };
 
-app.use(
-	cors({
-		origin: (origin, callback) => {
-			// Allow non-browser requests (no Origin header)
-			if (!origin) return callback(null, true);
-
-			// Explicit allow-list via env (comma-separated)
-			if (allowList.length > 0) {
-				return callback(null, allowList.includes(origin));
-			}
-
-			// Dev default: allow any localhost/127.0.0.1 port
-			return callback(null, isLocalhostOrigin(origin));
-		},
-		credentials: true,
-	})
-);
+app.use(cors({
+	origin: true,
+	credentials: true
+}));
+// =================================================
 
 app.use(cookieParser());
 app.use(express.json());
@@ -67,11 +72,13 @@ app.use("/api/customers", customersRoutes);
 app.use("/api/websites", websitesRoutes);
 app.use("/api/virus-logs", virusLogsRoutes);
 app.use("/api/dev-assignments", devAssignmentsRoutes);
-app.use("/api/dev-assignments", devAssignmentsRoutes);
 app.use("/api/customer-portal", customerPortalRoutes);
 app.use("/api/notifications", require("./routes/notificationsRoutes"));
 app.use("/api/tickets", require("./routes/ticketsRoutes"));
 app.use("/api/ticket-categories", require("./routes/ticketCategoriesRoutes"));
+app.use("/api/servers", serversRoutes);
+app.use("/api/courses", coursesRoutes);
+app.use("/api/tests", testsRoutes);
 
 app.use((req, res) => {
 	res.status(404).json({ message: "Not found" });

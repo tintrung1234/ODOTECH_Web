@@ -198,3 +198,85 @@ export interface ProjectManagementItem {
   created_at: string; // ISO timestamp
   updated_at: string; // ISO timestamp
 }
+
+// Training System Types
+export type CourseCategory = 'general' | 'technical' | 'soft-skills' | 'compliance' | 'product';
+export type CourseLevel = 'beginner' | 'intermediate' | 'advanced';
+export type CourseStatus = 'draft' | 'published' | 'archived';
+
+export interface Course {
+  id: number;
+  title: string;
+  description: string;
+  instructor_id: number | null;
+  category: CourseCategory;
+  level: CourseLevel;
+  duration_hours: number;
+  thumbnail_url: string;
+  content: string;
+  status: CourseStatus;
+  created_at: string;
+  updated_at: string;
+}
+
+export type QuestionType = 'multiple_choice' | 'true_false';
+
+export interface TestQuestion {
+  id: number;
+  type: QuestionType;
+  question: string;
+  options: string[];
+  correct_answer: number;
+  points: number;
+}
+
+export type TestStatus = 'draft' | 'active' | 'archived';
+
+export interface Test {
+  id: number;
+  course_id: number | null;
+  title: string;
+  description: string;
+  questions: TestQuestion[];
+  duration_minutes: number;
+  passing_score: number;
+  max_attempts: number;
+  status: TestStatus;
+  created_by: number | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export type EnrollmentStatus = 'enrolled' | 'in_progress' | 'completed' | 'dropped';
+
+export interface CourseEnrollment {
+  id: number;
+  course_id: number;
+  account_id: number;
+  enrolled_at: string;
+  completed_at: string | null;
+  progress: number;
+  status: EnrollmentStatus;
+  created_at: string;
+  updated_at: string;
+  course_title?: string;
+  category?: string;
+  level?: string;
+}
+
+export interface TestResult {
+  id: number;
+  test_id: number;
+  account_id: number;
+  enrollment_id: number | null;
+  answers: Record<number, number>;
+  score: number;
+  passed: boolean;
+  attempt_number: number;
+  started_at: string;
+  submitted_at: string;
+  created_at: string;
+  test_title?: string;
+  passing_score?: number;
+}
+
