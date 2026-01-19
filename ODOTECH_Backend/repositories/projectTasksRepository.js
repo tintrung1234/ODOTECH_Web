@@ -132,6 +132,36 @@ async function isUserMainAssigneeOfProject(projectId, accountId) {
   return Boolean(result.rows[0]);
 }
 
+async function listTasksForDueReminders({ dueBeforeDays = 1, overdueDays = 7, limit = 500 }) {
+  const dueDays = Number(dueBeforeDays);
+  const overDays = Number(overdueDays);
+  const lim = Number(limit);
+
+  const safeDue = Number.isFinite(dueDays) ? Math.max(0, Math.min(30, dueDays)) : 1;
+  const safeOver = Number.isFinite(overDays) ? Math.max(0, Math.min(90, overDays)) : 7;
+  const safeLimit = Number.isFinite(lim) ? Math.max(1, Math.min(2000, lim)) : 500;
+
+  const result = await pool.query(
+    `
+      SELECT
+        pt.*,
+        p.name AS project_name,
+        p.project_code AS project_code
+      FROM project_tasks pt
+      JOIN projects p ON p.id = pt.project_id
+      WHERE pt.han_chot IS NOT NULL
+        AND COALESCE(pt.trang_thai, '') <> 'Đã xong'
+        AND pt.han_chot >= (CURRENT_DATE - ($1::int))
+        AND pt.han_chot <= (CURRENT_DATE + ($2::int))
+      ORDER BY pt.han_chot ASC, pt.id ASC
+      LIMIT $3
+    `,
+    [safeOver, safeDue, safeLimit]
+  );
+
+  return result.rows;
+}
+
 module.exports = {
   listTasksByProjectId,
   getTaskById,
@@ -139,4 +169,5 @@ module.exports = {
   updateTask,
   deleteTask,
   isUserMainAssigneeOfProject,
+  listTasksForDueReminders,
 };

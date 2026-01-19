@@ -43,6 +43,11 @@ export default function Sidebar({ isCollapsed, setIsCollapsed }: { isCollapsed: 
     if (item.to === '/websites' || item.to === '/servers') {
       return !(role === 'sale' || role === 'sales_manager' || role === 'head_sales');
     }
+
+    // Only admin + managers can send notifications
+    if (item.to === '/notifications/send') {
+      return ['admin', 'head_sales', 'head_tech', 'sales_manager', 'dev_manager'].includes(role);
+    }
     return true;
   });
 

@@ -9,6 +9,8 @@ const {
   updateAccount,
   deleteAccount,
   getAccountStats,
+  getAccountPasswordStatus,
+  setAccountPassword,
 } = require("../controllers/accountsController");
 
 const router = express.Router();
@@ -20,6 +22,9 @@ router.get("/health", (req, res) => {
 router.use(authMiddleware);
 
 router.get("/stats", getAccountStats);
+
+router.get("/:id/password-status", getAccountPasswordStatus);
+router.put("/:id/password", setAccountPassword);
 
 router.get("/", listAccounts);
 router.post("/", createAccount);

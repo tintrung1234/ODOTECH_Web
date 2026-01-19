@@ -17,14 +17,31 @@ async function notifyUsers({ userIds, type, title, message, data = {} }) {
     new Set((Array.isArray(userIds) ? userIds : []).map((x) => toNullableInt(x)).filter(Boolean))
   );
   if (ids.length === 0) return [];
+  return notificationsRepository.createNotificationsForUsers({ userIds: ids, type, title, message, data });
+}
 
-  const results = await Promise.allSettled(
-    ids.map((userId) => notificationsRepository.createNotification({ userId, type, title, message, data }))
-  );
+async function notifyCompany({ type = "system", title, message, data = {}, excludeRoleSystems, includeRoleSystems }) {
+  return notificationsRepository.createNotificationsForCompany({
+    type,
+    title,
+    message,
+    data,
+    excludeRoleSystems,
+    includeRoleSystems,
+  });
+}
 
-  return results
-    .filter((r) => r.status === "fulfilled")
-    .map((r) => r.value);
+async function notifyRoles({ roleSystems, type = "system", title, message, data = {}, onlyActive = true }) {
+  return notificationsRepository.createNotificationsForRoles({ roleSystems, type, title, message, data, onlyActive });
+}
+
+async function hasSentTaskReminderToday({ userId, taskId, kind = "task_due" }) {
+  return notificationsRepository.hasNotificationForUserToday({
+    userId,
+    type: "task_reminder",
+    dataKind: kind,
+    dataTaskId: taskId,
+  });
 }
 
 /**
@@ -228,6 +245,9 @@ module.exports = {
   toNullableInt,
   notifyUser,
   notifyUsers,
+  notifyCompany,
+  notifyRoles,
+  hasSentTaskReminderToday,
   sendSecurityAlert,
   sendDelegationRequest,
   sendPasswordAccessAlert,

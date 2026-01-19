@@ -289,7 +289,7 @@ export default function SalesChartsSection({ projects, accounts = [] }: Props) {
             <div className="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 lg:col-span-2">
                 <h3 className="text-base font-semibold text-gray-800 mb-4">Doanh số theo tháng (Năm nay)</h3>
                 <div className="h-[220px] min-h-[220px] w-full">
-                    <ResponsiveContainer width="100%" height="100%">
+                    <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={220}>
                         <AreaChart data={revenueTrendBundle.data} margin={{ top: 5, right: 0, left: -20, bottom: 0 }}>
                             <defs>
                                 <linearGradient id="colorValue" x1="0" y1="0" x2="0" y2="1">
@@ -338,7 +338,7 @@ export default function SalesChartsSection({ projects, accounts = [] }: Props) {
             <div className="bg-white p-4 rounded-2xl shadow-sm border border-gray-100">
                 <h3 className="text-base font-semibold text-gray-800 mb-4">Tỷ lệ chốt đơn</h3>
                 <div className="h-[220px] min-h-[220px] w-full flex items-center justify-center">
-                    <ResponsiveContainer width="100%" height="100%">
+                    <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={220}>
                         <PieChart>
                             <Pie
                                 data={statusBundle.data}
@@ -372,7 +372,7 @@ export default function SalesChartsSection({ projects, accounts = [] }: Props) {
             <div className="bg-white p-4 rounded-2xl shadow-sm border border-gray-100">
                 <h3 className="text-base font-semibold text-gray-800 mb-4">Trạng thái thu tiền</h3>
                 <div className="h-[220px] min-h-[220px] w-full flex items-center justify-center">
-                    <ResponsiveContainer width="100%" height="100%">
+                    <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={220}>
                         <PieChart>
                             <Pie
                                 data={paymentStatusBundle.data}
@@ -406,7 +406,7 @@ export default function SalesChartsSection({ projects, accounts = [] }: Props) {
             <div className="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 lg:col-span-2">
                 <h3 className="text-base font-semibold text-gray-800 mb-4">Top Doanh Số Theo Sale</h3>
                 <div className="h-[220px] min-h-[220px] w-full">
-                    <ResponsiveContainer width="100%" height="100%">
+                    <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={220}>
                         <BarChart layout="vertical" data={salesPerformanceBundle.data} margin={{ top: 0, right: 10, left: 0, bottom: 0 }}>
                             <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} stroke="#E5E7EB" />
                             <XAxis type="number" hide />
@@ -449,7 +449,7 @@ export default function SalesChartsSection({ projects, accounts = [] }: Props) {
             <div className="bg-white p-4 rounded-2xl shadow-sm border border-gray-100">
                 <h3 className="text-base font-semibold text-gray-800 mb-4">Nguồn Khách Hàng</h3>
                 <div className="h-[220px] min-h-[220px] w-full">
-                    <ResponsiveContainer width="100%" height="100%">
+                    <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={220}>
                         <BarChart data={leadSourceBundle.data} margin={{ top: 10, right: 0, left: -20, bottom: 0 }}>
                             <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E5E7EB" />
                             <XAxis
@@ -484,7 +484,7 @@ export default function SalesChartsSection({ projects, accounts = [] }: Props) {
             <div className="bg-white p-4 rounded-2xl shadow-sm border border-gray-100">
                 <h3 className="text-base font-semibold text-gray-800 mb-4">Tình trạng chăm sóc (Đúng hạn / Quá hạn)</h3>
                 <div className="h-[220px] min-h-[220px] w-full">
-                    <ResponsiveContainer width="100%" height="100%">
+                    <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={220}>
                         <BarChart data={followupAgingBundle.data} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
                             <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E5E7EB" />
                             <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#6B7280', fontSize: 11 }} />

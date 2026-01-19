@@ -134,9 +134,8 @@ async function updateAccount(accountId, input) {
         payable = $10,
         join_date = $11,
         status = $12,
-        password_hash = $13,
-        last_login_at = $14,
-        competency_framework = $15,
+        last_login_at = $13,
+        competency_framework = $14,
         updated_at = NOW()
       WHERE id = $1
       RETURNING *
@@ -154,7 +153,6 @@ async function updateAccount(accountId, input) {
       input.payable,
       accountModel.toDbDate(input.join_date),
       input.status,
-      input.password_hash,
       accountModel.toDbTimestamp(input.last_login_at),
       input.competency_framework,
     ]
@@ -190,6 +188,35 @@ async function deleteAccount(accountId) {
     [accountId]
   );
   return Boolean(result.rows[0]);
+}
+
+async function updateAccountPasswordHash(accountId, passwordHash) {
+  const result = await pool.query(
+    `
+      UPDATE accounts
+      SET password_hash = $2,
+          updated_at = NOW()
+      WHERE id = $1
+      RETURNING id
+    `,
+    [accountId, passwordHash]
+  );
+  return Boolean(result.rows[0]);
+}
+
+async function getAccountPasswordStatus(accountId) {
+  const result = await pool.query(
+    `
+      SELECT (password_hash IS NOT NULL AND password_hash <> '') AS has_password
+      FROM accounts
+      WHERE id = $1
+      LIMIT 1
+    `,
+    [accountId]
+  );
+  const row = result.rows[0];
+  if (!row) return null;
+  return { hasPassword: Boolean(row.has_password) };
 }
 
 async function getAccountStats() {
@@ -276,5 +303,7 @@ module.exports = {
   updateAccountEmail,
   deleteAccount,
   getAccountStats,
+  updateAccountPasswordHash,
+  getAccountPasswordStatus,
   listActiveNonCustomerAccountIds,
 };
