@@ -11,6 +11,29 @@ export interface Notification {
     created_at: string;
 }
 
+export type CreateNotificationPayload = {
+    type?: string;
+    title: string;
+    message: string;
+    data?: any;
+};
+
+async function postJson<T>(endpoint: string, body: any): Promise<T> {
+    const res = await fetch(`${getApiUrl()}${endpoint}`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+    });
+
+    if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err?.message || `HTTP ${res.status}`);
+    }
+
+    return res.json();
+}
+
 export async function getNotifications(limit = 20, offset = 0): Promise<Notification[]> {
     try {
         const res = await fetch(`${getApiUrl()}/api/notifications?limit=${limit}&offset=${offset}`, {
@@ -64,4 +87,16 @@ export async function markAllAsRead(): Promise<boolean> {
         console.error(error);
         return false;
     }
+}
+
+export async function createCompanyNotification(payload: CreateNotificationPayload & { excludeRoleSystems?: string[]; includeRoleSystems?: string[] }): Promise<{ inserted: number }> {
+    return postJson<{ inserted: number }>(`/api/notifications/company`, payload);
+}
+
+export async function createRoleNotification(payload: CreateNotificationPayload & { roleSystems: string[] }): Promise<{ inserted: number }> {
+    return postJson<{ inserted: number }>(`/api/notifications/roles`, payload);
+}
+
+export async function createUserNotification(payload: CreateNotificationPayload & { userIds: number[] }): Promise<{ inserted: number }> {
+    return postJson<{ inserted: number }>(`/api/notifications/users`, payload);
 }

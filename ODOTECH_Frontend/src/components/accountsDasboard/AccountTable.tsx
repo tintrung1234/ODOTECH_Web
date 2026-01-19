@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 
 import ConfirmDeleteModal from './ConfirmDeleteModal';
 import LeaveRequestsModal from './LeaveRequestsModal';
+import ResetPasswordModal, { type ResetPasswordModalAccount } from './ResetPasswordModal';
 import { type Account, type LeaveRequest, ROLE_OPTIONS, POSITION_OPTIONS, STATUS_OPTIONS } from '../../interface/type';
 import { formatDate, formatDateTime } from '../../utils/formatDate';
 
@@ -15,6 +16,10 @@ interface AccountTableProps {
   onUpdateLeaveRequest: (updated: LeaveRequest) => void | Promise<void>;
   readOnly?: boolean;
 
+  canResetPassword?: boolean;
+  onGetPasswordStatus?: (accountId: number) => Promise<{ hasPassword: boolean }>;
+  onSetPassword?: (accountId: number, password?: string) => Promise<{ temporaryPassword?: string }>;
+
   onSelectAccount?: (account: Account) => void;
 }
 
@@ -25,6 +30,9 @@ export default function AccountTable({
   onDeleteAccount,
   onUpdateLeaveRequest,
   readOnly = false,
+  canResetPassword = false,
+  onGetPasswordStatus,
+  onSetPassword,
   onSelectAccount,
 }: AccountTableProps) {
   const navigate = useNavigate();
@@ -40,6 +48,8 @@ export default function AccountTable({
   const [selectedLeaveId, setSelectedLeaveId] = useState<number | null>(null);
 
   const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
+
+  const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
 
   const autosaveTimerRef = useRef<number | null>(null);
 
@@ -187,6 +197,21 @@ export default function AccountTable({
             </button>
           ) : null}
 
+          {canResetPassword ? (
+            <button
+              type="button"
+              className="h-10 px-5 rounded-lg bg-indigo-600 text-white font-medium disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+              disabled={!selectedAccount || busy || !onGetPasswordStatus || !onSetPassword}
+              onClick={() => {
+                if (!selectedAccount) return;
+                setErrorMessage('');
+                setIsPasswordModalOpen(true);
+              }}
+            >
+              Đặt lại mật khẩu
+            </button>
+          ) : null}
+
           <button
             type="button"
             className="h-10 px-5 border border-gray-300 rounded-lg bg-white text-gray-700 font-medium disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
@@ -230,6 +255,20 @@ export default function AccountTable({
         onClose={() => {
           setIsLeaveModalOpen(false);
           setSelectedLeaveId(null);
+        }}
+      />
+
+      <ResetPasswordModal
+        open={isPasswordModalOpen}
+        account={(selectedAccount ? ({ id: selectedAccount.id, name: selectedAccount.name } satisfies ResetPasswordModalAccount) : null)}
+        onClose={() => setIsPasswordModalOpen(false)}
+        onGetStatus={async (accountId) => {
+          if (!onGetPasswordStatus) throw new Error('Password status handler is not configured');
+          return onGetPasswordStatus(accountId);
+        }}
+        onSetPassword={async (accountId, password) => {
+          if (!onSetPassword) throw new Error('Password reset handler is not configured');
+          return onSetPassword(accountId, password);
         }}
       />
 

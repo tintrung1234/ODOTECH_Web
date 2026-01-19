@@ -1,5 +1,14 @@
 const accountsRepository = require("../repositories/accountsRepository");
 const notificationService = require("./notificationService");
+const bcrypt = require("bcryptjs");
+
+function generateTemporaryPassword(length = 12) {
+  const crypto = require("crypto");
+  const bytes = crypto.randomBytes(Math.ceil((length * 3) / 4));
+  const base64 = bytes.toString("base64");
+  const safe = base64.replace(/[^a-zA-Z0-9]/g, "");
+  return safe.slice(0, length);
+}
 
 async function listAccounts({ limit, offset, q, status, role_system }) {
   return accountsRepository.listAccounts({ limit, offset, q, status, role_system });
@@ -47,6 +56,28 @@ async function getAccountStats() {
   return accountsRepository.getAccountStats();
 }
 
+async function getAccountPasswordStatus(accountId) {
+  return accountsRepository.getAccountPasswordStatus(accountId);
+}
+
+async function setAccountPassword(accountId, { password }) {
+  const raw = typeof password === "string" ? password.trim() : "";
+  const nextPassword = raw || generateTemporaryPassword(12);
+  const passwordHash = await bcrypt.hash(nextPassword, 10);
+
+  const ok = await accountsRepository.updateAccountPasswordHash(
+    accountId,
+    passwordHash
+  );
+
+  if (!ok) return null;
+
+  return {
+    ok: true,
+    temporaryPassword: raw ? undefined : nextPassword,
+  };
+}
+
 module.exports = {
   listAccounts,
   getAccountById,
@@ -55,4 +86,6 @@ module.exports = {
   updateAccountEmail,
   deleteAccount,
   getAccountStats,
+  getAccountPasswordStatus,
+  setAccountPassword,
 };

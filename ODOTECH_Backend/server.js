@@ -10,6 +10,7 @@ process.on("unhandledRejection", (reason) => {
 
 const app = require("./app");
 const { connectPostgres, disconnectPostgres } = require("./config/postgres");
+const { startTaskReminderJob } = require("./services/taskReminderService");
 
 const PORT = process.env.PORT || 5000;
 
@@ -17,6 +18,8 @@ async function start() {
   try {
     await connectPostgres();
     console.log("Connected to PostgreSQL");
+
+    startTaskReminderJob();
 
     const server = app.listen(PORT, "0.0.0.0", () => {
       console.log(`Server running on port ${PORT}`);

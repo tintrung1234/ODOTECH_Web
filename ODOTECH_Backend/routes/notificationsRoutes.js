@@ -13,4 +13,9 @@ router.get("/unread-count", notificationsController.getUnreadCount);
 router.patch("/read-all", notificationsController.markAllAsRead);
 router.patch("/:id/read", notificationsController.markAsRead);
 
+// Create notifications (requires appropriate roles; controller enforces)
+router.post("/company", notificationsController.createCompanyNotification);
+router.post("/roles", notificationsController.createRoleNotification);
+router.post("/users", notificationsController.createUserNotification);
+
 module.exports = router;

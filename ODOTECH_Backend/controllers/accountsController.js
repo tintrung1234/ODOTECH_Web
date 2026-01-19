@@ -1,4 +1,20 @@
 const accountsService = require("../services/accountsService");
+const { requireUser } = require("../utils/authz");
+
+function canListAccounts(role) {
+  return [
+    "admin",
+    "support",
+    "head_sales",
+    "head_tech",
+    "sales_manager",
+    "dev_manager",
+  ].includes(role);
+}
+
+function canManageAccounts(role) {
+  return ["admin"].includes(role);
+}
 
 function toInt(value, fallback) {
   if (value === null || value === undefined || value === "") return fallback;
@@ -46,7 +62,6 @@ function normalizeAccountInput(body, { requireBasics }) {
       payable: toNumber(body?.payable, 0),
       join_date: normalizeDate(body?.join_date),
       status: toString(body?.status || "active").trim(),
-      password_hash: toString(body?.password_hash).trim(),
       last_login_at: toString(body?.last_login_at).trim(),
       competency_framework: body?.competency_framework || {},
     },
@@ -55,6 +70,10 @@ function normalizeAccountInput(body, { requireBasics }) {
 
 async function listAccounts(req, res, next) {
   try {
+    const identity = requireUser(req);
+    if (identity.error) return res.status(identity.error.status).json({ message: identity.error.message });
+    if (!canListAccounts(identity.role)) return res.status(403).json({ message: "Forbidden" });
+
     const limit = Math.min(Math.max(toInt(req.query.limit, 50), 1), 1000);
     const offset = Math.max(toInt(req.query.offset, 0), 0);
     const q = typeof req.query.q === "string" ? req.query.q.trim() : "";
@@ -70,9 +89,17 @@ async function listAccounts(req, res, next) {
 
 async function getAccountById(req, res, next) {
   try {
+    const identity = requireUser(req, { requireUid: true });
+    if (identity.error) return res.status(identity.error.status).json({ message: identity.error.message });
+
     const id = toInt(req.params.id, NaN);
     if (!Number.isFinite(id)) {
       return res.status(400).json({ message: "Invalid account id" });
+    }
+
+    const canViewAny = canListAccounts(identity.role);
+    if (!canViewAny && identity.uid !== id) {
+      return res.status(403).json({ message: "Forbidden" });
     }
 
     const account = await accountsService.getAccountById(id);
@@ -88,6 +115,10 @@ async function getAccountById(req, res, next) {
 
 async function createAccount(req, res, next) {
   try {
+    const identity = requireUser(req);
+    if (identity.error) return res.status(identity.error.status).json({ message: identity.error.message });
+    if (!canManageAccounts(identity.role)) return res.status(403).json({ message: "Forbidden" });
+
     const normalized = normalizeAccountInput(req.body, { requireBasics: true });
     if (normalized.error) {
       return res.status(400).json({ message: normalized.error });
@@ -105,6 +136,10 @@ async function createAccount(req, res, next) {
 
 async function updateAccount(req, res, next) {
   try {
+    const identity = requireUser(req);
+    if (identity.error) return res.status(identity.error.status).json({ message: identity.error.message });
+    if (!canManageAccounts(identity.role)) return res.status(403).json({ message: "Forbidden" });
+
     const id = toInt(req.params.id, NaN);
     if (!Number.isFinite(id)) {
       return res.status(400).json({ message: "Invalid account id" });
@@ -131,6 +166,10 @@ async function updateAccount(req, res, next) {
 
 async function deleteAccount(req, res, next) {
   try {
+    const identity = requireUser(req);
+    if (identity.error) return res.status(identity.error.status).json({ message: identity.error.message });
+    if (!canManageAccounts(identity.role)) return res.status(403).json({ message: "Forbidden" });
+
     const id = toInt(req.params.id, NaN);
     if (!Number.isFinite(id)) {
       return res.status(400).json({ message: "Invalid account id" });
@@ -149,8 +188,52 @@ async function deleteAccount(req, res, next) {
 
 async function getAccountStats(req, res, next) {
   try {
+    const identity = requireUser(req);
+    if (identity.error) return res.status(identity.error.status).json({ message: identity.error.message });
+    if (!["admin", "support"].includes(identity.role)) return res.status(403).json({ message: "Forbidden" });
+
     const stats = await accountsService.getAccountStats();
     res.json(stats);
+  } catch (err) {
+    next(err);
+  }
+}
+
+async function getAccountPasswordStatus(req, res, next) {
+  try {
+    const identity = requireUser(req);
+    if (identity.error) return res.status(identity.error.status).json({ message: identity.error.message });
+    if (!canManageAccounts(identity.role)) return res.status(403).json({ message: "Forbidden" });
+
+    const id = toInt(req.params.id, NaN);
+    if (!Number.isFinite(id)) {
+      return res.status(400).json({ message: "Invalid account id" });
+    }
+
+    const status = await accountsService.getAccountPasswordStatus(id);
+    if (!status) return res.status(404).json({ message: "Account not found" });
+    res.json(status);
+  } catch (err) {
+    next(err);
+  }
+}
+
+async function setAccountPassword(req, res, next) {
+  try {
+    const identity = requireUser(req);
+    if (identity.error) return res.status(identity.error.status).json({ message: identity.error.message });
+    if (!canManageAccounts(identity.role)) return res.status(403).json({ message: "Forbidden" });
+
+    const id = toInt(req.params.id, NaN);
+    if (!Number.isFinite(id)) {
+      return res.status(400).json({ message: "Invalid account id" });
+    }
+
+    const password = typeof req.body?.password === "string" ? req.body.password : "";
+
+    const result = await accountsService.setAccountPassword(id, { password });
+    if (!result) return res.status(404).json({ message: "Account not found" });
+    res.json(result);
   } catch (err) {
     next(err);
   }
@@ -163,4 +246,6 @@ module.exports = {
   updateAccount,
   deleteAccount,
   getAccountStats,
+  getAccountPasswordStatus,
+  setAccountPassword,
 };

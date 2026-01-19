@@ -217,6 +217,25 @@ export default function Accounts() {
     setLeaveRequests((prev) => prev.filter((r) => r.accountId !== id));
   };
 
+  const handleGetPasswordStatus = async (accountId: number): Promise<{ hasPassword: boolean }> => {
+    const res = await fetch(`${apiBaseUrl}/api/accounts/${accountId}/password-status`, { credentials: 'include' });
+    if (!res.ok) throw new Error(await readErrorMessage(res));
+    const json = (await res.json()) as { hasPassword?: boolean };
+    return { hasPassword: Boolean(json?.hasPassword) };
+  };
+
+  const handleSetPassword = async (accountId: number, password?: string): Promise<{ temporaryPassword?: string }> => {
+    const res = await fetch(`${apiBaseUrl}/api/accounts/${accountId}/password`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify(password ? { password } : {}),
+    });
+    if (!res.ok) throw new Error(await readErrorMessage(res));
+    const json = (await res.json()) as { temporaryPassword?: string };
+    return { temporaryPassword: json?.temporaryPassword };
+  };
+
   const selectedAccount = useMemo(() => {
     if (!selectedAccountId) return null;
     return accounts.find((a) => a.id === selectedAccountId) ?? null;
@@ -643,6 +662,9 @@ export default function Accounts() {
                 onDeleteAccount={(id) => handleDeleteAccount(id)}
                 onUpdateLeaveRequest={(req) => handleUpdateRequest(req)}
                 readOnly={isSupport}
+                canResetPassword={isAdmin}
+                onGetPasswordStatus={isAdmin ? handleGetPasswordStatus : undefined}
+                onSetPassword={isAdmin ? handleSetPassword : undefined}
                 onSelectAccount={(acc) => setSelectedAccountId(acc.id)}
               />
             )}
