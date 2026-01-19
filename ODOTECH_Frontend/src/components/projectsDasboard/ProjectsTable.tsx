@@ -146,7 +146,7 @@ export default function ProjectsTable({
     'w-full bg-transparent border-none p-0 text-sm text-gray-900 placeholder-gray-400 focus:ring-0 focus:bg-white rounded transition-colors truncate font-medium';
 
   // Sticky Logic
-  const stickyRightDivider = "z-999 after:content-[''] after:absolute after:top-0 after:right-0 after:h-full after:w-px after:bg-gray-200 after:pointer-events-none";
+  const stickyRightDivider = "z-15 after:content-[''] after:absolute after:top-0 after:right-0 after:h-full after:w-px after:bg-gray-200 after:pointer-events-none";
 
   const [expandedProjectId, setExpandedProjectId] = useState<number | null>(null);
   const scrollContainerRef = useRef<HTMLDivElement | null>(null);

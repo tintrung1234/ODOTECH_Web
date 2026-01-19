@@ -15,6 +15,8 @@ import CustomerPortal from '../pages/CustomerPortal';
 import Tickets from '../pages/Tickets';
 import NewTicket from '../pages/NewTicket';
 import TicketDetail from '../pages/TicketDetail';
+import Servers from '../pages/Servers';
+import Training from '../pages/Training';
 
 export interface SidebarItem {
   to: string;
@@ -141,6 +143,34 @@ export const sidebarItems: SidebarItem[] = [
     ),
   },
   {
+    to: '/servers',
+    label: 'Quản lý Server',
+    icon: (
+      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth={2}
+          d="M5 12h14M5 12a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v4a2 2 0 01-2 2M5 12a2 2 0 00-2 2v4a2 2 0 002 2h14a2 2 0 002-2v-4a2 2 0 00-2-2m-2-4h.01M17 16h.01"
+        />
+      </svg>
+    ),
+  },
+  {
+    to: '/training',
+    label: 'Đào tạo',
+    icon: (
+      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth={2}
+          d="M12 14l9-5-9-5-9 5 9 5z M12 14l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0012 20.055a11.952 11.952 0 00-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14z M12 14l-9-5v7a2 2 0 002 2h14a2 2 0 002-2v-7l-9 5z"
+        />
+      </svg>
+    ),
+  },
+  {
     to: '/customer-portal',
     label: 'Cổng thông tin',
     icon: (
@@ -182,6 +212,8 @@ export const appRoutes: AppRoute[] = [
   { path: '/expense-renewals', element: <ExpenseRenewals /> },
   { path: '/customers', element: <Customers /> },
   { path: '/websites', element: <Websites /> },
+  { path: '/servers', element: <Servers /> },
+  { path: '/training', element: <Training /> },
   { path: '/customer-portal', element: <CustomerPortal /> },
   { path: '/tickets', element: <Tickets /> },
   { path: '/tickets/new', element: <NewTicket /> },
