@@ -569,7 +569,10 @@ export default function Header({ userName, onToggleSidebar }: HeaderProps) {
                   </div>
 
                   <div className="py-2">
-                    <button className="w-full px-4 py-2.5 flex items-center gap-3 hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors text-left group">
+                    <button
+                      onClick={() => navigate('/profile')}
+                      className="w-full px-4 py-2.5 flex items-center gap-3 hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors text-left group"
+                    >
                       <User size={18} className="text-gray-400 dark:text-gray-500 group-hover:text-teal-600 dark:group-hover:text-teal-400 transition-colors" />
                       <span className="text-sm text-gray-700 dark:text-gray-300 group-hover:text-gray-900 dark:group-hover:text-white font-medium">Hồ sơ cá nhân</span>
                     </button>

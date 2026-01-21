@@ -25,6 +25,20 @@ function toDbTimestamp(value) {
 }
 
 function mapAccountRow(row) {
+  // Parse renewal_history if it's a string, otherwise use as-is
+  let renewalHistory = [];
+  if (row.renewal_history) {
+    if (typeof row.renewal_history === 'string') {
+      try {
+        renewalHistory = JSON.parse(row.renewal_history);
+      } catch (e) {
+        renewalHistory = [];
+      }
+    } else if (Array.isArray(row.renewal_history)) {
+      renewalHistory = row.renewal_history;
+    }
+  }
+
   return {
     id: Number(row.id),
     username: row.username ?? "",
@@ -42,6 +56,10 @@ function mapAccountRow(row) {
     created_at: formatTimestamp(row.created_at),
     updated_at: formatTimestamp(row.updated_at),
     competency_framework: row.competency_framework || {},
+    contract_start: formatDate(row.contract_start),
+    contract_end: formatDate(row.contract_end),
+    contract_type: row.contract_type ?? "",
+    renewal_history: renewalHistory,
   };
 }
 

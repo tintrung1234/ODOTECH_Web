@@ -3,7 +3,7 @@ import { User, Mail, Phone, Calendar, DollarSign, CreditCard, Award, Layers, Sta
 import AccountTable from '../components/accountsDasboard/AccountTable';
 import LeaveCalendarPanel from '../components/accountsDasboard/LeaveCalendarPanel';
 import LeaveApprovalPanel from '../components/accountsDasboard/LeaveApprovalPanel';
-import { type Account, type LeaveRequest, POSITION_OPTIONS, STATUS_OPTIONS } from '../interface/type';
+import { type Account, type LeaveRequest, POSITION_OPTIONS, STATUS_OPTIONS, CONTRACT_TYPE_OPTIONS, type ContractRenewal } from '../interface/type';
 import { useEffect, useMemo, useState } from 'react';
 import { getTokenUser, normalizeRole, type CanonicalRole } from '../utils/auth';
 
@@ -178,6 +178,14 @@ export default function Accounts() {
   };
 
   const handleUpdateAccount = async (updated: Account) => {
+    console.log('[FRONTEND] handleUpdateAccount called with:', {
+      id: updated.id,
+      name: updated.name,
+      has_contract_end: !!updated.contract_end,
+      has_renewal_history: !!updated.renewal_history,
+      stack: new Error().stack?.split('\n').slice(1, 4).join('\n')
+    });
+
     const res = await fetch(`${apiBaseUrl}/api/accounts/${updated.id}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
@@ -269,6 +277,31 @@ export default function Accounts() {
     const net = salary - payable;
     return { salary, payable, net };
   }, [selectedAccount?.payable, selectedAccount?.salary]);
+
+  const contractStatus = useMemo(() => {
+    const endDate = selectedAccount?.contract_end;
+    if (!endDate) return { status: 'none', label: 'Chưa có hợp đồng', color: 'gray' };
+
+    const end = new Date(endDate);
+    const now = new Date();
+    const daysUntilExpiry = Math.ceil((end.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+
+    if (daysUntilExpiry < 0) {
+      return { status: 'expired', label: 'Hết hạn', color: 'red', days: Math.abs(daysUntilExpiry) };
+    } else if (daysUntilExpiry <= 30) {
+      return { status: 'expiring', label: 'Sắp hết hạn', color: 'orange', days: daysUntilExpiry };
+    } else {
+      return { status: 'active', label: 'Còn hiệu lực', color: 'green', days: daysUntilExpiry };
+    }
+  }, [selectedAccount?.contract_end]);
+
+  const [renewalForm, setRenewalForm] = useState<{ newEndDate: string; contractType: string; notes: string }>(() => {
+    const oneYearLater = new Date();
+    oneYearLater.setFullYear(oneYearLater.getFullYear() + 1);
+    return { newEndDate: toLocalIsoDate(oneYearLater), contractType: 'Hợp đồng 1 năm', notes: '' };
+  });
+  const [renewalFormBusy, setRenewalFormBusy] = useState(false);
+  const [renewalFormError, setRenewalFormError] = useState<string>('');
 
   return (
     <main className="flex-1 px-6 py-3">
@@ -384,64 +417,358 @@ export default function Accounts() {
               </div>
             </div>
 
-            {/* Gia hạn hợp đồng (UI placeholder) */}
+            {/* Gia hạn hợp đồng */}
             <div className="rounded-xl border border-gray-200 bg-white p-5">
               <div className="text-lg font-semibold text-gray-900">Gia hạn hợp đồng</div>
-              <div className="text-sm text-gray-600 mt-1">Hiện hệ thống chưa có trường ngày hết hạn hợp đồng trong bảng accounts.</div>
+              <div className="text-sm text-gray-600 mt-1">
+                {isAdmin ? 'Tạo gia hạn hợp đồng mới cho nhân viên' : 'Chỉ Admin mới có quyền gia hạn hợp đồng'}
+              </div>
 
-              <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+              {!isAdmin ? (
+                <div className="mt-3 rounded border border-blue-200 bg-blue-50 px-4 py-3 text-blue-700">
+                  <div className="flex items-center gap-2">
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <span className="font-medium">Bạn không có quyền gia hạn hợp đồng. Vui lòng liên hệ Admin.</span>
+                  </div>
+                </div>
+              ) : null}
+
+              {renewalFormError ? (
+                <div className="mt-3 rounded border border-red-200 bg-red-50 px-4 py-3 text-red-700">{renewalFormError}</div>
+              ) : null}
+
+              {/* Current Contract Info */}
+              <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4 p-3 bg-gray-50 rounded-lg">
                 <div>
-                  <div className="text-sm text-gray-500">Ngày vào công ty</div>
-                  <div className="font-medium text-gray-900">{selectedAccount?.join_date || '-'}</div>
+                  <div className="text-sm text-gray-500">Hợp đồng hiện tại</div>
+                  <div className="font-medium text-gray-900">{selectedAccount?.contract_type || 'Chưa có'}</div>
                 </div>
                 <div>
-                  <div className="text-sm text-gray-500">Trạng thái</div>
-                  <div className="font-medium text-gray-900">{selectedAccount?.status || '-'}</div>
+                  <div className="text-sm text-gray-500">Hạn hiện tại</div>
+                  <div className="font-medium text-gray-900">
+                    {selectedAccount?.contract_start || '-'} → {selectedAccount?.contract_end || '-'}
+                  </div>
                 </div>
                 <div className="md:col-span-2">
-                  <div className="text-sm text-gray-500">Gợi ý triển khai</div>
-                  <div className="text-sm text-gray-700">Cần bổ sung DB/API: contract_start, contract_end, contract_type, renewal_history.</div>
+                  <div className="text-sm text-gray-500">Trạng thái</div>
+                  <div className={`inline-flex items-center gap-2 px-2.5 py-1 rounded text-sm font-semibold ${contractStatus.color === 'green' ? 'bg-green-100 text-green-700' :
+                    contractStatus.color === 'orange' ? 'bg-orange-100 text-orange-700' :
+                      contractStatus.color === 'red' ? 'bg-red-100 text-red-700' :
+                        'bg-gray-100 text-gray-700'
+                    }`}>
+                    {contractStatus.label}
+                    {contractStatus.days !== undefined ? ` (${contractStatus.days} ngày)` : ''}
+                  </div>
                 </div>
               </div>
+
+              {/* Renewal Form - Only for Admin */}
+              {isAdmin ? (
+                <>
+                  <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Ngày kết thúc mới</label>
+                      <input
+                        type="date"
+                        value={renewalForm.newEndDate}
+                        onChange={(e) => setRenewalForm((p) => ({ ...p, newEndDate: e.target.value }))}
+                        disabled={renewalFormBusy}
+                        className="w-full h-10 px-3 border border-gray-300 rounded-lg bg-white outline-none focus:border-gray-600"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Loại hợp đồng</label>
+                      <select
+                        value={renewalForm.contractType}
+                        onChange={(e) => setRenewalForm((p) => ({ ...p, contractType: e.target.value }))}
+                        disabled={renewalFormBusy}
+                        className="w-full h-10 px-3 border border-gray-300 rounded-lg bg-white outline-none focus:border-gray-600"
+                      >
+                        {CONTRACT_TYPE_OPTIONS.map((opt) => (
+                          <option key={opt.value} value={opt.value}>{opt.label}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="md:col-span-2">
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Ghi chú</label>
+                      <textarea
+                        value={renewalForm.notes}
+                        onChange={(e) => setRenewalForm((p) => ({ ...p, notes: e.target.value }))}
+                        disabled={renewalFormBusy}
+                        rows={2}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white outline-none focus:border-gray-600"
+                        placeholder="Ví dụ: Gia hạn lần 1, tăng lương..."
+                      />
+                    </div>
+                  </div>
+
+                  <div className="mt-4 flex items-center gap-3">
+                    <button
+                      type="button"
+                      className="h-10 px-5 rounded-lg bg-blue-600 text-white font-medium disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer hover:bg-blue-700"
+                      disabled={renewalFormBusy || !selectedAccount}
+                      onClick={() => {
+                        (async () => {
+                          if (!selectedAccount) return;
+                          setRenewalFormError('');
+                          if (!renewalForm.newEndDate) {
+                            setRenewalFormError('Vui lòng chọn ngày kết thúc mới');
+                            return;
+                          }
+                          setRenewalFormBusy(true);
+                          try {
+                            const currentHistory: ContractRenewal[] = selectedAccount.renewal_history || [];
+                            const newRenewal: ContractRenewal = {
+                              renewalDate: toLocalIsoDate(new Date()),
+                              previousEnd: selectedAccount.contract_end || '',
+                              newEnd: renewalForm.newEndDate,
+                              contractType: renewalForm.contractType,
+                              notes: renewalForm.notes,
+                            };
+
+                            await handleUpdateAccount({
+                              ...selectedAccount,
+                              contract_end: renewalForm.newEndDate,
+                              contract_type: renewalForm.contractType,
+                              renewal_history: [...currentHistory, newRenewal],
+                            });
+
+                            // Reset form
+                            const oneYearLater = new Date();
+                            oneYearLater.setFullYear(oneYearLater.getFullYear() + 1);
+                            setRenewalForm({ newEndDate: toLocalIsoDate(oneYearLater), contractType: 'Hợp đồng 1 năm', notes: '' });
+                          } catch (e: unknown) {
+                            setRenewalFormError(e instanceof Error ? e.message : 'Không gia hạn được hợp đồng');
+                          } finally {
+                            setRenewalFormBusy(false);
+                          }
+                        })();
+                      }}
+                    >
+                      Gia hạn hợp đồng
+                    </button>
+                    <div className="text-sm text-gray-600">Lưu ý: Hành động này sẽ cập nhật hợp đồng và lưu lịch sử.</div>
+                  </div>
+                </>
+              ) : null}
+
+              {/* Renewal History */}
+              {selectedAccount?.renewal_history && selectedAccount.renewal_history.length > 0 ? (
+                <div className="mt-5 pt-5 border-t border-gray-200">
+                  <div className="text-sm font-semibold text-gray-900 mb-3">Lịch sử gia hạn</div>
+                  <div className="space-y-2 max-h-48 overflow-y-auto">
+                    {selectedAccount.renewal_history.map((renewal, idx) => (
+                      <div key={idx} className="p-3 bg-gray-50 rounded-lg border border-gray-200 text-sm">
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="font-semibold text-gray-900">Gia hạn ngày {renewal.renewalDate}</span>
+                          <span className="px-2 py-0.5 bg-blue-100 text-blue-700 rounded text-xs font-medium">
+                            {renewal.contractType}
+                          </span>
+                        </div>
+                        <div className="text-gray-600">
+                          {renewal.previousEnd} → {renewal.newEnd}
+                        </div>
+                        {renewal.notes ? (
+                          <div className="text-gray-500 text-xs mt-1 italic">{renewal.notes}</div>
+                        ) : null}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
             </div>
           </div>
         ) : (
-          <div className="mt-6 grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <div className="rounded-xl border border-gray-200 bg-white p-5">
-              <div className="text-lg font-semibold text-gray-900">Nghỉ phép</div>
-              <div className="text-sm text-gray-600 mt-1">Chọn ngày để xem và duyệt đơn</div>
-              <div className="mt-4">
-                <LeaveCalendarPanel
-                  month={currentMonth}
-                  requests={leaveRequests}
-                  selectedIsoDate={selectedIsoDate}
-                  onSelectIsoDate={setSelectedIsoDate}
-                  selectedLeaveId={selectedLeaveId}
-                  onSelectLeaveId={setSelectedLeaveId}
-                  onUpdateRequest={(updated) => {
-                    void handleUpdateRequest(updated);
-                  }}
-                />
-              </div>
-            </div>
-
-            <div className="rounded-xl border border-gray-200 bg-white p-5">
-              <div className="text-lg font-semibold text-gray-900">Duyệt đơn</div>
-              <div className="text-sm text-gray-600 mt-1">{isSupport ? 'Chế độ xem' : 'Có thể duyệt/từ chối'}</div>
-              <div className="mt-4">
-                {isSupport ? (
-                  <div className="text-gray-600">Hỗ trợ tổng chỉ xem, không duyệt.</div>
-                ) : (
-                  <LeaveApprovalPanel
-                    request={selectedLeave}
-                    requesterName={selectedLeaveRequesterName}
+          <div className="mt-6 space-y-6">
+            {/* Leave Management Row */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <div className="rounded-xl border border-gray-200 bg-white p-5">
+                <div className="text-lg font-semibold text-gray-900">Nghỉ phép</div>
+                <div className="text-sm text-gray-600 mt-1">Chọn ngày để xem và duyệt đơn</div>
+                <div className="mt-4">
+                  <LeaveCalendarPanel
+                    month={currentMonth}
+                    requests={leaveRequests}
+                    selectedIsoDate={selectedIsoDate}
+                    onSelectIsoDate={setSelectedIsoDate}
+                    selectedLeaveId={selectedLeaveId}
+                    onSelectLeaveId={setSelectedLeaveId}
                     onUpdateRequest={(updated) => {
                       void handleUpdateRequest(updated);
                     }}
                   />
-                )}
+                </div>
+              </div>
+
+              <div className="rounded-xl border border-gray-200 bg-white p-5">
+                <div className="text-lg font-semibold text-gray-900">Duyệt đơn</div>
+                <div className="text-sm text-gray-600 mt-1">{isSupport ? 'Chế độ xem' : 'Có thể duyệt/từ chối'}</div>
+                <div className="mt-4">
+                  {isSupport ? (
+                    <div className="text-gray-600">Hỗ trợ tổng chỉ xem, không duyệt.</div>
+                  ) : (
+                    <LeaveApprovalPanel
+                      request={selectedLeave}
+                      requesterName={selectedLeaveRequesterName}
+                      onUpdateRequest={(updated) => {
+                        void handleUpdateRequest(updated);
+                      }}
+                    />
+                  )}
+                </div>
               </div>
             </div>
+
+            {/* Contract Renewal for Admin */}
+            {isAdmin && selectedAccount ? (
+              <div className="rounded-xl border border-gray-200 bg-white p-5">
+                <div className="text-lg font-semibold text-gray-900">Gia hạn hợp đồng</div>
+                <div className="text-sm text-gray-600 mt-1">
+                  Gia hạn hợp đồng cho: <span className="font-semibold text-gray-900">{selectedAccount.name}</span>
+                </div>
+
+                {renewalFormError ? (
+                  <div className="mt-3 rounded border border-red-200 bg-red-50 px-4 py-3 text-red-700">{renewalFormError}</div>
+                ) : null}
+
+                {/* Current Contract Info */}
+                <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-4 p-3 bg-gray-50 rounded-lg">
+                  <div>
+                    <div className="text-sm text-gray-500">Hợp đồng hiện tại</div>
+                    <div className="font-medium text-gray-900">{selectedAccount.contract_type || 'Chưa có'}</div>
+                  </div>
+                  <div>
+                    <div className="text-sm text-gray-500">Hạn hiện tại</div>
+                    <div className="font-medium text-gray-900">
+                      {selectedAccount.contract_start || '-'} → {selectedAccount.contract_end || '-'}
+                    </div>
+                  </div>
+                  <div>
+                    <div className="text-sm text-gray-500">Trạng thái</div>
+                    <div className={`inline-flex items-center gap-2 px-2.5 py-1 rounded text-sm font-semibold ${contractStatus.color === 'green' ? 'bg-green-100 text-green-700' :
+                      contractStatus.color === 'orange' ? 'bg-orange-100 text-orange-700' :
+                        contractStatus.color === 'red' ? 'bg-red-100 text-red-700' :
+                          'bg-gray-100 text-gray-700'
+                      }`}>
+                      {contractStatus.label}
+                      {contractStatus.days !== undefined ? ` (${contractStatus.days} ngày)` : ''}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Renewal Form */}
+                <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Ngày kết thúc mới</label>
+                    <input
+                      type="date"
+                      value={renewalForm.newEndDate}
+                      onChange={(e) => setRenewalForm((p) => ({ ...p, newEndDate: e.target.value }))}
+                      disabled={renewalFormBusy}
+                      className="w-full h-10 px-3 border border-gray-300 rounded-lg bg-white outline-none focus:border-gray-600"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Loại hợp đồng</label>
+                    <select
+                      value={renewalForm.contractType}
+                      onChange={(e) => setRenewalForm((p) => ({ ...p, contractType: e.target.value }))}
+                      disabled={renewalFormBusy}
+                      className="w-full h-10 px-3 border border-gray-300 rounded-lg bg-white outline-none focus:border-gray-600"
+                    >
+                      {CONTRACT_TYPE_OPTIONS.map((opt) => (
+                        <option key={opt.value} value={opt.value}>{opt.label}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Ghi chú</label>
+                    <input
+                      type="text"
+                      value={renewalForm.notes}
+                      onChange={(e) => setRenewalForm((p) => ({ ...p, notes: e.target.value }))}
+                      disabled={renewalFormBusy}
+                      className="w-full h-10 px-3 border border-gray-300 rounded-lg bg-white outline-none focus:border-gray-600"
+                      placeholder="Ví dụ: Gia hạn lần 1..."
+                    />
+                  </div>
+                </div>
+
+                <div className="mt-4 flex items-center gap-3">
+                  <button
+                    type="button"
+                    className="h-10 px-5 rounded-lg bg-blue-600 text-white font-medium disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer hover:bg-blue-700"
+                    disabled={renewalFormBusy}
+                    onClick={() => {
+                      (async () => {
+                        setRenewalFormError('');
+                        if (!renewalForm.newEndDate) {
+                          setRenewalFormError('Vui lòng chọn ngày kết thúc mới');
+                          return;
+                        }
+                        setRenewalFormBusy(true);
+                        try {
+                          const currentHistory: ContractRenewal[] = selectedAccount.renewal_history || [];
+                          const newRenewal: ContractRenewal = {
+                            renewalDate: toLocalIsoDate(new Date()),
+                            previousEnd: selectedAccount.contract_end || '',
+                            newEnd: renewalForm.newEndDate,
+                            contractType: renewalForm.contractType,
+                            notes: renewalForm.notes,
+                          };
+
+                          await handleUpdateAccount({
+                            ...selectedAccount,
+                            contract_end: renewalForm.newEndDate,
+                            contract_type: renewalForm.contractType,
+                            renewal_history: [...currentHistory, newRenewal],
+                          });
+
+                          // Reset form
+                          const oneYearLater = new Date();
+                          oneYearLater.setFullYear(oneYearLater.getFullYear() + 1);
+                          setRenewalForm({ newEndDate: toLocalIsoDate(oneYearLater), contractType: 'Hợp đồng 1 năm', notes: '' });
+                        } catch (e: unknown) {
+                          setRenewalFormError(e instanceof Error ? e.message : 'Không gia hạn được hợp đồng');
+                        } finally {
+                          setRenewalFormBusy(false);
+                        }
+                      })();
+                    }}
+                  >
+                    Gia hạn hợp đồng
+                  </button>
+                  <div className="text-sm text-gray-600">Cập nhật hợp đồng và lưu lịch sử gia hạn</div>
+                </div>
+
+                {/* Renewal History */}
+                {selectedAccount.renewal_history && selectedAccount.renewal_history.length > 0 ? (
+                  <div className="mt-5 pt-5 border-t border-gray-200">
+                    <div className="text-sm font-semibold text-gray-900 mb-3">Lịch sử gia hạn</div>
+                    <div className="space-y-2 max-h-48 overflow-y-auto">
+                      {selectedAccount.renewal_history.map((renewal, idx) => (
+                        <div key={idx} className="p-3 bg-gray-50 rounded-lg border border-gray-200 text-sm">
+                          <div className="flex items-center justify-between mb-1">
+                            <span className="font-semibold text-gray-900">Gia hạn ngày {renewal.renewalDate}</span>
+                            <span className="px-2 py-0.5 bg-blue-100 text-blue-700 rounded text-xs font-medium">
+                              {renewal.contractType}
+                            </span>
+                          </div>
+                          <div className="text-gray-600">
+                            {renewal.previousEnd} → {renewal.newEnd}
+                          </div>
+                          {renewal.notes ? (
+                            <div className="text-gray-500 text-xs mt-1 italic">{renewal.notes}</div>
+                          ) : null}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
+              </div>
+            ) : null}
           </div>
         )}
 
@@ -516,6 +843,36 @@ export default function Accounts() {
                       <div className="overflow-hidden">
                         <div className="text-xs text-gray-600 font-medium">Ngày vào làm</div>
                         <div className="font-semibold text-gray-900">{selectedAccount.join_date || '-'}</div>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-3 text-sm group">
+                      <div className="w-8 h-8 rounded-lg bg-gray-100 flex items-center justify-center text-gray-500 group-hover:bg-blue-100 group-hover:text-blue-700 transition-colors">
+                        <Calendar size={16} />
+                      </div>
+                      <div className="overflow-hidden flex-1">
+                        <div className="text-xs text-gray-600 font-medium">Hợp đồng</div>
+                        <div className="font-semibold text-gray-900">
+                          {selectedAccount.contract_type || 'Chưa cập nhật'}
+                        </div>
+                      </div>
+                      {selectedAccount.contract_end ? (
+                        <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${contractStatus.color === 'green' ? 'bg-green-100 text-green-700 border border-green-200' :
+                          contractStatus.color === 'orange' ? 'bg-orange-100 text-orange-700 border border-orange-200' :
+                            'bg-red-100 text-red-700 border border-red-200'
+                          }`}>
+                          {contractStatus.label}
+                        </span>
+                      ) : null}
+                    </div>
+                    <div className="flex items-center gap-3 text-sm group">
+                      <div className="w-8 h-8 rounded-lg bg-gray-100 flex items-center justify-center text-gray-500 group-hover:bg-indigo-100 group-hover:text-indigo-700 transition-colors">
+                        <Calendar size={16} />
+                      </div>
+                      <div className="overflow-hidden">
+                        <div className="text-xs text-gray-600 font-medium">Hạn hợp đồng</div>
+                        <div className="font-semibold text-gray-900">
+                          {selectedAccount.contract_start || '-'} → {selectedAccount.contract_end || '-'}
+                        </div>
                       </div>
                     </div>
                     <div className="flex items-center gap-3 text-sm group">
@@ -646,7 +1003,7 @@ export default function Accounts() {
             <div className="flex items-center justify-between gap-3">
               <div>
                 <div className="text-lg font-semibold text-gray-900">Quản lý danh sách</div>
-                <div className="text-sm text-gray-600">Các chỉ số, điểm số, gia hạn hợp đồng (UI)</div>
+                <div className="text-sm text-gray-600">Các chỉ số, điểm số, gia hạn hợp đồng</div>
               </div>
               <div className="text-sm text-gray-600">{isSupport ? 'Chế độ xem' : 'Chế độ quản trị'}</div>
             </div>

@@ -48,24 +48,38 @@ function normalizeAccountInput(body, { requireBasics }) {
     if (!email) return { error: "email is required" };
   }
 
-  return {
-    value: {
-      username:
-        rawUsername || (email.includes("@") ? email.split("@")[0].trim() : ""),
-      name,
-      email,
-      phone: toString(body?.phone).trim(),
-      role_system: toString(body?.role_system || "employee").trim(),
-      point: toNumber(body?.point, 0),
-      position: toString(body?.position).trim(),
-      salary: toNumber(body?.salary, 0),
-      payable: toNumber(body?.payable, 0),
-      join_date: normalizeDate(body?.join_date),
-      status: toString(body?.status || "active").trim(),
-      last_login_at: toString(body?.last_login_at).trim(),
-      competency_framework: body?.competency_framework || {},
-    },
+  const result = {
+    username:
+      rawUsername || (email.includes("@") ? email.split("@")[0].trim() : ""),
+    name,
+    email,
+    phone: toString(body?.phone).trim(),
+    role_system: toString(body?.role_system || "employee").trim(),
+    point: toNumber(body?.point, 0),
+    position: toString(body?.position).trim(),
+    salary: toNumber(body?.salary, 0),
+    payable: toNumber(body?.payable, 0),
+    join_date: normalizeDate(body?.join_date),
+    status: toString(body?.status || "active").trim(),
+    last_login_at: toString(body?.last_login_at).trim(),
+    competency_framework: body?.competency_framework || {},
   };
+
+  // Only include contract fields if they exist in the request body
+  if ('contract_start' in (body || {})) {
+    result.contract_start = normalizeDate(body.contract_start);
+  }
+  if ('contract_end' in (body || {})) {
+    result.contract_end = normalizeDate(body.contract_end);
+  }
+  if ('contract_type' in (body || {})) {
+    result.contract_type = toString(body.contract_type).trim();
+  }
+  if ('renewal_history' in (body || {})) {
+    result.renewal_history = Array.isArray(body.renewal_history) ? body.renewal_history : [];
+  }
+
+  return { value: result };
 }
 
 async function listAccounts(req, res, next) {
@@ -239,6 +253,101 @@ async function setAccountPassword(req, res, next) {
   }
 }
 
+async function getCurrentUserProfile(req, res, next) {
+  try {
+    const identity = requireUser(req, { requireUid: true });
+    if (identity.error) return res.status(identity.error.status).json({ message: identity.error.message });
+
+    const account = await accountsService.getAccountById(identity.uid);
+    if (!account) {
+      return res.status(404).json({ message: "Account not found" });
+    }
+
+    res.json(account);
+  } catch (err) {
+    next(err);
+  }
+}
+
+async function updateCurrentUserProfile(req, res, next) {
+  try {
+    const identity = requireUser(req, { requireUid: true });
+    if (identity.error) return res.status(identity.error.status).json({ message: identity.error.message });
+
+    // Only allow updating specific fields
+    const allowedFields = {
+      name: toString(req.body?.name).trim(),
+      email: toString(req.body?.email).trim(),
+      phone: toString(req.body?.phone).trim(),
+      username: toString(req.body?.username).trim(),
+    };
+
+    // Validate required fields
+    if (!allowedFields.name) {
+      return res.status(400).json({ message: "name is required" });
+    }
+    if (!allowedFields.email) {
+      return res.status(400).json({ message: "email is required" });
+    }
+    if (!allowedFields.username) {
+      return res.status(400).json({ message: "username is required" });
+    }
+
+    const updated = await accountsService.updateAccount(identity.uid, allowedFields);
+    if (!updated) {
+      return res.status(404).json({ message: "Account not found" });
+    }
+
+    res.json(updated);
+  } catch (err) {
+    if (err && err.code === "23505") {
+      // Check which field caused the conflict
+      if (err.constraint && err.constraint.includes('username')) {
+        return res.status(409).json({ message: "username already exists" });
+      }
+      return res.status(409).json({ message: "email already exists" });
+    }
+    next(err);
+  }
+}
+
+async function changeCurrentUserPassword(req, res, next) {
+  try {
+    const identity = requireUser(req, { requireUid: true });
+    if (identity.error) return res.status(identity.error.status).json({ message: identity.error.message });
+
+    const newPassword = typeof req.body?.newPassword === "string" ? req.body.newPassword : "";
+
+    // Validate inputs
+    if (!newPassword) {
+      return res.status(400).json({ message: "new password is required" });
+    }
+    if (newPassword.length < 6) {
+      return res.status(400).json({ message: "new password must be at least 6 characters" });
+    }
+
+    // Update password
+    const result = await accountsService.setAccountPassword(identity.uid, { password: newPassword });
+    if (!result) {
+      return res.status(500).json({ message: "Failed to update password" });
+    }
+
+    // Send notification
+    const notificationService = require("../services/notificationService");
+    await notificationService.notifyUser({
+      userId: identity.uid,
+      type: "security",
+      title: "Mật khẩu đã được thay đổi",
+      message: "Mật khẩu của bạn vừa được cập nhật thành công. Nếu bạn không thực hiện thay đổi này, vui lòng liên hệ quản trị viên ngay lập tức.",
+      data: { account_id: identity.uid },
+    });
+
+    res.json({ ok: true, message: "Password updated successfully" });
+  } catch (err) {
+    next(err);
+  }
+}
+
 module.exports = {
   listAccounts,
   getAccountById,
@@ -248,4 +357,7 @@ module.exports = {
   getAccountStats,
   getAccountPasswordStatus,
   setAccountPassword,
+  getCurrentUserProfile,
+  updateCurrentUserProfile,
+  changeCurrentUserPassword,
 };
