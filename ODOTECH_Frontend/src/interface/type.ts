@@ -38,6 +38,24 @@ export const STATUS_OPTIONS = [
   { value: 'collaborator', label: 'Cộng tác viên' },
 ];
 
+export const CONTRACT_TYPE_OPTIONS = [
+  { value: 'Intern', label: 'Intern (Thực tập sinh)' },
+  { value: 'Thử việc', label: 'Thử việc (Probation)' },
+  { value: 'Chính thức', label: 'Chính thức (Permanent)' },
+  { value: 'Hợp đồng 1 năm', label: 'Hợp đồng 1 năm' },
+  { value: 'Hợp đồng 2 năm', label: 'Hợp đồng 2 năm' },
+  { value: 'Hợp đồng 3 năm', label: 'Hợp đồng 3 năm' },
+  { value: 'Freelance', label: 'Freelance' },
+];
+
+export interface ContractRenewal {
+  renewalDate: string; // ISO date
+  previousEnd: string; // ISO date
+  newEnd: string; // ISO date
+  contractType: string;
+  notes?: string;
+}
+
 export interface Account {
   id: number; // ID nhân sự
   username: string; // Tên đăng nhập
@@ -56,6 +74,10 @@ export interface Account {
   created_at: string; // ISO timestamp
   updated_at: string; // ISO timestamp
   competency_framework?: CompetencyFramework;
+  contract_start?: string; // ISO date
+  contract_end?: string; // ISO date
+  contract_type?: string;
+  renewal_history?: ContractRenewal[];
 }
 
 export type LeaveStatus = 'pending' | 'approved' | 'rejected';

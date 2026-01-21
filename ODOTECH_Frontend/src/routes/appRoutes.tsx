@@ -18,6 +18,7 @@ import TicketDetail from '../pages/TicketDetail';
 import Servers from '../pages/Servers';
 import Training from '../pages/Training';
 import SendNotification from '../pages/SendNotification';
+import Profile from '../pages/Profile';
 
 export interface SidebarItem {
   to: string;
@@ -220,6 +221,7 @@ export const appRoutes: AppRoute[] = [
   { path: '/login', element: <Login /> },
   { path: '/register', element: <Register /> },
   { path: '/accounts', element: <Dashboard /> },
+  { path: '/profile', element: <Profile /> },
   { path: '/sales', element: <Sales /> },
   { path: '/projects', element: <Projects /> },
   { path: '/renewals', element: <Renewals /> },

@@ -68,6 +68,7 @@ export default function AccountTable({
     if (isCreating) return true;
     if (!selectedAccount) return false;
 
+    // Only check fields that AccountTable manages (exclude contract fields)
     return (
       draft.username !== selectedAccount.username ||
       draft.name !== selectedAccount.name ||
@@ -139,7 +140,12 @@ export default function AccountTable({
       autosaveTimerRef.current = null;
       setBusy(true);
       setErrorMessage('');
-      Promise.resolve(onUpdateAccount(draft))
+
+      // Only send fields that AccountTable manages, exclude contract fields
+      const { contract_start, contract_end, contract_type, renewal_history, ...accountFields } = draft;
+
+      // Cast to Account type to satisfy TypeScript
+      Promise.resolve(onUpdateAccount(accountFields as Account))
         .catch((e: unknown) => {
           setErrorMessage(e instanceof Error ? e.message : 'Không cập nhật được tài khoản');
         })

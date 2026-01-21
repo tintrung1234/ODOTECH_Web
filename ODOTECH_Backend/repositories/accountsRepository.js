@@ -91,9 +91,13 @@ async function createAccount(input) {
         status,
         password_hash,
         last_login_at,
-        competency_framework
+        competency_framework,
+        contract_start,
+        contract_end,
+        contract_type,
+        renewal_history
       ) VALUES (
-        $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14
+        $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18
       )
       RETURNING *
     `,
@@ -112,6 +116,10 @@ async function createAccount(input) {
       input.password_hash,
       accountModel.toDbTimestamp(input.last_login_at),
       input.competency_framework,
+      accountModel.toDbDate(input.contract_start),
+      accountModel.toDbDate(input.contract_end),
+      input.contract_type,
+      JSON.stringify(input.renewal_history || []),
     ]
   );
 
@@ -119,6 +127,12 @@ async function createAccount(input) {
 }
 
 async function updateAccount(accountId, input) {
+  // Prepare contract fields - use null if undefined to trigger COALESCE
+  const contractStart = input.contract_start !== undefined ? accountModel.toDbDate(input.contract_start) : null;
+  const contractEnd = input.contract_end !== undefined ? accountModel.toDbDate(input.contract_end) : null;
+  const contractType = input.contract_type !== undefined ? input.contract_type : null;
+  const renewalHistory = input.renewal_history !== undefined ? JSON.stringify(input.renewal_history || []) : null;
+
   const result = await pool.query(
     `
       UPDATE accounts
@@ -136,6 +150,10 @@ async function updateAccount(accountId, input) {
         status = $12,
         last_login_at = $13,
         competency_framework = $14,
+        contract_start = COALESCE($15, contract_start),
+        contract_end = COALESCE($16, contract_end),
+        contract_type = COALESCE($17, contract_type),
+        renewal_history = COALESCE($18, renewal_history),
         updated_at = NOW()
       WHERE id = $1
       RETURNING *
@@ -155,10 +173,22 @@ async function updateAccount(accountId, input) {
       input.status,
       accountModel.toDbTimestamp(input.last_login_at),
       input.competency_framework,
+      contractStart,
+      contractEnd,
+      contractType,
+      renewalHistory,
     ]
   );
 
   const row = result.rows[0];
+  console.log('[DEBUG updateAccount] Result from DB:', {
+    id: row?.id,
+    contract_start: row?.contract_start,
+    contract_end: row?.contract_end,
+    contract_type: row?.contract_type,
+    renewal_history: row?.renewal_history
+  });
+
   return row ? accountModel.mapAccountRow(row) : null;
 }
 

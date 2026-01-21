@@ -11,6 +11,9 @@ const {
   getAccountStats,
   getAccountPasswordStatus,
   setAccountPassword,
+  getCurrentUserProfile,
+  updateCurrentUserProfile,
+  changeCurrentUserPassword,
 } = require("../controllers/accountsController");
 
 const router = express.Router();
@@ -22,6 +25,10 @@ router.get("/health", (req, res) => {
 router.use(authMiddleware);
 
 router.get("/stats", getAccountStats);
+
+router.get("/profile/me", getCurrentUserProfile);
+router.put("/profile/me", updateCurrentUserProfile);
+router.put("/profile/me/password", changeCurrentUserPassword);
 
 router.get("/:id/password-status", getAccountPasswordStatus);
 router.put("/:id/password", setAccountPassword);

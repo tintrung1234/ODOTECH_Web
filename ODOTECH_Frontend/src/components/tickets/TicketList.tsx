@@ -16,6 +16,7 @@ const TicketList: React.FC<TicketListProps> = ({ filters: externalFilters, showF
     const [error, setError] = useState<string | null>(null);
     const [filters, setFilters] = useState<TicketFilters>(externalFilters || {});
     const [userRole, setUserRole] = useState<string | null>(null);
+    const [searchTerm, setSearchTerm] = useState<string>('');
 
     useEffect(() => {
         // Load user role on mount
@@ -23,6 +24,15 @@ const TicketList: React.FC<TicketListProps> = ({ filters: externalFilters, showF
             setUserRole(normalizeRole(user?.role));
         });
     }, []);
+
+    // Debounce search input - wait 500ms after user stops typing
+    useEffect(() => {
+        const timeoutId = setTimeout(() => {
+            setFilters(prev => ({ ...prev, search: searchTerm || undefined }));
+        }, 500);
+
+        return () => clearTimeout(timeoutId);
+    }, [searchTerm]);
 
     useEffect(() => {
         // Sync filter type handling with activeTab
@@ -58,21 +68,85 @@ const TicketList: React.FC<TicketListProps> = ({ filters: externalFilters, showF
                         if (profile && profile.id) {
                             // Use getAllTickets with customer_id filter
                             // This assumes backend allows customers to query /api/tickets with their own customer_id
-                            const data = await ticketService.getAllTickets({ customer_id: Number(profile.id) });
+                            let data = await ticketService.getAllTickets({ customer_id: Number(profile.id) });
+
+                            // Apply client-side filtering for customer users
+                            if (filters.status) {
+                                data = data.filter(t => t.status === filters.status);
+                            }
+                            if (filters.priority) {
+                                data = data.filter(t => t.priority === filters.priority);
+                            }
+                            if (filters.search) {
+                                const searchLower = filters.search.toLowerCase();
+                                data = data.filter(t =>
+                                    (t.title && t.title.toLowerCase().includes(searchLower)) ||
+                                    (t.ticket_number && t.ticket_number.toLowerCase().includes(searchLower))
+                                );
+                            }
+
                             setTickets(data);
                         } else {
                             // Fallback if no profile id
-                            const data = await ticketService.getMyTickets();
+                            let data = await ticketService.getMyTickets();
+
+                            // Apply client-side filtering
+                            if (filters.status) {
+                                data = data.filter(t => t.status === filters.status);
+                            }
+                            if (filters.priority) {
+                                data = data.filter(t => t.priority === filters.priority);
+                            }
+                            if (filters.search) {
+                                const searchLower = filters.search.toLowerCase();
+                                data = data.filter(t =>
+                                    (t.title && t.title.toLowerCase().includes(searchLower)) ||
+                                    (t.ticket_number && t.ticket_number.toLowerCase().includes(searchLower))
+                                );
+                            }
+
                             setTickets(data);
                         }
                     } else {
                         // Fallback if fetch profile fails
-                        const data = await ticketService.getMyTickets();
+                        let data = await ticketService.getMyTickets();
+
+                        // Apply client-side filtering
+                        if (filters.status) {
+                            data = data.filter(t => t.status === filters.status);
+                        }
+                        if (filters.priority) {
+                            data = data.filter(t => t.priority === filters.priority);
+                        }
+                        if (filters.search) {
+                            const searchLower = filters.search.toLowerCase();
+                            data = data.filter(t =>
+                                (t.title && t.title.toLowerCase().includes(searchLower)) ||
+                                (t.ticket_number && t.ticket_number.toLowerCase().includes(searchLower))
+                            );
+                        }
+
                         setTickets(data);
                     }
                 } catch (e) {
                     console.error('Error fetching profile for tickets:', e);
-                    const data = await ticketService.getMyTickets();
+                    let data = await ticketService.getMyTickets();
+
+                    // Apply client-side filtering
+                    if (filters.status) {
+                        data = data.filter(t => t.status === filters.status);
+                    }
+                    if (filters.priority) {
+                        data = data.filter(t => t.priority === filters.priority);
+                    }
+                    if (filters.search) {
+                        const searchLower = filters.search.toLowerCase();
+                        data = data.filter(t =>
+                            (t.title && t.title.toLowerCase().includes(searchLower)) ||
+                            (t.ticket_number && t.ticket_number.toLowerCase().includes(searchLower))
+                        );
+                    }
+
                     setTickets(data);
                 }
             } else {
@@ -117,6 +191,7 @@ const TicketList: React.FC<TicketListProps> = ({ filters: externalFilters, showF
 
     const handleClearFilters = () => {
         setFilters({});
+        setSearchTerm('');
     };
 
     if (loading) {
@@ -209,8 +284,8 @@ const TicketList: React.FC<TicketListProps> = ({ filters: externalFilters, showF
                             </label>
                             <input
                                 type="text"
-                                value={filters.search || ''}
-                                onChange={(e) => handleFilterChange('search', e.target.value || undefined)}
+                                value={searchTerm}
+                                onChange={(e) => setSearchTerm(e.target.value)}
                                 placeholder="Mã ticket, tiêu đề..."
                                 className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                             />
